@@ -198,7 +198,15 @@ div[data-testid="stTabs"] [data-baseweb="tab-panel"] {
 .spec-k { font-size: 0.58rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
 .spec-v { font-size: 0.88rem; font-weight: 500; color: var(--ink); line-height: 1.2; }
 
-/* ── Preview wrap — capped height, no scroll ────────── */
+/* ── Colonnes : la droite ne dépasse jamais la gauche ── */
+[data-testid="stHorizontalBlock"] {
+  align-items: flex-start !important;
+}
+[data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+  min-height: 0 !important;
+}
+
+/* ── Preview wrap ────────────────────────────────────── */
 .preview-wrap {
   border: 1px solid var(--border); border-radius: 10px;
   overflow: hidden; background: #f0f0f0;
@@ -210,19 +218,19 @@ div[data-testid="stTabs"] [data-baseweb="tab-panel"] {
   font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase;
   flex-shrink: 0;
 }
-/* The image/video inside the preview is capped so it never forces a scroll */
-.preview-wrap img,
-.preview-wrap video,
-.preview-wrap [data-testid="stImage"] img {
-  max-height: calc(100vh - var(--header-h) - var(--tabs-h) - var(--footer-h) - 120px) !important;
-  width: 100% !important;
-  object-fit: contain !important;
-  display: block !important;
-}
-/* Streamlit wraps images in a figure — neutralise any extra margins */
-.preview-wrap [data-testid="stImage"] {
+.preview-wrap [data-testid="stImage"],
+.preview-wrap [data-testid="stImage"] > div,
+.preview-wrap [data-testid="stImage"] figure {
   margin: 0 !important;
+  padding: 0 !important;
   line-height: 0 !important;
+  width: 100% !important;
+}
+.preview-wrap [data-testid="stImage"] img {
+  width: 100% !important;
+  height: auto !important;
+  display: block !important;
+  object-fit: contain !important;
 }
 
 /* ── Buttons ────────────────────────────────────────── */
@@ -389,15 +397,30 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 
-PREVIEW_MAX_H = 520   # hauteur max de l'aperçu en pixels — ajustable
+PREVIEW_MAX_W = 680   # largeur max approximative de la colonne droite en px (60% d'un écran ~1200px)
+PREVIEW_MAX_H = 500   # garde-fou pour les images très verticales
 
 def cap_image_for_preview(img: Image.Image) -> Image.Image:
-    """Redimensionne une image pour qu'elle ne dépasse pas PREVIEW_MAX_H px de hauteur."""
+    """
+    Redimensionne l'image pour qu'elle tienne dans la colonne droite
+    sans jamais déborder verticalement.
+    On contraint d'abord par la largeur (colonne ~60%), puis par une
+    hauteur max de sécurité pour les formats très verticaux.
+    """
     w, h = img.size
-    if h <= PREVIEW_MAX_H:
+    # 1. Contrainte largeur
+    if w > PREVIEW_MAX_W:
+        ratio = PREVIEW_MAX_W / w
+        w = PREVIEW_MAX_W
+        h = int(h * ratio)
+    # 2. Garde-fou hauteur (vidéos très verticales)
+    if h > PREVIEW_MAX_H:
+        ratio = PREVIEW_MAX_H / h
+        h = PREVIEW_MAX_H
+        w = int(w * ratio)
+    if (w, h) == img.size:
         return img
-    new_w = int(w * PREVIEW_MAX_H / h)
-    return img.resize((new_w, PREVIEW_MAX_H), Image.LANCZOS)
+    return img.resize((w, h), Image.LANCZOS)
 
 
 def get_default_logo() -> str:
@@ -713,7 +736,7 @@ with tab_v:
         with col_prev:
             st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
             st.markdown('<div class="preview-wrap"><div class="preview-bar">Aperçu — première image</div>', unsafe_allow_html=True)
-            st.image(cap_image_for_preview(st.session_state.thumbnail), use_container_width=True)
+            st.image(cap_image_for_preview(st.session_state.thumbnail))
             st.markdown('</div>', unsafe_allow_html=True)
 
     else:
@@ -776,7 +799,7 @@ with tab_p:
         with col_prev_p:
             st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
             st.markdown('<div class="preview-wrap"><div class="preview-bar">Aperçu — ' + first.name + '</div>', unsafe_allow_html=True)
-            st.image(cap_image_for_preview(result_prev.convert("RGB")), use_container_width=True)
+            st.image(cap_image_for_preview(result_prev.convert("RGB")))
             st.markdown('</div>', unsafe_allow_html=True)
 
         # Build outputs
@@ -881,7 +904,7 @@ with tab_s:
         with col_prev_s:
             st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
             st.markdown(f'<div class="preview-wrap"><div class="preview-bar">Aperçu — {fmt_time(timecode)} / {fmt_time(dur_s)}</div>', unsafe_allow_html=True)
-            st.image(cap_image_for_preview(frame), use_container_width=True)
+            st.image(cap_image_for_preview(frame))
             st.markdown('</div>', unsafe_allow_html=True)
 
     else:
