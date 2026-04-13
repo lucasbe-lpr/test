@@ -389,6 +389,17 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 
+PREVIEW_MAX_H = 520   # hauteur max de l'aperçu en pixels — ajustable
+
+def cap_image_for_preview(img: Image.Image) -> Image.Image:
+    """Redimensionne une image pour qu'elle ne dépasse pas PREVIEW_MAX_H px de hauteur."""
+    w, h = img.size
+    if h <= PREVIEW_MAX_H:
+        return img
+    new_w = int(w * PREVIEW_MAX_H / h)
+    return img.resize((new_w, PREVIEW_MAX_H), Image.LANCZOS)
+
+
 def get_default_logo() -> str:
     return DEFAULT_WM_FILE
 
@@ -702,7 +713,7 @@ with tab_v:
         with col_prev:
             st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
             st.markdown('<div class="preview-wrap"><div class="preview-bar">Aperçu — première image</div>', unsafe_allow_html=True)
-            st.image(st.session_state.thumbnail, use_container_width=True)
+            st.image(cap_image_for_preview(st.session_state.thumbnail), use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
     else:
@@ -765,7 +776,7 @@ with tab_p:
         with col_prev_p:
             st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
             st.markdown('<div class="preview-wrap"><div class="preview-bar">Aperçu — ' + first.name + '</div>', unsafe_allow_html=True)
-            st.image(result_prev.convert("RGB"), use_container_width=True)
+            st.image(cap_image_for_preview(result_prev.convert("RGB")), use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
         # Build outputs
@@ -870,7 +881,7 @@ with tab_s:
         with col_prev_s:
             st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
             st.markdown(f'<div class="preview-wrap"><div class="preview-bar">Aperçu — {fmt_time(timecode)} / {fmt_time(dur_s)}</div>', unsafe_allow_html=True)
-            st.image(frame, use_container_width=True)
+            st.image(cap_image_for_preview(frame), use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
     else:
