@@ -735,7 +735,6 @@ with tab_v:
 
         with col_prev:
             st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
-            st.markdown('<div class="preview-wrap"><div class="preview-bar">Aperçu — première image</div>', unsafe_allow_html=True)
             st.image(cap_image_for_preview(st.session_state.thumbnail))
             st.markdown('</div>', unsafe_allow_html=True)
 
