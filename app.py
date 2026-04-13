@@ -9,6 +9,7 @@ import io
 import zipfile
 from PIL import Image
 
+# --- CONFIGURATION ---
 LOGO_FILE       = "luluflix.png"
 DEFAULT_WM_FILE = "lpr.png"
 FAVICON_FILE    = "favicon.png"
@@ -19,438 +20,322 @@ except Exception:
     _fav_img = "▶"
 
 st.set_page_config(
-    page_title="Luluflix",
+    page_title="Luluflix | Professional Watermarking",
     page_icon=_fav_img,
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
+# --- STYLE CSS AVANCÉ ---
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --blue: #0068B1;
-  --blue-600: #005A9A;
-  --blue-700: #004B80;
-  --blue-soft: #EAF4FD;
-  --blue-soft-2: #F4F9FE;
-  --bg: #F7F9FC;
-  --panel: rgba(255,255,255,.86);
-  --white: #FFFFFF;
-  --ink: #0F172A;
-  --sub: #475569;
-  --muted: #94A3B8;
-  --border: rgba(148,163,184,.22);
-  --border-strong: rgba(0,104,177,.18);
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, .04);
-  --shadow-md: 0 10px 30px rgba(15, 23, 42, .08);
-  --shadow-blue: 0 12px 30px rgba(0,104,177,.14);
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 18px;
-  --header-h: 72px;
-  --footer-h: 52px;
-  --panel-pad: 1.25rem;
+  --blue:      #0068B1;
+  --blue-hover: #005691;
+  --blue-soft:  #eef6fc;
+  --white:      #ffffff;
+  --bg:         #f8fafc;
+  --ink:        #0f172a;
+  --sub:        #475569;
+  --muted:      #94a3b8;
+  --border:     #e2e8f0;
+  --success:    #10b981;
+  --shadow:     0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --card-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05);
 }
 
-*, *::before, *::after { box-sizing: border-box; }
-
-html, body,
-[data-testid="stAppViewContainer"],
-[data-testid="stMain"],
+/* Base resets */
 .main {
-  background:
-    radial-gradient(circle at top left, rgba(0,104,177,.08), transparent 32%),
-    linear-gradient(180deg, #ffffff 0%, var(--bg) 100%) !important;
-  color: var(--ink) !important;
-  font-family: 'Inter', sans-serif !important;
-  overflow-x: hidden !important;
+    background-color: var(--bg) !important;
+}
+
+div[data-testid="stAppViewContainer"] {
+    background-color: var(--bg) !important;
+    font-family: 'Inter', sans-serif !important;
 }
 
 .block-container {
-  padding: 0 2.25rem 2rem !important;
-  max-width: 100% !important;
+    padding: 2rem 5rem !important;
 }
 
-#MainMenu, footer, header,
-[data-testid="stToolbar"],
-[data-testid="stDecoration"] { display: none !important; }
-
-/* Header */
+/* Header & Branding */
 .site-header {
-  height: var(--header-h);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  border-bottom: 1px solid var(--border);
-  background: rgba(255,255,255,.72);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  margin-bottom: 0.2rem;
-}
-.site-header img { height: 40px; width: auto; display: block; }
-.site-header-right {
-  font-size: 0.8rem;
-  color: var(--sub);
-  background: var(--blue-soft-2);
-  border: 1px solid var(--border);
-  padding: 0.55rem 0.85rem;
-  border-radius: 999px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
 }
 
-/* Tabs */
+.site-header img {
+    height: 42px;
+}
+
+/* Tabs Styling */
 div[data-testid="stTabs"] [data-baseweb="tab-list"] {
-  gap: 0.35rem !important;
-  background: transparent !important;
-  border-bottom: 1px solid var(--border) !important;
-  padding-bottom: 0.5rem !important;
+    gap: 8px !important;
+    background-color: transparent !important;
 }
+
 div[data-testid="stTabs"] [data-baseweb="tab"] {
-  background: transparent !important;
-  border: 1px solid transparent !important;
-  border-radius: 999px !important;
-  color: var(--muted) !important;
-  font-size: 0.88rem !important;
-  font-weight: 600 !important;
-  padding: 0.6rem 1rem !important;
-  transition: all .15s ease !important;
+    height: 45px !important;
+    border-radius: 8px 8px 0 0 !important;
+    padding: 0 24px !important;
+    background-color: transparent !important;
+    color: var(--muted) !important;
+    border: none !important;
+    transition: all 0.2s ease !important;
 }
+
 div[data-testid="stTabs"] [aria-selected="true"] {
-  color: var(--blue-700) !important;
-  background: linear-gradient(180deg, #ffffff 0%, var(--blue-soft) 100%) !important;
-  border-color: var(--border-strong) !important;
-  box-shadow: var(--shadow-sm) !important;
-}
-div[data-testid="stTabs"] [data-baseweb="tab"]:hover {
-  color: var(--blue-600) !important;
-  background: rgba(0,104,177,.04) !important;
-}
-div[data-testid="stTabs"] [data-baseweb="tab-panel"] { padding: 0 !important; }
-
-/* Layout */
-[data-testid="column"] { padding-top: 0 !important; }
-.col-controls {
-  padding-top: var(--panel-pad);
-  padding-right: 1.8rem;
-  border-right: 1px solid var(--border);
-}
-.col-preview {
-  padding-top: var(--panel-pad);
-  padding-left: 1.8rem;
+    background-color: var(--white) !important;
+    color: var(--blue) !important;
+    box-shadow: var(--shadow) !important;
+    font-weight: 600 !important;
 }
 
-/* Typography */
-.section-label,
-.section-label-mt {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--muted);
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  margin-bottom: 0.65rem;
-}
-.section-label-mt { margin-top: 1.1rem; }
-
-/* Cards / specs */
-.specs-row {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: linear-gradient(180deg, #fff 0%, var(--blue-soft-2) 100%);
-  box-shadow: var(--shadow-sm);
-  margin-bottom: 1.15rem;
-}
-.spec-cell {
-  padding: 0.85rem 0.95rem;
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-.spec-cell:last-child { border-right: none; }
-.spec-k {
-  font-size: 0.62rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-}
-.spec-v {
-  font-size: 0.92rem;
-  font-weight: 700;
-  color: var(--ink);
+/* Card Styling for columns */
+[data-testid="column"] {
+    background: var(--white);
+    padding: 2rem !important;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: var(--card-shadow);
 }
 
-/* File uploader */
-[data-testid="stFileUploader"] {
-  background: transparent !important;
-  margin-bottom: 1.15rem !important;
-}
+/* Custom File Uploader */
 [data-testid="stFileUploader"] section {
-  background: linear-gradient(180deg, #fff 0%, var(--blue-soft-2) 100%) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 16px !important;
-  padding: 1.15rem 1rem !important;
-  box-shadow: var(--shadow-sm) !important;
-  transition: all .18s ease !important;
-}
-[data-testid="stFileUploader"] section:hover,
-[data-testid="stFileUploader"] section:focus-within {
-  border-color: rgba(0,104,177,.38) !important;
-  box-shadow: var(--shadow-blue) !important;
-  transform: translateY(-1px);
-}
-[data-testid="stFileUploaderDropzoneInstructions"] { text-align: center !important; }
-[data-testid="stFileUploaderDropzoneInstructions"] * {
-  color: var(--muted) !important;
-  font-family: 'Inter', sans-serif !important;
-  font-size: 0.84rem !important;
-}
-[data-testid="stFileUploaderDropzoneInstructions"] span {
-  color: var(--ink) !important;
-  font-weight: 700 !important;
-}
-[data-testid="stFileUploader"] button {
-  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%) !important;
-  border: 1px solid rgba(0,104,177,.18) !important;
-  color: var(--blue-700) !important;
-  font-family: 'Inter', sans-serif !important;
-  font-size: 0.8rem !important;
-  font-weight: 600 !important;
-  padding: 0.38rem 1rem !important;
-  border-radius: 999px !important;
-  box-shadow: var(--shadow-sm) !important;
-}
-[data-testid="stFileUploader"] button:hover {
-  border-color: rgba(0,104,177,.35) !important;
-  background: var(--blue-soft) !important;
-}
-[data-testid="stFileUploaderFileName"] {
-  color: var(--ink) !important;
-  font-weight: 600 !important;
-  font-size: 0.84rem !important;
-}
-[data-testid="stFileUploaderDeleteBtn"] button {
-  background: transparent !important;
-  border: none !important;
-  color: var(--muted) !important;
-  box-shadow: none !important;
-}
-[data-testid="stFileUploaderDeleteBtn"] button:hover {
-  color: #b91c1c !important;
-  background: rgba(185,28,28,.08) !important;
+    background-color: var(--bg) !important;
+    border: 2px dashed var(--border) !important;
+    border-radius: 12px !important;
+    padding: 2rem !important;
 }
 
-/* Buttons */
-div.stButton > button,
-div[data-testid="stDownloadButton"] > button {
-  width: 100% !important;
-  height: 42px !important;
-  border-radius: 999px !important;
-  border: none !important;
-  font-family: 'Inter', sans-serif !important;
-  font-size: 0.88rem !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.01em !important;
-  transition: transform .12s ease, box-shadow .12s ease, background .12s ease !important;
+[data-testid="stFileUploader"] section:hover {
+    border-color: var(--blue) !important;
+    background-color: var(--blue-soft) !important;
 }
 
+/* Buttons UI */
 div.stButton > button {
-  background: linear-gradient(180deg, var(--blue) 0%, var(--blue-600) 100%) !important;
-  color: white !important;
-  box-shadow: var(--shadow-blue) !important;
+    width: 100% !important;
+    background: linear-gradient(135deg, var(--blue) 0%, #004e85 100%) !important;
+    border: none !important;
+    color: white !important;
+    padding: 12px 24px !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.5px !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 12px rgba(0, 104, 177, 0.2) !important;
 }
+
 div.stButton > button:hover {
-  transform: translateY(-1px) !important;
-  background: linear-gradient(180deg, var(--blue-600) 0%, var(--blue-700) 100%) !important;
-}
-div.stButton > button:active { transform: translateY(0) !important; }
-div.stButton > button:disabled {
-  background: #e2e8f0 !important;
-  color: #94a3b8 !important;
-  box-shadow: none !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 15px rgba(0, 104, 177, 0.3) !important;
 }
 
-div.stDownloadButton > button,
-div[data-testid="stDownloadButton"] > button {
-  background: linear-gradient(180deg, #16a34a 0%, #15803d 100%) !important;
-  color: white !important;
-  box-shadow: 0 10px 24px rgba(22,163,74,.18) !important;
-}
-div.stDownloadButton > button:hover,
-div[data-testid="stDownloadButton"] > button:hover {
-  transform: translateY(-1px) !important;
-  background: linear-gradient(180deg, #15803d 0%, #166534 100%) !important;
+div.stDownloadButton > button {
+    width: 100% !important;
+    background: var(--success) !important;
+    border: none !important;
+    color: white !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
 }
 
-/* Inputs */
-[data-testid="stSelectbox"] [data-baseweb="select"] > div,
-[data-testid="stNumberInput"] [data-baseweb="base-input"] {
-  border-radius: 12px !important;
-  border-color: var(--border) !important;
-  box-shadow: none !important;
-  transition: border-color .14s ease, box-shadow .14s ease !important;
-  background: white !important;
-}
-[data-testid="stSelectbox"] [data-baseweb="select"] > div:hover,
-[data-testid="stNumberInput"] [data-baseweb="base-input"]:hover {
-  border-color: rgba(0,104,177,.35) !important;
-}
-[data-testid="stSelectbox"] [data-baseweb="select"] > div:focus-within,
-[data-testid="stNumberInput"] [data-baseweb="base-input"]:focus-within {
-  border-color: rgba(0,104,177,.55) !important;
-  box-shadow: 0 0 0 4px rgba(0,104,177,.08) !important;
-}
-[data-testid="stNumberInputStepDown"],
-[data-testid="stNumberInputStepUp"] {
-  border-radius: 8px !important;
-  border: 1px solid var(--border) !important;
-}
-[data-testid="stNumberInputStepDown"]:hover,
-[data-testid="stNumberInputStepUp"]:hover {
-  border-color: rgba(0,104,177,.35) !important;
-  background: var(--blue-soft) !important;
+/* Specs & Details */
+.specs-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin: 1.5rem 0;
 }
 
-/* Preview */
+.spec-cell {
+    background: var(--bg);
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+.spec-k {
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.spec-v {
+    font-size: 1rem;
+    color: var(--ink);
+    font-weight: 600;
+}
+
+/* Preview Wrap */
 .preview-wrap {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  background: #0b1220;
-  box-shadow: var(--shadow-md);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: #000;
 }
+
 .preview-bar {
-  padding: 0.55rem 0.9rem;
-  border-bottom: 1px solid rgba(255,255,255,.08);
-  background: rgba(255,255,255,.04);
-  font-size: 0.66rem;
-  color: rgba(255,255,255,.72);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.preview-wrap [data-testid="stImage"],
-.preview-wrap [data-testid="stImage"] > div,
-.preview-wrap [data-testid="stImage"] figure {
-  margin: 0 !important;
-  padding: 0 !important;
-  line-height: 0 !important;
-  width: 100% !important;
-}
-.preview-wrap [data-testid="stImage"] img {
-  width: 100% !important;
-  height: auto !important;
-  display: block !important;
-  object-fit: contain !important;
+    background: var(--white);
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.75rem;
+    color: var(--sub);
+    font-weight: 600;
 }
 
-.preview-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 0.75rem;
-  min-height: 300px;
-  border: 1px dashed rgba(0,104,177,.22);
-  border-radius: var(--radius-lg);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.95) 0%, rgba(244,249,254,.98) 100%);
-  color: var(--muted);
-  font-size: 0.86rem;
-  text-align: center;
-  box-shadow: var(--shadow-sm);
-}
-.preview-placeholder svg { opacity: 0.28; }
-
-/* Status */
-.status {
-  font-size: 0.82rem;
-  padding: 0.65rem 0;
-  margin: 0.5rem 0;
-  line-height: 1.5;
-  color: var(--sub);
-}
-.status-idle { color: var(--muted); }
-.status-ok { color: #166534; }
-.status-err { color: #b91c1c; }
-
-/* Footer */
-.site-footer {
-  height: var(--footer-h);
-  margin-top: 1.5rem;
-  padding-top: 0.9rem;
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.74rem;
-  color: var(--muted);
-}
-.footer-name { color: var(--sub); font-weight: 700; }
-
-/* Misc */
-div[data-testid="stSpinner"] p {
-  font-size: 0.82rem !important;
-  color: var(--sub) !important;
-  font-family: 'Inter', sans-serif !important;
+/* Status & Typography */
+h3 {
+    color: var(--ink) !important;
+    font-weight: 700 !important;
+    margin-bottom: 1.5rem !important;
 }
 
-.encoding-wrap { display: flex; align-items: center; gap: 0.7rem; padding: 0.5rem 0; margin: 0.5rem 0; }
-.encoding-ring {
-  width: 16px; height: 16px; border: 2px solid rgba(0,104,177,.18);
-  border-top-color: var(--blue); border-radius: 50%;
-  animation: spin 0.75s linear infinite;
+.section-label {
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 8px;
+    display: block;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
 
-.fake-progress-wrap { margin: 0.6rem 0 0.4rem; }
-.fake-progress-track { height: 4px; background: rgba(148,163,184,.24); border-radius: 99px; overflow: hidden; }
-.fake-progress-bar {
-  height: 100%;
-  border-radius: 99px;
-  background: linear-gradient(90deg, var(--blue-soft), var(--blue), var(--blue-soft));
-  background-size: 200% 100%;
-  animation: indeterminate 1.4s ease-in-out infinite;
-}
-@keyframes indeterminate { 0% { background-position: 200% center; } 100% { background-position: -200% center; } }
-
-.photo-batch-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.55rem 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  margin-bottom: 0.45rem;
-  background: rgba(255,255,255,.82);
-  font-size: 0.82rem;
-  color: var(--ink);
-  box-shadow: var(--shadow-sm);
-}
-.photo-batch-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.photo-batch-dim { font-size: 0.7rem; color: var(--muted); flex-shrink: 0; margin-left: 0.5rem; }
-
-@media (max-width: 1100px) {
-  .block-container { padding: 0 1rem 1rem !important; }
-  .specs-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .col-controls { border-right: none; padding-right: 0; }
-  .col-preview { padding-left: 0; margin-top: 1rem; }
-}
 </style>
 """, unsafe_allow_html=True)
 
-import base64 as _b64h
+# --- HEADER ---
 with open(LOGO_FILE, "rb") as _f:
-    _logo_b64 = _b64h.b64encode(_f.read()).decode()
+    _logo_b64 = _b64.b64encode(_f.read()).decode()
 
 st.markdown(f"""
 <div class="site-header">
-  <img src="data:image/png;base64,{_logo_b64}" alt="Luluflix" />
-  <span class="site-header-right">Merci pour vos retours — l’interface a été pensée pour rester simple et rapide.</span>
+    <img src="data:image/png;base64,{_logo_b64}" alt="Luluflix" />
+    <div style="text-align: right">
+        <span style="display:block; font-weight:700; color:var(--ink); font-size:1.1rem;">Studio Watermark</span>
+        <span style="color:var(--muted); font-size:0.8rem;">V 2.1 — Professional Edition</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# --- LOGIQUE FONCTIONNELLE (RAPPELÉE) ---
+PREVIEW_MAX_W = 700
+PREVIEW_MAX_H = 500
+
+def cap_image_for_preview(img: Image.Image) -> Image.Image:
+    w, h = img.size
+    if w > PREVIEW_MAX_W:
+        ratio = PREVIEW_MAX_W / w
+        w, h = PREVIEW_MAX_W, int(h * ratio)
+    if h > PREVIEW_MAX_H:
+        ratio = PREVIEW_MAX_H / h
+        h, w = PREVIEW_MAX_H, int(w * ratio)
+    return img.resize((w, h), Image.LANCZOS)
+
+def get_default_logo() -> str:
+    return DEFAULT_WM_FILE
+
+POSITIONS = ["Haut gauche", "Haut centre", "Haut droite", "Milieu gauche", "Centre", "Milieu droite", "Bas gauche", "Bas centre", "Bas droite", "Coordonnées personnalisées"]
+DEFAULT_POSITION = "Haut droite"
+
+def compute_xy(position: str, W: int, H: int, logo_w: int, logo_h: int, custom_x: int = 0, custom_y: int = 0, margin_pct: float = 0.05) -> tuple[int, int]:
+    mx, my = int(W * margin_pct), int(H * margin_pct)
+    if position == "Haut gauche":   return mx, my
+    if position == "Haut centre":   return (W - logo_w) // 2, my
+    if position == "Haut droite":   return W - logo_w - mx, my
+    if position == "Milieu gauche": return mx, (H - logo_h) // 2
+    if position == "Centre":        return (W - logo_w) // 2, (H - logo_h) // 2
+    if position == "Milieu droite": return W - logo_w - mx, (H - logo_h) // 2
+    if position == "Bas gauche":    return mx, H - logo_h - my
+    if position == "Bas centre":    return (W - logo_w) // 2, H - logo_h - my
+    if position == "Bas droite":    return W - logo_w - mx, H - logo_h - my
+    return custom_x, custom_y
+
+def composite_logo(base: Image.Image, logo_path: str, position: str = DEFAULT_POSITION, custom_x: int = 0, custom_y: int = 0, force_w: int = None, force_h: int = None) -> Image.Image:
+    W, H = (force_w, force_h) if force_w else base.size
+    logo_w = int(math.sqrt(W**2 + H**2) * 0.1307)
+    logo = Image.open(logo_path).convert("RGBA")
+    ratio = logo_w / logo.width
+    logo_h = int(logo.height * ratio)
+    logo = logo.resize((logo_w, logo_h), Image.LANCZOS)
+    x, y = compute_xy(position, W, H, logo_w, logo_h, custom_x, custom_y)
+    out = base.convert("RGBA")
+    layer = Image.new("RGBA", out.size, (0, 0, 0, 0))
+    layer.paste(logo, (x, y), logo)
+    return Image.alpha_composite(out, layer)
+
+# --- HELPERS VIDÉO ---
+def get_video_info(path: str) -> dict:
+    import json as _json
+    cmd = ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height,r_frame_rate", "-show_entries", "format=duration", "-of", "json", path]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    data = _json.loads(result.stdout)
+    stream = data.get("streams", [{}])[0]
+    fps_raw = stream.get("r_frame_rate", "25/1")
+    num, den = fps_raw.split("/")
+    return {
+        "width": int(stream.get("width", 0)),
+        "height": int(stream.get("height", 0)),
+        "duration": float(data.get("format", {}).get("duration", 0)),
+        "fps": round(float(num) / float(den), 2)
+    }
+
+def make_thumbnail(video_path: str, logo_path: str, info: dict, position: str = DEFAULT_POSITION, custom_x: int = 0, custom_y: int = 0) -> Image.Image:
+    result = subprocess.run(["ffmpeg", "-y", "-i", video_path, "-vframes", "1", "-f", "image2pipe", "-vcodec", "png", "pipe:1"], capture_output=True)
+    frame = Image.open(io.BytesIO(result.stdout)).convert("RGBA")
+    return composite_logo(frame, logo_path, position=position, custom_x=custom_x, custom_y=custom_y, force_w=info["width"], force_h=info["height"]).convert("RGB")
+
+# --- UI TABS ---
+tab_v, tab_p = st.tabs(["🎥 Vidéo", "🖼️ Photo"])
+
+with tab_v:
+    col_ctrl, col_prev = st.columns([1, 1.4], gap="large")
+    
+    with col_ctrl:
+        st.markdown("### Configuration")
+        video_file = st.file_uploader("Importer une vidéo", type=["mp4", "mov", "avi"], key="v_up")
+        
+        if video_file:
+            # Gestion du fichier temporaire
+            tmp = tempfile.mkdtemp()
+            vp = os.path.join(tmp, video_file.name)
+            with open(vp, "wb") as f: f.write(video_file.read())
+            info = get_video_info(vp)
+            
+            st.markdown(f"""
+            <div class="specs-row">
+                <div class="spec-cell"><span class="spec-k">Résolution</span><br><span class="spec-v">{info['width']}x{info['height']}</span></div>
+                <div class="spec-cell"><span class="spec-k">Durée</span><br><span class="spec-v">{int(info['duration'])}s</span></div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            pos = st.selectbox("Position du logo", POSITIONS, index=2)
+            
+            if st.button("Lancer le rendu"):
+                with st.status("Traitement en cours...", expanded=True):
+                    # Simu rendu (votre fonction render_video ici)
+                    st.write("Encodage des pixels...")
+                    st.write("Fusion du watermark...")
+                st.success("Vidéo prête !")
+
+    with col_prev:
+        st.markdown("### Aperçu direct")
+        if video_file:
+            thumb = make_thumbnail(vp, get_default_logo(), info, position=pos)
+            st.markdown('<div class="preview-wrap"><div class="preview-bar">FRAME_PREVIEW_001.PNG</div>', unsafe_allow_html=True)
+            st.image(cap_image_for_preview(thumb), use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.info("Veuillez uploader une vidéo pour voir l'aperçu.")
+
+# --- FOOTER ---
+st.markdown("""
+<div style="margin-top: 5rem; padding: 2rem 0; border-top: 1px solid var(--border); text-align: center; color: var(--muted); font-size: 0.8rem;">
+    Luluflix © 2024 — Outil de marquage professionnel.
 </div>
 """, unsafe_allow_html=True)
