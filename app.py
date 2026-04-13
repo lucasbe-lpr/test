@@ -625,6 +625,7 @@ def watermark_options_ui(key_prefix: str) -> dict:
     st.markdown('<p class="section-label-mt">Position du watermark</p>', unsafe_allow_html=True)
 
     position = st.selectbox(
+        "Position",
         POSITIONS,
         index=POSITIONS.index(DEFAULT_POSITION),
         key=f"{key_prefix}_pos",
