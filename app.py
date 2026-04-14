@@ -44,7 +44,7 @@ st.markdown("""
   --muted:       #999999;
   --border:      #e4e4e4;
   --border-mid:  #d0d0d0;
-  --green:       #14f569;
+  --green:       #166534;
   --red:         #991b1b;
   --red-bg:      #fff1f1;
   --header-h:    64px;
