@@ -622,7 +622,7 @@ def trim_video(video_path: str, output_path: str, t_start: float, t_end: float):
 
 def watermark_options_ui(key_prefix: str) -> dict:
     """Render position controls. Returns dict of options."""
-    st.markdown('<p class="section-label-mt">Position du watermark</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-label-mt">Watermark</p>', unsafe_allow_html=True)
 
     position = st.selectbox(
         "Position",
