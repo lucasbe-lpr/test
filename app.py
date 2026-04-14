@@ -44,7 +44,7 @@ st.markdown("""
   --muted:       #999999;
   --border:      #e4e4e4;
   --border-mid:  #d0d0d0;
-  --green:       #166534;
+  --green:       #23ad57;
   --red:         #991b1b;
   --red-bg:      #fff1f1;
   --header-h:    64px;
@@ -872,7 +872,7 @@ with tab_s:
 # FOOTER — mettre à jour le texte à chaque nouvelle version
 st.markdown("""
 <div class="site-footer">
-  <span class="footer-name">2026 © Luluflix</span>
+  <span class="footer-name"></span>
   <span>MàJ 2.1 : choix de l'emplacement du watermark ; chargement de plusieurs photos ; qualité de l'export améliorée.</span>
 </div>
 """, unsafe_allow_html=True)
