@@ -872,7 +872,7 @@ with tab_s:
 # FOOTER — mettre à jour le texte à chaque nouvelle version
 st.markdown("""
 <div class="site-footer">
-  <span class="footer-name">Luluflix</span>
+  <span class="footer-name">2026 © Luluflix</span>
   <span>MàJ 2.1 : choix de l'emplacement du watermark ; chargement de plusieurs photos ; qualité de l'export améliorée.</span>
 </div>
 """, unsafe_allow_html=True)
