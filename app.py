@@ -797,7 +797,6 @@ with tab_p:
 
         with col_prev_p:
             st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
-            st.markdown('<div class="preview-wrap"><div class="preview-bar">Aperçu — ' + first.name + '</div>', unsafe_allow_html=True)
             st.image(cap_image_for_preview(result_prev.convert("RGB")))
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -902,7 +901,6 @@ with tab_s:
 
         with col_prev_s:
             st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
-            st.markdown(f'<div class="preview-wrap"><div class="preview-bar">Aperçu — {fmt_time(timecode)} / {fmt_time(dur_s)}</div>', unsafe_allow_html=True)
             st.image(cap_image_for_preview(frame))
             st.markdown('</div>', unsafe_allow_html=True)
 
