@@ -373,15 +373,6 @@ div[data-testid="stSpinner"] p {
 .photo-batch-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .photo-batch-dim  { font-size: 0.68rem; color: var(--muted); flex-shrink: 0; margin-left: 0.5rem; }
 
-/* ── ZIP download button — darker green ─────────────── */
-div[data-testid="stDownloadButton"].dl-zip > button {
-  background: #14532d !important;
-  box-shadow: 0 1px 2px rgba(20,83,45,0.22), 0 2px 6px rgba(20,83,45,0.13) !important;
-}
-div[data-testid="stDownloadButton"].dl-zip > button:hover {
-  background: #0f3d22 !important;
-}
-
 /* ── Preview placeholder when no file uploaded ──────── */
 .preview-placeholder {
   display: flex; align-items: center; justify-content: center;
@@ -858,18 +849,6 @@ with tab_p:
                     mime="application/zip",
                     key="pdl_zip",
                 )
-                st.markdown("""
-                <style>
-                /* Bouton ZIP — vert plus foncé */
-                button[kind="secondary"][data-testid="stBaseButton-secondary"]:last-of-type,
-                div.stDownloadButton:last-of-type > button {
-                  background: #14532d !important;
-                  box-shadow: 0 1px 2px rgba(20,83,45,0.22), 0 2px 6px rgba(20,83,45,0.13) !important;
-                }
-                div.stDownloadButton:last-of-type > button:hover {
-                  background: #0f3d22 !important;
-                }
-                </style>""", unsafe_allow_html=True)
     else:
         with col_ctrl_p:
             st.markdown('<div class="status status-idle">Déposez une ou plusieurs images via "Upload".</div>', unsafe_allow_html=True)
