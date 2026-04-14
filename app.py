@@ -164,7 +164,7 @@ div[data-testid="stTabs"] [data-baseweb="tab-panel"] {
   font-family: 'Roboto', sans-serif !important;
   font-size: 0.78rem !important;
   padding: 0.28rem 0.9rem !important;
-  border-radius: 100px !important;
+  border-radius: 999px !important;
   box-shadow: 0 1px 2px rgba(0,0,0,0.06) !important;
 }
 [data-testid="stFileUploader"] button:hover { border-color: var(--blue) !important; color: var(--blue) !important; }
@@ -238,7 +238,7 @@ div.stButton > button {
   width: 100% !important; background: var(--blue) !important; border: none !important;
   color: var(--white) !important; font-family: 'Roboto', sans-serif !important;
   font-size: 0.85rem !important; font-weight: 500 !important;
-  padding: 0 1.4rem !important; height: 38px !important; border-radius: 999px !important;
+  padding: 0 1.4rem !important; height: 38px !important; border-radius: 50px !important;
   transition: background 0.15s, transform 0.1s !important;
   box-shadow: 0 1px 2px rgba(0,104,177,0.15), 0 2px 6px rgba(0,104,177,0.1) !important;
   cursor: pointer !important;
