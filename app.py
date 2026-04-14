@@ -164,7 +164,7 @@ div[data-testid="stTabs"] [data-baseweb="tab-panel"] {
   font-family: 'Roboto', sans-serif !important;
   font-size: 0.78rem !important;
   padding: 0.28rem 0.9rem !important;
-  border-radius: 999px !important;
+  border-radius: 100px !important;
   box-shadow: 0 1px 2px rgba(0,0,0,0.06) !important;
 }
 [data-testid="stFileUploader"] button:hover { border-color: var(--blue) !important; color: var(--blue) !important; }
