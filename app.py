@@ -392,7 +392,7 @@ with open(LOGO_FILE, "rb") as _f:
 st.markdown(f"""
 <div class="site-header">
   <img src="data:image/png;base64,{_logo_b64}" alt="Luluflix" />
-  <span class="site-header-right">N'hésitez pas à me faire remonter les bugs par mail !</span>
+  <span class="site-header-right">version 2.1</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -921,7 +921,7 @@ with tab_s:
 
 st.markdown("""
 <div class="site-footer">
-  <span class="footer-name">lucas.bessonnat@leprogres.fr</span>
-  <span>v2.0. Aucune donnée n'est conservée sur un serveur.</span>
+  <span class="footer-name"></span>
+  <span>MàJ 2.1 : choix de l'emplacement du watermark ; chargement de plusieurs photos ; qualité de l'export amélioré.</span>
 </div>
 """, unsafe_allow_html=True)
