@@ -373,6 +373,15 @@ div[data-testid="stSpinner"] p {
 .photo-batch-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .photo-batch-dim  { font-size: 0.68rem; color: var(--muted); flex-shrink: 0; margin-left: 0.5rem; }
 
+/* ── ZIP download button — darker green ─────────────── */
+div[data-testid="stDownloadButton"].dl-zip > button {
+  background: #14532d !important;
+  box-shadow: 0 1px 2px rgba(20,83,45,0.22), 0 2px 6px rgba(20,83,45,0.13) !important;
+}
+div[data-testid="stDownloadButton"].dl-zip > button:hover {
+  background: #0f3d22 !important;
+}
+
 /* ── Preview placeholder when no file uploaded ──────── */
 .preview-placeholder {
   display: flex; align-items: center; justify-content: center;
@@ -788,19 +797,7 @@ with tab_p:
 
             wm_opts_p = watermark_options_ui("p")
 
-        # Preview first image
-        first = photo_files[0]
-        first.seek(0)
-        base_prev = Image.open(first)
-        W, H = base_prev.size
-        result_prev = composite_logo(base_prev, lp2, **wm_opts_p)
-
-        with col_prev_p:
-            st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
-            st.image(cap_image_for_preview(result_prev.convert("RGB")))
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        # Build outputs
+        # Build outputs helper
         def build_photo_output(pf, opts):
             pf.seek(0)
             base = Image.open(pf)
@@ -814,6 +811,19 @@ with tab_p:
                 result.convert("RGB").save(buf, format="JPEG", quality=100, subsampling=0)
                 return buf.getvalue(), pf.name.rsplit(".", 1)[0] + "_wm.jpg", "image/jpeg"
 
+        # Preview grid — 2 columns, all uploaded photos
+        with col_prev_p:
+            st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
+            grid_cols = st.columns(2)
+            for idx, pf in enumerate(photo_files):
+                pf.seek(0)
+                base_prev = Image.open(pf)
+                result_prev = composite_logo(base_prev, lp2, **wm_opts_p)
+                with grid_cols[idx % 2]:
+                    st.image(cap_image_for_preview(result_prev.convert("RGB")),
+                             caption=pf.name, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
         with col_ctrl_p:
             if len(photo_files) == 1:
                 data, fname, mime = build_photo_output(photo_files[0], wm_opts_p)
@@ -822,16 +832,20 @@ with tab_p:
             else:
                 st.markdown('<p class="section-label-mt">Téléchargement</p>', unsafe_allow_html=True)
 
-                # Individual downloads
-                for i, pf in enumerate(photo_files):
-                    data, fname, mime = build_photo_output(pf, wm_opts_p)
-                    st.download_button(
-                        f"↓  {pf.name}",
-                        data=data, file_name=fname, mime=mime,
-                        key=f"pdl_{i}",
-                    )
+                # Individual downloads — 2 per row
+                for i in range(0, len(photo_files), 2):
+                    row_files = photo_files[i:i+2]
+                    btn_cols = st.columns(len(row_files), gap="small")
+                    for j, pf in enumerate(row_files):
+                        data, fname, mime = build_photo_output(pf, wm_opts_p)
+                        with btn_cols[j]:
+                            st.download_button(
+                                f"↓  {pf.name}",
+                                data=data, file_name=fname, mime=mime,
+                                key=f"pdl_{i+j}",
+                            )
 
-                # ZIP download
+                # ZIP download — darker green via injected class
                 zip_buf = io.BytesIO()
                 with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_STORED) as zf:
                     for pf in photo_files:
@@ -844,6 +858,18 @@ with tab_p:
                     mime="application/zip",
                     key="pdl_zip",
                 )
+                st.markdown("""
+                <style>
+                /* Bouton ZIP — vert plus foncé */
+                button[kind="secondary"][data-testid="stBaseButton-secondary"]:last-of-type,
+                div.stDownloadButton:last-of-type > button {
+                  background: #14532d !important;
+                  box-shadow: 0 1px 2px rgba(20,83,45,0.22), 0 2px 6px rgba(20,83,45,0.13) !important;
+                }
+                div.stDownloadButton:last-of-type > button:hover {
+                  background: #0f3d22 !important;
+                }
+                </style>""", unsafe_allow_html=True)
     else:
         with col_ctrl_p:
             st.markdown('<div class="status status-idle">Déposez une ou plusieurs images via "Upload".</div>', unsafe_allow_html=True)
