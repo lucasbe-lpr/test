@@ -1438,7 +1438,7 @@ with tab_audio:
          src="data:{_amime};base64,{_ab64}"></video>
 </div>
 <p style="font-family:sans-serif;font-size:0.72rem;color:#999;text-align:center;margin:6px 0 0;">
-  🔇 Aperçu muet — le son sera supprimé
+  Aperçu muet — le son sera supprimé
 </p>""", height=440)
 
             elif "Remplacer" in audio_action and audio_replace_file:
@@ -1456,7 +1456,7 @@ with tab_audio:
 </div>
 <audio id="prev_aud" src="data:{_aud_mime};base64,{_aud_b64}" {"loop" if loop_audio else ""}></audio>
 <p style="font-family:sans-serif;font-size:0.72rem;color:#999;text-align:center;margin:6px 0 0;">
-  🎵 Aperçu avec le nouvel audio — <b>{audio_replace_file.name}</b>
+  Aperçu avec le nouvel audio — <b>{audio_replace_file.name}</b>
 </p>
 <script>
   const vid = document.getElementById('prev_vid');
