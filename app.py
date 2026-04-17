@@ -822,7 +822,7 @@ tab_v, tab_p, tab_s, tab_cut, tab_merge, tab_audio, tab_crop = st.tabs([
 
 
 # ═══════════════════════════════════════════════════════════════════
-# ONGLET 1 — WATERMARK VIDÉO
+# WATERMARK VIDÉO
 # ═══════════════════════════════════════════════════════════════════
 
 with tab_v:
@@ -914,7 +914,7 @@ with tab_v:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# ONGLET 2 — WATERMARK PHOTO (multi-fichiers)
+# WATERMARK PHOTO
 # ═══════════════════════════════════════════════════════════════════
 
 with tab_p:
@@ -1027,7 +1027,7 @@ with tab_p:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# ONGLET 3 — CAPTURE D'ÉCRAN (extrait une frame d'une vidéo)
+# CAPTURE D'ÉCRAN
 # ═══════════════════════════════════════════════════════════════════
 
 with tab_s:
@@ -1091,7 +1091,7 @@ with tab_s:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# ONGLET 4 — COUPER UNE VIDÉO
+# COUPER
 # ═══════════════════════════════════════════════════════════════════
 
 with tab_cut:
@@ -1224,7 +1224,7 @@ with tab_cut:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# ONGLET 5 — FUSIONNER DES VIDÉOS
+# FUSIONNER
 # ═══════════════════════════════════════════════════════════════════
 
 with tab_merge:
@@ -1329,7 +1329,7 @@ with tab_merge:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# ONGLET 6 — SON (suppression / remplacement audio)
+# SON
 # ═══════════════════════════════════════════════════════════════════
 
 with tab_audio:
@@ -1438,7 +1438,7 @@ with tab_audio:
          src="data:{_amime};base64,{_ab64}"></video>
 </div>
 <p style="font-family:sans-serif;font-size:0.72rem;color:#999;text-align:center;margin:6px 0 0;">
-  Aperçu muet — le son sera supprimé
+  Mode muet — le son sera supprimé
 </p>""", height=440)
 
             elif "Remplacer" in audio_action and audio_replace_file:
@@ -1456,7 +1456,7 @@ with tab_audio:
 </div>
 <audio id="prev_aud" src="data:{_aud_mime};base64,{_aud_b64}" {"loop" if loop_audio else ""}></audio>
 <p style="font-family:sans-serif;font-size:0.72rem;color:#999;text-align:center;margin:6px 0 0;">
-  Aperçu avec le nouvel audio — <b>{audio_replace_file.name}</b>
+  Avec le nouvel audio — <b>{audio_replace_file.name}</b>
 </p>
 <script>
   const vid = document.getElementById('prev_vid');
@@ -1490,7 +1490,7 @@ with tab_audio:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# ONGLET 7 — RECADRER UNE VIDÉO
+# RECADRER
 # ═══════════════════════════════════════════════════════════════════
 
 with tab_crop:
@@ -1633,8 +1633,7 @@ with tab_crop:
 # FOOTER
 st.markdown("""
 <div class="site-footer">
-  <span class="footer-name"></span>
-  <span><i><b>[NOUVEAUTÉS v3.1]</b></i></br>
-  Lecteur vidéo interactif dans ✂️ Couper, sliders bleus, + nouveaux outils 🔇 Son et 📐 Recadrer.</span>
+  <span class="footer-name">Dernière màj le <i>17/04/2026</i></span>
+  <span><b>Aucune donnée n'est envoyée sur un serveur</b>. Tout tourne en local dans votre navigateur. N'hésitez pas à me faire remonter les bugs par mail. Faire <i>F5</i> après avoir beaucoup utilisé l'outil pour remettre à 0 le cache.</span>
 </div>
 """, unsafe_allow_html=True)
