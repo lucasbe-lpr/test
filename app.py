@@ -1636,7 +1636,7 @@ st.markdown("""
 <div class="site-footer">
   <span class="footer-name">Dernière màj le <i>17/04/2026</i></span>
   <span><b>Aucune donnée n'est envoyée sur un serveur</b>. Tout tourne en local dans votre navigateur.</br>
-  Si vous constatez des bugs, n'hésitez pas à m'envoyer le message d'erreur <a href="mailto:lucas.bessonnat@leprogres.fr"><mark>par mail</mark></a>.<br>
+  Si vous constatez des bugs, n'hésitez pas à m'envoyer le message d'erreur <a href="mailto:lucas.bessonnat@leprogres.fr">par mail</a>.<br>
   Après plusieurs utilisations, je vous recommande d'appuyer sur la touche <code>F5</code> pour faire du bien au cache.</span>
 </div>
 """, unsafe_allow_html=True)
