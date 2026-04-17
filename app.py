@@ -460,14 +460,18 @@ div[data-testid="stSpinner"] p {
 .crop-preset-label { font-size: 0.65rem; color: var(--sub); font-weight: 500; }
 .crop-preset-ratio { font-size: 0.58rem; color: var(--muted); }
 
-/* Badge New pour les onglets */
-button[data-baseweb="tab"] div p:contains("ᴺᴱᵂ") {
-    color: var(--blue) !important; /* Ou une autre couleur comme #ff4b4b */
-    font-weight: 700 !important;
-    font-size: 0.7rem !important;
-    vertical-align: super;
-    margin-left: 2px;
-}
+/* BADGE NEW */
+    div[data-testid="stTabs"] button[data-baseweb="tab"] div p:has(span:contains("ᴺᴱᵂ")),
+    div[data-testid="stTabs"] button[data-baseweb="tab"] div p:contains("ᴺᴱᵂ") {
+        color: #ff4b4b !important; /* Rouge */
+        font-weight: 700 !important;
+    }
+
+    /* Optionnel : pour que le badge ressemble à une petite étiquette */
+    div[data-testid="stTabs"] button[data-baseweb="tab"] div p:contains("ᴺᴱᵂ") {
+        display: inline-flex;
+        align-items: center;
+    }
 
 </style>
 """, unsafe_allow_html=True)
@@ -828,7 +832,7 @@ for k in ["thumbnail", "rendered_bytes", "_last_video_name",
 
 tab_v, tab_p, tab_s, tab_cut, tab_merge, tab_audio, tab_crop = st.tabs([
     "Watermark vidéo", "Watermark photo", "Capture d'écran",
-    "Couper ᴺᴱᵂ ", "Fusionnerᴺᴱᵂ", "Sonᴺᴱᵂ", "Recadrerᴺᴱᵂ"
+    "Couperᴺᴱᵂ", "Fusionnerᴺᴱᵂ", "Sonᴺᴱᵂ", "Recadrerᴺᴱᵂ"
 ])
 
 
