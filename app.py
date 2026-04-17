@@ -1191,19 +1191,10 @@ with tab_cut:
             _mime = "video/mp4" if _ext in ("mp4", "m4v") else f"video/{_ext}"
             components.html(f"""
 <div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
-  <div style="font-size:0.58rem;font-weight:500;text-transform:uppercase;letter-spacing:0.07em;
-              color:#999;padding:0.35rem 0.85rem;background:#fff;border-bottom:1px solid #e4e4e4;">
-    Aperçu du segment
-  </div>
+
   <video id="cutplayer" controls style="width:100%;display:block;max-height:380px;object-fit:contain;"
          src="data:{_mime};base64,{_vb64}">
   </video>
-  <div style="padding:0.3rem 0.85rem;background:#fff;border-top:1px solid #e4e4e4;
-              font-size:0.68rem;color:#999;display:flex;gap:1rem;">
-    <span>▶ Début : <b style="color:#0068B1">{t_start:.1f} s</b></span>
-    <span>⏹ Fin : <b style="color:#0068B1">{t_end:.1f} s</b></span>
-    <span>⏱ Durée : <b style="color:#0068B1">{seg_dur:.1f} s</b></span>
-  </div>
 </div>
 <script>
   const p = document.getElementById('cutplayer');
