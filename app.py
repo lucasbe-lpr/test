@@ -329,24 +329,6 @@ div[data-testid="stSpinner"] p {
 }
 [data-testid="stSelectbox"] [data-baseweb="select"] > div:hover { border-color: var(--blue) !important; }
 
-/* SLIDERS — override couleur Streamlit (rouge par défaut) → bleu DA */
-[data-testid="stSlider"] [data-baseweb="slider"] [role="slider"] {
-  background: var(--blue) !important;
-  border-color: var(--blue) !important;
-  box-shadow: 0 0 0 3px rgba(0,104,177,0.15) !important;
-}
-[data-testid="stSlider"] [data-baseweb="slider"] [role="slider"]:focus {
-  box-shadow: 0 0 0 4px rgba(0,104,177,0.25) !important;
-}
-/* Track rempli (partie gauche du thumb) */
-[data-testid="stSlider"] [data-baseweb="slider"] div[class*="Track"] > div:first-child,
-[data-testid="stSlider"] [data-baseweb="slider"] [data-testid*="track"] > div:first-child {
-  background: var(--blue) !important;
-}
-/* Fallback large-spectre sur tous les div colorés dans le slider */
-[data-testid="stSlider"] [style*="background: rgb(255"] { background: var(--blue) !important; }
-[data-testid="stSlider"] [style*="background-color: rgb(255"] { background-color: var(--blue) !important; }
-
 /* LISTE DES FICHIERS IMPORTÉS (onglet photo) */
 .photo-batch-item {
   display: flex; align-items: center; justify-content: space-between;
