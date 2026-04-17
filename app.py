@@ -813,13 +813,14 @@ def crop_video(video_path: str, output_path: str,
 for k in ["thumbnail", "rendered_bytes", "_last_video_name",
           "cut_bytes", "_last_cut_name", "merge_bytes",
           "audio_bytes", "_last_audio_name",
-          "crop_bytes", "_last_crop_name"]:
+          "crop_bytes", "_last_crop_name",
+          "canva_result_bytes"]:
     if k not in st.session_state:
         st.session_state[k] = None
 
-tab_v, tab_p, tab_s, tab_cut, tab_merge, tab_audio, tab_crop = st.tabs([
+tab_v, tab_p, tab_s, tab_cut, tab_merge, tab_audio, tab_crop, tab_canva = st.tabs([
     "Watermark vidéo", "Watermark photo", "Capture d'écran",
-    "Couperᴺᴱᵂ", "Fusionnerᴺᴱᵂ", "Sonᴺᴱᵂ", "Recadrerᴺᴱᵂ"
+    "Couperᴺᴱᵂ", "Fusionnerᴺᴱᵂ", "Sonᴺᴱᵂ", "Recadrerᴺᴱᵂ", "Canvaᴺᴱᵂ"
 ])
 
 
@@ -1629,6 +1630,346 @@ with tab_crop:
                 <rect x="6" y="6" width="12" height="12" rx="1"/>
               </svg>
               <span>L'aperçu apparaîtra ici</span>
+            </div>""", unsafe_allow_html=True)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# CANVA — GÉNÉRATEUR DE VISUELS RÉSEAUX SOCIAUX 1080×1350
+# ═══════════════════════════════════════════════════════════════════
+
+def draw_rounded_rect_with_text(draw, img, text, x, y, font, bg_color, text_color,
+                                 padding=21, radius=72, max_width=980):
+    """
+    Dessine un bloc texte avec fond arrondi centré horizontalement.
+    Gère le retour à la ligne automatique si le texte dépasse max_width.
+    Renvoie la hauteur totale occupée (pour empiler surtitre + titre).
+    """
+    from PIL import ImageFont
+    # Découpe le texte en lignes si trop long
+    words = text.split()
+    lines = []
+    current = ""
+    for word in words:
+        test = (current + " " + word).strip()
+        bbox = draw.textbbox((0, 0), test, font=font)
+        if bbox[2] - bbox[0] > max_width - 2 * padding and current:
+            lines.append(current)
+            current = word
+        else:
+            current = test
+    if current:
+        lines.append(current)
+
+    # Calcule la taille de chaque ligne
+    line_sizes = []
+    for line in lines:
+        bb = draw.textbbox((0, 0), line, font=font)
+        line_sizes.append((bb[2] - bb[0], bb[3] - bb[1]))
+
+    block_w = max(s[0] for s in line_sizes) + 2 * padding
+    line_h = line_sizes[0][1] if line_sizes else 0
+    line_gap = int(line_h * 0.25)
+    block_h = line_h * len(lines) + line_gap * (len(lines) - 1) + 2 * padding
+
+    # Centre horizontalement
+    rect_x = (1080 - block_w) // 2
+    rect_y = y
+
+    # Dessine le rectangle arrondi avec Pillow
+    from PIL import ImageDraw as _ID
+    # Fond arrondi via rectangle + cercles aux coins
+    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    ov_draw = _ID.Draw(overlay)
+    ov_draw.rounded_rectangle(
+        [rect_x, rect_y, rect_x + block_w, rect_y + block_h],
+        radius=radius, fill=bg_color
+    )
+    img.paste(Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGBA"), (0, 0))
+
+    # Dessine chaque ligne de texte centrée dans le bloc
+    cursor_y = rect_y + padding
+    for i, (line, (lw, lh)) in enumerate(zip(lines, line_sizes)):
+        text_x = rect_x + (block_w - lw) // 2
+        draw.text((text_x, cursor_y), line, font=font, fill=text_color)
+        cursor_y += lh + (line_gap if i < len(lines) - 1 else 0)
+
+    return block_h
+
+
+def build_canva_image(
+    bg_image: Image.Image,
+    img_position: str,
+    img_custom_x: int,
+    img_custom_y: int,
+    surtitre: str,
+    titre: str,
+    font_path_bold: str,
+    wm_opts: dict,
+    logo_path: str,
+    text_y_offset: int = 0,
+) -> Image.Image:
+    """
+    Compose le visuel final 1080×1350 :
+    1. Fond noir
+    2. Image utilisateur repositionnée
+    3. Surtitre (fond blanc / texte bleu)
+    4. Titre (fond bleu / texte blanc)
+    5. Watermark
+    """
+    from PIL import ImageDraw, ImageFont
+
+    CANVAS_W, CANVAS_H = 1080, 1350
+    BLUE = (0, 104, 177, 255)
+    WHITE = (255, 255, 255, 255)
+    PADDING = 21
+    RADIUS = 72
+    SURTITRE_PT = 40
+    TITRE_PT = 55
+    TEXT_MARGIN = 18   # espace vertical entre surtitre et titre
+
+    # --- Chargement des polices ---
+    try:
+        font_surtitre = ImageFont.truetype(font_path_bold, SURTITRE_PT)
+        font_titre    = ImageFont.truetype(font_path_bold, TITRE_PT)
+    except Exception:
+        font_surtitre = ImageFont.load_default()
+        font_titre    = ImageFont.load_default()
+
+    # --- Canvas de base ---
+    canvas = Image.new("RGBA", (CANVAS_W, CANVAS_H), (0, 0, 0, 255))
+
+    # --- Placement de l'image de fond ---
+    bg = bg_image.convert("RGBA")
+    # Redimensionne pour couvrir tout le canvas (cover)
+    bg_ratio = bg.width / bg.height
+    canvas_ratio = CANVAS_W / CANVAS_H
+    if bg_ratio > canvas_ratio:
+        new_h = CANVAS_H
+        new_w = int(bg.width * CANVAS_H / bg.height)
+    else:
+        new_w = CANVAS_W
+        new_h = int(bg.height * CANVAS_W / bg.width)
+    bg = bg.resize((new_w, new_h), Image.LANCZOS)
+
+    # Position de l'image selon le choix
+    if img_position == "Haut gauche":     bx, by = 0, 0
+    elif img_position == "Haut centre":   bx, by = (CANVAS_W - new_w) // 2, 0
+    elif img_position == "Haut droite":   bx, by = CANVAS_W - new_w, 0
+    elif img_position == "Milieu gauche": bx, by = 0, (CANVAS_H - new_h) // 2
+    elif img_position == "Centre":        bx, by = (CANVAS_W - new_w) // 2, (CANVAS_H - new_h) // 2
+    elif img_position == "Milieu droite": bx, by = CANVAS_W - new_w, (CANVAS_H - new_h) // 2
+    elif img_position == "Bas gauche":    bx, by = 0, CANVAS_H - new_h
+    elif img_position == "Bas centre":    bx, by = (CANVAS_W - new_w) // 2, CANVAS_H - new_h
+    elif img_position == "Bas droite":    bx, by = CANVAS_W - new_w, CANVAS_H - new_h
+    else:                                  bx, by = img_custom_x, img_custom_y
+
+    canvas.paste(bg, (bx, by), bg)
+
+    # --- Bloc texte : calcul de la position verticale ---
+    # On pose les textes dans le tiers inférieur par défaut
+    draw_tmp = ImageDraw.Draw(Image.new("RGBA", (CANVAS_W, CANVAS_H)))
+
+    def estimate_block_h(text, font, max_w=980):
+        words = text.split()
+        lines, current = [], ""
+        for word in words:
+            test = (current + " " + word).strip()
+            bb = draw_tmp.textbbox((0, 0), test, font=font)
+            if bb[2] - bb[0] > max_w - 2 * PADDING and current:
+                lines.append(current)
+                current = word
+            else:
+                current = test
+        if current: lines.append(current)
+        if not lines: return 0
+        bb = draw_tmp.textbbox((0, 0), lines[0], font=font)
+        lh = bb[3] - bb[1]
+        return lh * len(lines) + int(lh * 0.25) * (len(lines) - 1) + 2 * PADDING
+
+    h_surtitre = estimate_block_h(surtitre, font_surtitre) if surtitre else 0
+    h_titre    = estimate_block_h(titre, font_titre) if titre else 0
+    total_text_h = h_surtitre + (TEXT_MARGIN if surtitre and titre else 0) + h_titre
+    BOTTOM_MARGIN = 90
+    base_y = CANVAS_H - total_text_h - BOTTOM_MARGIN + text_y_offset
+
+    # --- Dessin des blocs texte ---
+    draw = ImageDraw.Draw(canvas)
+    current_y = base_y
+
+    if surtitre:
+        h = draw_rounded_rect_with_text(
+            draw, canvas, surtitre, 0, current_y,
+            font_surtitre, WHITE, BLUE, PADDING, RADIUS
+        )
+        current_y += h + TEXT_MARGIN
+
+    if titre:
+        draw_rounded_rect_with_text(
+            draw, canvas, titre, 0, current_y,
+            font_titre, BLUE, WHITE, PADDING, RADIUS
+        )
+
+    # --- Watermark ---
+    result = composite_logo(
+        canvas.convert("RGB"), logo_path,
+        position=wm_opts["position"],
+        custom_x=wm_opts["custom_x"],
+        custom_y=wm_opts["custom_y"],
+        force_w=CANVAS_W, force_h=CANVAS_H,
+    )
+    return result
+
+
+with tab_canva:
+    col_ctrl_cv, col_prev_cv = st.columns([4, 6], gap="large")
+
+    with col_ctrl_cv:
+        st.markdown('<p class="section-label">Image de fond</p>', unsafe_allow_html=True)
+        canva_img_file = st.file_uploader(
+            "Déposez votre image ici",
+            type=["png", "jpg", "jpeg"],
+            key="canva_img", label_visibility="collapsed"
+        )
+
+        st.markdown('<p class="section-label-mt">Position de l\'image</p>', unsafe_allow_html=True)
+        canva_img_pos = st.selectbox(
+            "Position image", POSITIONS,
+            index=POSITIONS.index("Centre"),
+            key="canva_img_pos", label_visibility="collapsed"
+        )
+        canva_img_cx, canva_img_cy = 0, 0
+        if canva_img_pos == "Coordonnées personnalisées":
+            _civ_x, _civ_y = st.columns(2)
+            with _civ_x:
+                canva_img_cx = st.number_input("X image (px)", min_value=0, value=0, step=1, key="canva_img_cx")
+            with _civ_y:
+                canva_img_cy = st.number_input("Y image (px)", min_value=0, value=0, step=1, key="canva_img_cy")
+
+        st.markdown('<p class="section-label-mt">Textes</p>', unsafe_allow_html=True)
+        canva_surtitre = st.text_input(
+            "Surtitre", placeholder="Ex : Rhône",
+            key="canva_surtitre", label_visibility="visible"
+        )
+        canva_titre = st.text_input(
+            "Titre", placeholder="Ex : Hausse du prix du carburant",
+            key="canva_titre", label_visibility="visible"
+        )
+
+        st.markdown('<p class="section-label-mt">Position des textes (décalage vertical)</p>', unsafe_allow_html=True)
+        canva_text_y = st.number_input(
+            "Décalage vertical (px, négatif = vers le haut)",
+            min_value=-600, max_value=600, value=0, step=10,
+            key="canva_text_y", label_visibility="collapsed"
+        )
+
+        wm_opts_cv = watermark_options_ui("cv")
+
+        st.markdown('<p class="section-label-mt">Police (Roboto Bold)</p>', unsafe_allow_html=True)
+        canva_font_file = st.file_uploader(
+            "Roboto-Bold.ttf (optionnel si déjà dans le dossier app)",
+            type=["ttf", "otf"],
+            key="canva_font", label_visibility="collapsed"
+        )
+
+    # --- Génération de l'aperçu en temps réel ---
+    if canva_img_file:
+        lp_cv = get_default_logo()
+
+        # Résolution du chemin de police
+        font_path_cv = "Roboto-Bold.ttf"
+        if canva_font_file:
+            _font_tmp = tempfile.mktemp(suffix=".ttf")
+            with open(_font_tmp, "wb") as _ff:
+                _ff.write(canva_font_file.read())
+            font_path_cv = _font_tmp
+        elif not os.path.exists(font_path_cv):
+            # Cherche dans les chemins système courants
+            for _fp in ["/usr/share/fonts/truetype/roboto/Roboto-Bold.ttf",
+                        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                        "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf"]:
+                if os.path.exists(_fp):
+                    font_path_cv = _fp
+                    break
+
+        canva_img_file.seek(0)
+        bg_img_cv = Image.open(canva_img_file)
+        W_cv, H_cv = bg_img_cv.size
+
+        with col_ctrl_cv:
+            st.markdown(f"""
+            <div class="specs-row">
+              <div class="spec-cell"><span class="spec-k">Largeur</span><span class="spec-v">{W_cv} px</span></div>
+              <div class="spec-cell"><span class="spec-k">Hauteur</span><span class="spec-v">{H_cv} px</span></div>
+              <div class="spec-cell"><span class="spec-k">Sortie</span><span class="spec-v">1080×1350</span></div>
+            </div>""", unsafe_allow_html=True)
+
+        # Aperçu en temps réel
+        with col_prev_cv:
+            st.markdown('<p class="section-label">Aperçu (1080×1350)</p>', unsafe_allow_html=True)
+            with st.spinner("Génération de l'aperçu…"):
+                try:
+                    preview_cv = build_canva_image(
+                        bg_img_cv,
+                        img_position=canva_img_pos,
+                        img_custom_x=int(canva_img_cx),
+                        img_custom_y=int(canva_img_cy),
+                        surtitre=canva_surtitre,
+                        titre=canva_titre,
+                        font_path_bold=font_path_cv,
+                        wm_opts=wm_opts_cv,
+                        logo_path=lp_cv,
+                        text_y_offset=int(canva_text_y),
+                    )
+                    st.image(cap_image_for_preview(preview_cv), use_container_width=True)
+                except Exception as _e:
+                    st.markdown(f'<div class="status status-err">Erreur aperçu : {_e}</div>', unsafe_allow_html=True)
+
+        with col_ctrl_cv:
+            st.markdown("<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True)
+            if st.button("Générer le visuel final", key="canva_btn"):
+                try:
+                    canva_img_file.seek(0)
+                    bg_img_final = Image.open(canva_img_file)
+                    final_cv = build_canva_image(
+                        bg_img_final,
+                        img_position=canva_img_pos,
+                        img_custom_x=int(canva_img_cx),
+                        img_custom_y=int(canva_img_cy),
+                        surtitre=canva_surtitre,
+                        titre=canva_titre,
+                        font_path_bold=font_path_cv,
+                        wm_opts=wm_opts_cv,
+                        logo_path=lp_cv,
+                        text_y_offset=int(canva_text_y),
+                    )
+                    buf_cv = io.BytesIO()
+                    final_cv.save(buf_cv, format="PNG", optimize=False)
+                    st.session_state.canva_result_bytes = buf_cv.getvalue()
+                    st.rerun()
+                except Exception as _e:
+                    st.markdown(f'<div class="status status-err">Erreur : {_e}</div>', unsafe_allow_html=True)
+
+            if st.session_state.canva_result_bytes:
+                st.download_button(
+                    "↓  Télécharger le visuel (PNG)",
+                    data=st.session_state.canva_result_bytes,
+                    file_name="visuel_reseaux_sociaux.png",
+                    mime="image/png",
+                    key="canva_dl"
+                )
+                st.markdown('<div class="status status-ok">Visuel prêt — 1080×1350 px.</div>', unsafe_allow_html=True)
+
+    else:
+        with col_ctrl_cv:
+            st.markdown('<div class="status status-idle">Déposez une image via <i>Upload</i> pour commencer.</div>', unsafe_allow_html=True)
+        with col_prev_cv:
+            st.markdown("""
+            <div class="preview-placeholder">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <path d="M3 9h18M9 21V9"/>
+              </svg>
+              <span>Le visuel apparaîtra ici</span>
             </div>""", unsafe_allow_html=True)
 
 
