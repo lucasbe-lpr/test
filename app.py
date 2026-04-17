@@ -1424,7 +1424,7 @@ with tab_audio:
                 st.markdown('<div class="status status-ok">✓ Audio traité avec succès.</div>', unsafe_allow_html=True)
 
         with col_prev_a:
-            st.markdown('<p class="section-label">Aperçu (ne prend pas en compte l'ajout d'un son ou sa suppression)</p>', unsafe_allow_html=True)
+            st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
             with open(avp, "rb") as _vf:
                 _ab64 = _b64.b64encode(_vf.read()).decode()
             _aext = os.path.splitext(audio_vid_file.name)[1].lower().lstrip(".")
