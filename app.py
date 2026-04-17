@@ -817,7 +817,7 @@ for k in ["thumbnail", "rendered_bytes", "_last_video_name",
 
 tab_v, tab_p, tab_s, tab_cut, tab_merge, tab_audio, tab_crop = st.tabs([
     "Watermark vidéo", "Watermark photo", "Capture d'écran",
-    "✂️  Couper", "⊕  Fusionner", "🔇  Son", "📐  Recadrer"
+    "Couper", "Fusionner", "Son", "Recadrer"
 ])
 
 
@@ -902,7 +902,7 @@ with tab_v:
 
     else:
         with col_ctrl:
-            st.markdown('<div class="status status-idle">Déposez une vidéo via "Upload".</div>', unsafe_allow_html=True)
+            st.markdown('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>', unsafe_allow_html=True)
         with col_prev:
             st.markdown("""
             <div class="preview-placeholder">
@@ -1014,7 +1014,7 @@ with tab_p:
 
     else:
         with col_ctrl_p:
-            st.markdown('<div class="status status-idle">Déposez une ou plusieurs images via "Upload".</div>', unsafe_allow_html=True)
+            st.markdown('<div class="status status-idle">Déposez une ou plusieurs images via <i>Upload</i>.</div>', unsafe_allow_html=True)
         with col_prev_p:
             st.markdown("""
             <div class="preview-placeholder">
@@ -1078,7 +1078,7 @@ with tab_s:
 
     else:
         with col_ctrl_s:
-            st.markdown('<div class="status status-idle">Déposez une vidéo via "Upload".</div>', unsafe_allow_html=True)
+            st.markdown('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>', unsafe_allow_html=True)
         with col_prev_s:
             st.markdown("""
             <div class="preview-placeholder">
@@ -1211,7 +1211,7 @@ with tab_cut:
 
     else:
         with col_ctrl_c:
-            st.markdown('<div class="status status-idle">Déposez une vidéo via "Upload".</div>', unsafe_allow_html=True)
+            st.markdown('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>', unsafe_allow_html=True)
         with col_prev_c:
             st.markdown("""
             <div class="preview-placeholder">
@@ -1314,7 +1314,7 @@ with tab_merge:
             st.markdown('<div class="status status-idle">Ajoutez au moins une deuxième vidéo pour fusionner.</div>', unsafe_allow_html=True)
     else:
         with col_ctrl_m:
-            st.markdown('<div class="status status-idle">Déposez au moins 2 vidéos via "Upload".</div>', unsafe_allow_html=True)
+            st.markdown('<div class="status status-idle">Déposez au moins <b>deux</b> vidéos via <i>Upload</i>.</div>', unsafe_allow_html=True)
         with col_prev_m:
             st.markdown("""
             <div class="preview-placeholder">
@@ -1336,7 +1336,7 @@ with tab_audio:
     col_ctrl_a, col_prev_a = st.columns([4, 6], gap="large")
 
     with col_ctrl_a:
-        st.markdown('<p class="section-label">Source vidéo</p>', unsafe_allow_html=True)
+        st.markdown('<p class="section-label">Source</p>', unsafe_allow_html=True)
         audio_vid_file = st.file_uploader(
             "Déposez votre vidéo ici",
             type=["mp4", "mov", "avi", "mkv", "webm"],
@@ -1441,7 +1441,7 @@ with tab_audio:
 
     else:
         with col_ctrl_a:
-            st.markdown('<div class="status status-idle">Déposez une vidéo via "Upload".</div>', unsafe_allow_html=True)
+            st.markdown('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>', unsafe_allow_html=True)
         with col_prev_a:
             st.markdown("""
             <div class="preview-placeholder">
@@ -1582,7 +1582,7 @@ with tab_crop:
 
     else:
         with col_ctrl_r:
-            st.markdown('<div class="status status-idle">Déposez une vidéo via "Upload".</div>', unsafe_allow_html=True)
+            st.markdown('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>', unsafe_allow_html=True)
         with col_prev_r:
             st.markdown("""
             <div class="preview-placeholder">
