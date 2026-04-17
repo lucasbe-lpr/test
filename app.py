@@ -1637,63 +1637,66 @@ with tab_crop:
 # CANVA — GÉNÉRATEUR DE VISUELS RÉSEAUX SOCIAUX 1080×1350
 # ═══════════════════════════════════════════════════════════════════
 
-def draw_rounded_rect_with_text(draw, img, text, x, y, font, bg_color, text_color,
-                                 padding=21, radius=72, max_width=980):
-    """
-    Dessine un bloc texte avec fond arrondi centré horizontalement.
-    Gère le retour à la ligne automatique si le texte dépasse max_width.
-    Renvoie la hauteur totale occupée (pour empiler surtitre + titre).
-    """
-    from PIL import ImageFont
-    # Découpe le texte en lignes si trop long
+def _wrap_text(draw, text, font, max_width, padding):
+    """Découpe le texte en lignes selon la largeur max disponible."""
     words = text.split()
-    lines = []
-    current = ""
+    lines, current = [], ""
     for word in words:
         test = (current + " " + word).strip()
-        bbox = draw.textbbox((0, 0), test, font=font)
-        if bbox[2] - bbox[0] > max_width - 2 * padding and current:
+        bb = draw.textbbox((0, 0), test, font=font)
+        if bb[2] - bb[0] > max_width - 2 * padding and current:
             lines.append(current)
             current = word
         else:
             current = test
     if current:
         lines.append(current)
+    return lines
 
-    # Calcule la taille de chaque ligne
-    line_sizes = []
+
+def draw_per_line_pills(draw, img, text, top_y, font, bg_color, text_color,
+                        padding=21, radius=72, max_width=980, line_overlap=0):
+    """
+    Dessine chaque ligne du texte dans son propre bloc-pilule arrondi,
+    centré horizontalement sur le canvas.
+    - line_overlap : nb de px dont chaque pilule chevauche la suivante vers le bas
+    Renvoie la hauteur totale nette occupée.
+    """
+    from PIL import ImageDraw as _ID
+
+    lines = _wrap_text(draw, text, font, max_width, padding)
+    if not lines:
+        return 0
+
+    bb0 = draw.textbbox((0, 0), lines[0], font=font)
+    line_h = bb0[3] - bb0[1]
+    pill_h = line_h + 2 * padding
+    step = pill_h - line_overlap
+
+    cursor_y = top_y
     for line in lines:
         bb = draw.textbbox((0, 0), line, font=font)
-        line_sizes.append((bb[2] - bb[0], bb[3] - bb[1]))
+        lw = bb[2] - bb[0]
+        pill_w = lw + 2 * padding
+        rx = (1080 - pill_w) // 2
 
-    block_w = max(s[0] for s in line_sizes) + 2 * padding
-    line_h = line_sizes[0][1] if line_sizes else 0
-    line_gap = int(line_h * 0.25)
-    block_h = line_h * len(lines) + line_gap * (len(lines) - 1) + 2 * padding
+        overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        ov_draw = _ID.Draw(overlay)
+        ov_draw.rounded_rectangle(
+            [rx, cursor_y, rx + pill_w, cursor_y + pill_h],
+            radius=radius, fill=bg_color
+        )
+        combined = Image.alpha_composite(img.convert("RGBA"), overlay)
+        img.paste(combined, (0, 0))
 
-    # Centre horizontalement
-    rect_x = (1080 - block_w) // 2
-    rect_y = y
+        text_x = rx + (pill_w - lw) // 2
+        text_y = cursor_y + padding
+        draw.text((text_x, text_y), line, font=font, fill=text_color)
 
-    # Dessine le rectangle arrondi avec Pillow
-    from PIL import ImageDraw as _ID
-    # Fond arrondi via rectangle + cercles aux coins
-    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    ov_draw = _ID.Draw(overlay)
-    ov_draw.rounded_rectangle(
-        [rect_x, rect_y, rect_x + block_w, rect_y + block_h],
-        radius=radius, fill=bg_color
-    )
-    img.paste(Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGBA"), (0, 0))
+        cursor_y += step
 
-    # Dessine chaque ligne de texte centrée dans le bloc
-    cursor_y = rect_y + padding
-    for i, (line, (lw, lh)) in enumerate(zip(lines, line_sizes)):
-        text_x = rect_x + (block_w - lw) // 2
-        draw.text((text_x, cursor_y), line, font=font, fill=text_color)
-        cursor_y += lh + (line_gap if i < len(lines) - 1 else 0)
-
-    return block_h
+    total_h = pill_h + step * (len(lines) - 1)
+    return total_h
 
 
 def build_canva_image(
@@ -1725,7 +1728,7 @@ def build_canva_image(
     RADIUS = 72
     SURTITRE_PT = 40
     TITRE_PT = 55
-    TEXT_MARGIN = 18   # espace vertical entre surtitre et titre
+    INTER_OVERLAP = 18   # px de chevauchement surtitre → titre (la pilule blanche "mord" le bleu)
 
     # --- Chargement des polices ---
     try:
@@ -1784,11 +1787,14 @@ def build_canva_image(
         if not lines: return 0
         bb = draw_tmp.textbbox((0, 0), lines[0], font=font)
         lh = bb[3] - bb[1]
-        return lh * len(lines) + int(lh * 0.25) * (len(lines) - 1) + 2 * PADDING
+        pill_h = lh + 2 * PADDING
+        return pill_h * len(lines)   # pilules collées (step = pill_h, overlap entre lignes = 0)
 
     h_surtitre = estimate_block_h(surtitre, font_surtitre) if surtitre else 0
     h_titre    = estimate_block_h(titre, font_titre) if titre else 0
-    total_text_h = h_surtitre + (TEXT_MARGIN if surtitre and titre else 0) + h_titre
+    # Le surtitre chevauche le titre de INTER_OVERLAP px → on soustrait ce chevauchement
+    inter = INTER_OVERLAP if (surtitre and titre) else 0
+    total_text_h = h_surtitre + h_titre - inter
     BOTTOM_MARGIN = 90
     base_y = CANVAS_H - total_text_h - BOTTOM_MARGIN + text_y_offset
 
@@ -1797,15 +1803,16 @@ def build_canva_image(
     current_y = base_y
 
     if surtitre:
-        h = draw_rounded_rect_with_text(
-            draw, canvas, surtitre, 0, current_y,
+        h = draw_per_line_pills(
+            draw, canvas, surtitre, current_y,
             font_surtitre, WHITE, BLUE, PADDING, RADIUS
         )
-        current_y += h + TEXT_MARGIN
+        # Le titre commence INTER_OVERLAP px avant la fin du surtitre
+        current_y += h - inter
 
     if titre:
-        draw_rounded_rect_with_text(
-            draw, canvas, titre, 0, current_y,
+        draw_per_line_pills(
+            draw, canvas, titre, current_y,
             font_titre, BLUE, WHITE, PADDING, RADIUS
         )
 
