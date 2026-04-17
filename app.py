@@ -1634,6 +1634,8 @@ with tab_crop:
 st.markdown("""
 <div class="site-footer">
   <span class="footer-name">Dernière màj le <i>17/04/2026</i></span>
-  <span><b>Aucune donnée n'est envoyée sur un serveur</b>. Tout tourne en local dans votre navigateur. N'hésitez pas à me faire remonter les bugs par mail. Faire <i>F5</i> après avoir beaucoup utilisé l'outil pour remettre à 0 le cache.</span>
+  <span><b>Aucune donnée n'est envoyée sur un serveur</b>. Tout tourne en local dans votre navigateur.</br>
+  N'hésitez pas à me faire remonter <mark>les bugs par mail</mark>.</br>
+  Faire <i>F5</i> après avoir beaucoup utilisé l'outil pour remettre à 0 le cache.</span>
 </div>
 """, unsafe_allow_html=True)
