@@ -1179,7 +1179,7 @@ with tab_cut:
                     file_name="segment_coupe.mp4",
                     mime="video/mp4", key="cut_dl"
                 )
-                st.markdown('<div class="status status-ok">✓ Découpage terminé.</div>', unsafe_allow_html=True)
+                st.markdown('<div class="status status-ok">Découpage terminé.</div>', unsafe_allow_html=True)
 
         with col_prev_c:
             st.markdown('<p class="section-label">Aperçu du segment sélectionné</p>', unsafe_allow_html=True)
@@ -1300,7 +1300,7 @@ with tab_merge:
                     file_name="fusion.mp4",
                     mime="video/mp4", key="merge_dl"
                 )
-                st.markdown('<div class="status status-ok">✓ Fusion terminée.</div>', unsafe_allow_html=True)
+                st.markdown('<div class="status status-ok">Fusion terminée.</div>', unsafe_allow_html=True)
 
         with col_prev_m:
             st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
@@ -1421,7 +1421,7 @@ with tab_audio:
                     file_name="video_audio_modifie.mp4",
                     mime="video/mp4", key="audio_dl"
                 )
-                st.markdown('<div class="status status-ok">✓ Audio traité avec succès.</div>', unsafe_allow_html=True)
+                st.markdown('<div class="status status-ok">Audio traité avec succès.</div>', unsafe_allow_html=True)
 
         with col_prev_a:
             st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
@@ -1582,7 +1582,7 @@ with tab_crop:
                     file_name=f"recadre_{chosen[0].replace(':','x')}.mp4",
                     mime="video/mp4", key="crop_dl"
                 )
-                st.markdown('<div class="status status-ok">✓ Recadrage terminé.</div>', unsafe_allow_html=True)
+                st.markdown('<div class="status status-ok">Recadrage terminé.</div>', unsafe_allow_html=True)
 
         with col_prev_r:
             st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
