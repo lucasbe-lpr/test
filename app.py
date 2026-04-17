@@ -1430,10 +1430,8 @@ with tab_audio:
             _aext = os.path.splitext(audio_vid_file.name)[1].lower().lstrip(".")
             _amime = "video/mp4" if _aext in ("mp4", "m4v") else f"video/{_aext}"
             components.html(f"""
-<div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
-  <video controls style="width:100%;display:block;max-height:380px;object-fit:contain;"
-         src="data:{_amime};base64,{_ab64}"></video>
-</div>""", height=420)
+st.image(cap_image_for_preview(st.session_state.thumbnail))
+            st.markdown('</div>', unsafe_allow_html=True)
 
     else:
         with col_ctrl_a:
