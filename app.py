@@ -460,19 +460,6 @@ div[data-testid="stSpinner"] p {
 .crop-preset-label { font-size: 0.65rem; color: var(--sub); font-weight: 500; }
 .crop-preset-ratio { font-size: 0.58rem; color: var(--muted); }
 
-/* BADGE NEW */
-div[data-testid="stTabs"] button[data-baseweb="tab"] span:contains("ᴺᴱᵂ") {
-        color: #ff4b4b !important; /* Rouge Luluflix */
-        font-weight: 700 !important;
-        font-size: 0.75rem !important;
-        margin-left: 3px !important;
-    }
-
-    /* Sécurité pour les navigateurs modernes (Chrome/Edge) */
-    div[data-testid="stTabs"] button[data-baseweb="tab"] :has(> p:contains("ᴺᴱᵂ")) p {
-        color: inherit;
-    }
-
 </style>
 """, unsafe_allow_html=True)
 
