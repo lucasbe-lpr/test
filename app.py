@@ -1182,7 +1182,7 @@ with tab_cut:
                 st.markdown('<div class="status status-ok">✓ Découpage terminé.</div>', unsafe_allow_html=True)
 
         with col_prev_c:
-            st.markdown('<p class="section-label">Aperçu vidéo — segment sélectionné</p>', unsafe_allow_html=True)
+            st.markdown('<p class="section-label">Aperçu du segment sélectionné</p>', unsafe_allow_html=True)
             # Encoder la vidéo source en base64 pour lecteur HTML natif
             # Le player démarre à t_start et s'arrête à t_end automatiquement
             with open(cp, "rb") as _vf:
