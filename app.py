@@ -755,12 +755,12 @@ def replace_audio(video_path: str, audio_path: str, output_path: str, loop_audio
 
 # PRESETS DE RECADRAGE — (label, ratio_w, ratio_h, description réseau)
 CROP_PRESETS = [
-    ("9:16",  9, 16, "Stories / Reels"),
-    ("1:1",   1,  1, "Feed carré"),
-    ("16:9", 16,  9, "YouTube / TV"),
-    ("4:5",   4,  5, "Portrait Feed"),
-    ("4:3",   4,  3, "Classique"),
-    ("21:9", 21,  9, "Cinémascope"),
+    ("9:16",  9, 16, "Stories"),
+    ("1:1",   1,  1, "Carré"),
+    ("16:9", 16,  9, "Comme à la télé"),
+    ("4:5",   4,  5, "Portrait"),
+    ("4:3",   4,  3, "Presque carré"),
+    ("21:9", 21,  9, "Comme au ciné"),
 ]
 
 def crop_video(video_path: str, output_path: str,
@@ -1303,7 +1303,7 @@ with tab_merge:
                 st.markdown('<div class="status status-ok">✓ Fusion terminée.</div>', unsafe_allow_html=True)
 
         with col_prev_m:
-            st.markdown('<p class="section-label">Aperçu — première frame de chaque vidéo</p>', unsafe_allow_html=True)
+            st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
             for i, (mp, mf) in enumerate(zip(merge_paths, merge_files)):
                 frame_m = extract_frame(mp, 0.0)
                 st.image(cap_image_for_preview(frame_m),
@@ -1365,7 +1365,7 @@ with tab_audio:
             st.markdown('<p class="section-label-mt">Action</p>', unsafe_allow_html=True)
             audio_action = st.radio(
                 "Action audio",
-                ["🔇  Supprimer le son", "🎵  Remplacer par une musique"],
+                ["Supprimer le son", "Remplacer par <i>[...]</i>"],
                 key="audio_action", label_visibility="collapsed"
             )
 
@@ -1424,17 +1424,13 @@ with tab_audio:
                 st.markdown('<div class="status status-ok">✓ Audio traité avec succès.</div>', unsafe_allow_html=True)
 
         with col_prev_a:
-            st.markdown('<p class="section-label">Aperçu — vidéo source</p>', unsafe_allow_html=True)
+            st.markdown('<p class="section-label">Aperçu (ne prend pas en compte l'ajout d'un son ou sa suppression)</p>', unsafe_allow_html=True)
             with open(avp, "rb") as _vf:
                 _ab64 = _b64.b64encode(_vf.read()).decode()
             _aext = os.path.splitext(audio_vid_file.name)[1].lower().lstrip(".")
             _amime = "video/mp4" if _aext in ("mp4", "m4v") else f"video/{_aext}"
             components.html(f"""
 <div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
-  <div style="font-size:0.58rem;font-weight:500;text-transform:uppercase;letter-spacing:0.07em;
-              color:#999;padding:0.35rem 0.85rem;background:#fff;border-bottom:1px solid #e4e4e4;">
-    Vidéo source
-  </div>
   <video controls style="width:100%;display:block;max-height:380px;object-fit:contain;"
          src="data:{_amime};base64,{_ab64}"></video>
 </div>""", height=420)
@@ -1549,7 +1545,7 @@ with tab_crop:
                 st.markdown('<div class="status status-ok">✓ Recadrage terminé.</div>', unsafe_allow_html=True)
 
         with col_prev_r:
-            st.markdown('<p class="section-label">Aperçu — cadre résultant</p>', unsafe_allow_html=True)
+            st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
             with st.spinner(""):
                 frame_r = extract_frame(crp, 0.0)
             from PIL import ImageDraw
