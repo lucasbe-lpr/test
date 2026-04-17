@@ -828,7 +828,7 @@ for k in ["thumbnail", "rendered_bytes", "_last_video_name",
 
 tab_v, tab_p, tab_s, tab_cut, tab_merge, tab_audio, tab_crop = st.tabs([
     "Watermark vidéo", "Watermark photo", "Capture d'écran",
-    "Couperᴺᴱᵂ", "Fusionnerᴺᴱᵂ", "Sonᴺᴱᵂ", "Recadrerᴺᴱᵂ"
+    "Couper ᴺᴱᵂ ", "Fusionnerᴺᴱᵂ", "Sonᴺᴱᵂ", "Recadrerᴺᴱᵂ"
 ])
 
 
