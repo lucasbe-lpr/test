@@ -1431,6 +1431,10 @@ with tab_audio:
             _amime = "video/mp4" if _aext in ("mp4", "m4v") else f"video/{_aext}"
             components.html(f"""
 <div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
+  <div style="font-size:0.58rem;font-weight:500;text-transform:uppercase;letter-spacing:0.07em;
+              color:#999;padding:0.35rem 0.85rem;background:#fff;border-bottom:1px solid #e4e4e4;">
+    Vidéo source
+  </div>
   <video controls style="width:100%;display:block;max-height:380px;object-fit:contain;"
          src="data:{_amime};base64,{_ab64}"></video>
 </div>""", height=420)
