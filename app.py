@@ -1637,7 +1637,7 @@ st.markdown("""
   <span class="footer-name">Dernière màj le <i>17/04/2026</i></span>
   <span>Envoyez-moi <a href="mailto:lucas.bessonnat@leprogres.fr">les messages d'erreur par mail</a>.<br>
   Après plusieurs utilisations, appuyez sur la touche <code>F5</code> pour faire du bien au cache.</br>
-  <samll><b>Aucune donnée n'est envoyée sur un serveur</b>. Tout tourne localement dans votre navigateur.</small>
+  <samll><b>Aucune donnée n'est envoyée sur un serveur</b> <i>(tout tourne localement dans votre navigateur)</i>.</small>
   </span>
 </div>
 """, unsafe_allow_html=True)
