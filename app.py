@@ -1683,59 +1683,84 @@ def _canva_wrap_text(draw, text: str, font, max_px: int) -> list[str]:
     return lines
 
 
-def _canva_pill_block_height(draw, text: str, font, max_px: int, padding: int) -> int:
-    """Calcule la hauteur totale (en px) d'un bloc de pilules pour `text`."""
+def _canva_text_height(draw, text: str, font) -> int:
+    """Hauteur réelle du glyphe pour la première ligne de `text`."""
+    bb = draw.textbbox((0, 0), text, font=font)
+    return bb[3] - bb[1]
+
+
+def _canva_pill_block_height(draw, text: str, font, max_px: int,
+                              pad_v: int) -> int:
+    """
+    Calcule la hauteur totale (en px) d'un bloc de pilules.
+    pad_v = padding vertical (le radius = pill_h / 2, donc pas besoin de le passer).
+    """
     if not text:
         return 0
     lines = _canva_wrap_text(draw, text, font, max_px)
     if not lines:
         return 0
-    lh = draw.textbbox((0, 0), lines[0], font=font)[3] - draw.textbbox((0, 0), lines[0], font=font)[1]
-    pill_h = lh + 2 * padding
+    lh     = _canva_text_height(draw, lines[0], font)
+    pill_h = lh + 2 * pad_v
     return pill_h * len(lines)
 
 
-def _canva_draw_pills(canvas: Image.Image, draw, text: str, font,
-                      top_y: int, bg_rgba: tuple, fg_rgba: tuple,
-                      padding: int, radius: int, canvas_w: int, max_px: int) -> int:
+def _canva_draw_pills_on_hires(canvas_hr: Image.Image, draw_hr,
+                                text: str, font_hr,
+                                top_y: int,
+                                bg_rgba: tuple, fg_rgba: tuple,
+                                pad_v: int, pad_h: int,
+                                canvas_w: int, max_px: int) -> int:
     """
-    Dessine chaque ligne de `text` dans sa propre pilule arrondie, centrée
-    horizontalement. Les pilules sont collées (pas d'espace entre elles).
-    Renvoie la hauteur totale occupée.
+    Dessine chaque ligne de `text` dans sa propre pilule arrondie sur le
+    canvas haute résolution (déjà x3).
+
+    Corrections appliquées :
+    ① Rayon dynamique = pill_h / 2  → forme pilule parfaite
+    ② Padding horizontal ≈ 1.5× pad_v → texte plus aéré
+    ③ Le texte est centré sur l'axe vertical exact du cartouche
+
+    Renvoie la hauteur totale occupée (en px haute résolution).
     """
     from PIL import ImageDraw as _ID
 
-    lines = _canva_wrap_text(draw, text, font, max_px)
+    lines = _canva_wrap_text(draw_hr, text, font_hr, max_px)
     if not lines:
         return 0
 
-    lh = draw.textbbox((0, 0), lines[0], font=font)[3] - \
-         draw.textbbox((0, 0), lines[0], font=font)[1]
-    pill_h = lh + 2 * padding
+    lh     = _canva_text_height(draw_hr, lines[0], font_hr)
+    pill_h = lh + 2 * pad_v
+    # ① Rayon = moitié exacte de la hauteur → côtés parfaitement semi-circulaires
+    radius = pill_h // 2
     cursor_y = top_y
 
     for line in lines:
-        bb = draw.textbbox((0, 0), line, font=font)
-        lw = bb[2] - bb[0]
-        pill_w = lw + 2 * padding
+        bb  = draw_hr.textbbox((0, 0), line, font=font_hr)
+        lw  = bb[2] - bb[0]
+        # ② Padding horizontal 1.5× le padding vertical
+        pill_w = lw + 2 * pad_h
         rx = (canvas_w - pill_w) // 2
 
-        # Fond arrondi via calque alpha isolé
-        overlay = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+        # Fond arrondi — calque alpha isolé pour ne pas polluer le canvas
+        overlay = Image.new("RGBA", canvas_hr.size, (0, 0, 0, 0))
         ov = _ID.Draw(overlay)
         ov.rounded_rectangle(
             [rx, cursor_y, rx + pill_w, cursor_y + pill_h],
             radius=radius, fill=bg_rgba,
         )
-        merged = Image.alpha_composite(canvas.convert("RGBA"), overlay)
-        canvas.paste(merged, (0, 0))
+        merged = Image.alpha_composite(canvas_hr.convert("RGBA"), overlay)
+        canvas_hr.paste(merged, (0, 0))
 
-        # Texte par-dessus
+        # ③ Centrage vertical exact du texte dans la pilule
+        #    textbbox renvoie (left, top, right, bottom) avec top parfois ≠ 0
+        #    → on compense l'offset top pour un centrage pixel-perfect
+        bb_full = draw_hr.textbbox((0, 0), line, font=font_hr)
+        text_top_offset = bb_full[1]          # décalage interne du glyphe
+        ty = cursor_y + (pill_h - lh) // 2 - text_top_offset
         tx = rx + (pill_w - lw) // 2
-        ty = cursor_y + padding
-        draw.text((tx, ty), line, font=font, fill=fg_rgba)
+        draw_hr.text((tx, ty), line, font=font_hr, fill=fg_rgba)
 
-        cursor_y += pill_h  # pilules collées : step = pill_h
+        cursor_y += pill_h   # pilules collées
 
     return pill_h * len(lines)
 
@@ -1753,6 +1778,11 @@ def generate_social_visual(
     """
     Génère le visuel final 1080×1350 pour Instagram/Facebook.
 
+    Technique : super-échantillonnage 3× (② anti-aliasing).
+    Toute la composition texte/cartouches est faite sur un canvas
+    3× plus grand, puis ramenée à 1080×1350 via LANCZOS → arrondis
+    parfaitement lissés sans aucun effet escalier.
+
     Paramètres
     ----------
     bg_image    : image de fond uploadée par l'utilisateur
@@ -1766,82 +1796,93 @@ def generate_social_visual(
     """
     from PIL import ImageDraw, ImageFont
 
-    # ── Constantes identité visuelle ────────────────────────────────
-    CW, CH        = 1080, 1350          # canvas
+    # ── Constantes finales (résolution 1×) ──────────────────────────
+    CW, CH        = 1080, 1350
     BLUE          = (0, 104, 177, 255)
     WHITE         = (255, 255, 255, 255)
-    PAD           = 21                  # padding pilule (Canva : écart 21)
-    RADIUS        = 72                  # arrondi (Canva : 72)
-    SZ_SURTITRE   = 40                  # taille police surtitre
-    SZ_TITRE      = 55                  # taille police titre
-    INTER_OVERLAP = 18                  # px dont la pilule blanche mord le bleu
-    BOTTOM_MARGIN = 90                  # marge basse avant le bord
-    MAX_TEXT_W    = CW - 100            # largeur max pilule (10 % marge de chaque côté)
+    PAD_V         = 21                   # padding vertical pilule
+    PAD_H         = int(PAD_V * 1.5)     # ③ padding horizontal 1.5× → aération
+    SZ_SURTITRE   = 40
+    SZ_TITRE      = 55
+    INTER_OVERLAP = 18                   # px dont la pilule blanche mord le bleu
+    BOTTOM_MARGIN = 90
+    MAX_TEXT_W    = CW - 100             # largeur max pilule (marge 10 % de chaque côté)
 
-    # ── Polices ─────────────────────────────────────────────────────
+    # ── Super-échantillonnage 3× (②) ────────────────────────────────
+    SCALE         = 3
+    HW, HH        = CW * SCALE, CH * SCALE   # dimensions haute résolution
+
+    # ── Polices à taille ×3 pour le canvas HR ───────────────────────
     try:
-        f_sur = ImageFont.truetype(font_path, SZ_SURTITRE)
-        f_tit = ImageFont.truetype(font_path, SZ_TITRE)
+        f_sur_hr = ImageFont.truetype(font_path, SZ_SURTITRE * SCALE)
+        f_tit_hr = ImageFont.truetype(font_path, SZ_TITRE    * SCALE)
     except Exception:
-        f_sur = ImageFont.load_default()
-        f_tit = ImageFont.load_default()
+        f_sur_hr = ImageFont.load_default()
+        f_tit_hr = ImageFont.load_default()
 
-    # ── Canvas noir de base ─────────────────────────────────────────
-    canvas = Image.new("RGBA", (CW, CH), (0, 0, 0, 255))
+    # ── Canvas HR noir de base ───────────────────────────────────────
+    canvas_hr = Image.new("RGBA", (HW, HH), (0, 0, 0, 255))
 
-    # ── Image de fond — mode cover + zoom + offset Y ────────────────
+    # ── Image de fond — cover + zoom + offset Y (appliqué en HR) ────
     bg = bg_image.convert("RGBA")
     bg_r = bg.width / bg.height
     cv_r = CW / CH
-    # Taille de base pour couvrir tout le canvas
     if bg_r > cv_r:
-        base_h = CH
-        base_w = int(bg.width * CH / bg.height)
+        base_h = HH
+        base_w = int(bg.width * HH / bg.height)
     else:
-        base_w = CW
-        base_h = int(bg.height * CW / bg.width)
-    # Application du zoom
+        base_w = HW
+        base_h = int(bg.height * HW / bg.width)
     new_w = int(base_w * zoom)
     new_h = int(base_h * zoom)
     bg = bg.resize((new_w, new_h), Image.LANCZOS)
-    # Centrage horizontal, offset vertical
-    bx = (CW - new_w) // 2
-    by = (CH - new_h) // 2 + offset_y
-    canvas.paste(bg, (bx, by), bg)
+    bx = (HW - new_w) // 2
+    by = (HH - new_h) // 2 + offset_y * SCALE
+    canvas_hr.paste(bg, (bx, by), bg)
 
-    # ── Calcul hauteur totale des blocs texte ────────────────────────
-    _tmp_draw = ImageDraw.Draw(Image.new("RGBA", (CW, CH)))
-    h_sur = _canva_pill_block_height(_tmp_draw, surtitre, f_sur, MAX_TEXT_W, PAD)
-    h_tit = _canva_pill_block_height(_tmp_draw, titre,    f_tit, MAX_TEXT_W, PAD)
-    inter = INTER_OVERLAP if (surtitre and titre) else 0
+    # ── Mesures texte sur le canvas HR ───────────────────────────────
+    _tmp_draw = ImageDraw.Draw(Image.new("RGBA", (HW, HH)))
+    MAX_TEXT_W_HR = MAX_TEXT_W * SCALE
+    PAD_V_HR      = PAD_V * SCALE
+    PAD_H_HR      = PAD_H * SCALE
+    INTER_HR      = INTER_OVERLAP * SCALE
+    BOTTOM_HR     = BOTTOM_MARGIN * SCALE
+
+    h_sur = _canva_pill_block_height(_tmp_draw, surtitre, f_sur_hr, MAX_TEXT_W_HR, PAD_V_HR)
+    h_tit = _canva_pill_block_height(_tmp_draw, titre,    f_tit_hr, MAX_TEXT_W_HR, PAD_V_HR)
+    inter = INTER_HR if (surtitre and titre) else 0
     total_h = h_sur + h_tit - inter
 
-    base_y = CH - total_h - BOTTOM_MARGIN
-    draw   = ImageDraw.Draw(canvas)
-    cur_y  = base_y
+    base_y   = HH - total_h - BOTTOM_HR
+    draw_hr  = ImageDraw.Draw(canvas_hr)
+    cur_y    = base_y
 
     # ── Surtitre (blanc / bleu) ──────────────────────────────────────
     if surtitre:
-        h = _canva_draw_pills(
-            canvas, draw, surtitre, f_sur, cur_y,
-            WHITE, BLUE, PAD, RADIUS, CW, MAX_TEXT_W,
+        h = _canva_draw_pills_on_hires(
+            canvas_hr, draw_hr, surtitre, f_sur_hr, cur_y,
+            WHITE, BLUE, PAD_V_HR, PAD_H_HR, HW, MAX_TEXT_W_HR,
         )
-        cur_y += h - inter   # le titre démarre INTER_OVERLAP px avant la fin du surtitre
+        cur_y += h - inter
 
     # ── Titre (bleu / blanc) ─────────────────────────────────────────
     if titre:
-        _canva_draw_pills(
-            canvas, draw, titre, f_tit, cur_y,
-            BLUE, WHITE, PAD, RADIUS, CW, MAX_TEXT_W,
+        _canva_draw_pills_on_hires(
+            canvas_hr, draw_hr, titre, f_tit_hr, cur_y,
+            BLUE, WHITE, PAD_V_HR, PAD_H_HR, HW, MAX_TEXT_W_HR,
         )
 
-    # ── Watermark ────────────────────────────────────────────────────
+    # ── ② Downscale LANCZOS → anti-aliasing parfait ─────────────────
+    canvas_final = canvas_hr.resize((CW, CH), Image.Resampling.LANCZOS)
+
+    # ── Watermark (appliqué après le downscale, en résolution finale) ─
     result = composite_logo(
-        canvas.convert("RGB"), logo_path,
+        canvas_final.convert("RGB"), logo_path,
         position=wm_position,
         force_w=CW, force_h=CH,
     )
     return result
+
 
 
 # ── Interface onglet Canva ───────────────────────────────────────────
