@@ -289,6 +289,7 @@ div[data-testid="stProgress"] { display: none !important; }
   margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border);
   display: flex; justify-content: space-between; align-items: center;
   font-size: 0.7rem; color: var(--muted);
+  text-align: right;
 }
 .footer-name { color: var(--sub); font-weight: 500; }
 
