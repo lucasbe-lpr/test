@@ -471,7 +471,7 @@ with open(LOGO_FILE, "rb") as _f:
 st.markdown(f"""
 <div class="site-header">
   <img src="data:image/png;base64,{_logo_b64}" alt="Luluflix" />
-  <span class="site-header-right">version 3.0</span>
+  <span class="site-header-right">version <code>3.0</code></span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -1637,7 +1637,7 @@ st.markdown("""
 <div class="site-footer">
   <span class="footer-name">Dernière màj le <i>17/04/2026</i></span>
   <span>Envoyez-moi <a href="mailto:lucas.bessonnat@leprogres.fr">les messages d'erreur par mail</a>.<br>
-  Après plusieurs utilisations, appuyez sur la touche <code>F5</code> pour faire du bien au cache.</br>
+  Après plusieurs utilisations, appuyez sur la touche <code>F5</code> pour faire du bien au cache de l'app.</br>
   <b>Aucune donnée n'est envoyée sur un serveur</b> <i>(tout tourne localement dans votre navigateur).</i>
   </span>
 </div>
