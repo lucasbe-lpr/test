@@ -459,6 +459,16 @@ div[data-testid="stSpinner"] p {
 }
 .crop-preset-label { font-size: 0.65rem; color: var(--sub); font-weight: 500; }
 .crop-preset-ratio { font-size: 0.58rem; color: var(--muted); }
+
+/* Badge New pour les onglets */
+button[data-baseweb="tab"] div p:contains("ᴺᴱᵂ") {
+    color: var(--blue) !important; /* Ou une autre couleur comme #ff4b4b */
+    font-weight: 700 !important;
+    font-size: 0.7rem !important;
+    vertical-align: super;
+    margin-left: 2px;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
