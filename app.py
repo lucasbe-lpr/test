@@ -1365,7 +1365,7 @@ with tab_audio:
             st.markdown('<p class="section-label-mt">Action</p>', unsafe_allow_html=True)
             audio_action = st.radio(
                 "Action audio",
-                ["Supprimer le son", "Remplacer par <i>[...]</i>"],
+                ["Supprimer le son", "Remplacer par..."],
                 key="audio_action", label_visibility="collapsed"
             )
 
@@ -1437,7 +1437,7 @@ with tab_audio:
 
     else:
         with col_ctrl_a:
-            st.markdown('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>. L'aperçu de cet outil ne permet pas de d'écouter le son ajouter ou bien la suppression du son original.</div>', unsafe_allow_html=True)
         with col_prev_a:
             st.markdown("""
             <div class="preview-placeholder">
