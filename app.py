@@ -346,8 +346,67 @@ div[data-testid="stSpinner"] p {
   border: 1px dashed var(--border); border-radius: 10px;
   background: var(--bg); color: var(--muted);
   font-size: 0.8rem; text-align: center;
+  margin-top: 1.8rem;
 }
 .preview-placeholder svg { opacity: 0.25; }
+
+/* TIMELINE CUTTER — outil de découpe vidéo */
+.timeline-wrap {
+  position: relative; height: 52px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+  margin: 0.6rem 0; cursor: pointer; user-select: none;
+}
+.timeline-track {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    90deg, transparent 0px, transparent 18px,
+    var(--border) 18px, var(--border) 19px
+  );
+}
+.timeline-selection {
+  position: absolute; top: 0; bottom: 0;
+  background: rgba(0, 104, 177, 0.15);
+  border-left: 2px solid var(--blue); border-right: 2px solid var(--blue);
+}
+.timeline-handle {
+  position: absolute; top: 0; bottom: 0; width: 6px;
+  background: var(--blue); border-radius: 2px; cursor: ew-resize;
+  display: flex; align-items: center; justify-content: center;
+}
+.timeline-handle::after {
+  content: ''; display: block; width: 2px; height: 16px;
+  background: rgba(255,255,255,0.7); border-radius: 1px;
+}
+.timeline-time-label {
+  position: absolute; top: -1.4rem; font-size: 0.62rem;
+  color: var(--blue); font-weight: 600; white-space: nowrap;
+  transform: translateX(-50%);
+}
+.cut-info-row {
+  display: flex; gap: 0.5rem; margin-top: 0.4rem;
+}
+.cut-info-cell {
+  flex: 1; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; padding: 0.4rem 0.7rem;
+  font-size: 0.78rem; color: var(--ink);
+}
+.cut-info-cell span { display: block; font-size: 0.58rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* FUSION — liste des vidéos à fusionner */
+.merge-item {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.45rem 0.7rem; border: 1px solid var(--border);
+  border-radius: 6px; margin-bottom: 0.35rem; background: var(--bg);
+  font-size: 0.78rem; color: var(--ink);
+}
+.merge-item-idx {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--blue-dim); color: var(--blue);
+  font-size: 0.68rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.merge-item-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.merge-item-dur { font-size: 0.68rem; color: var(--muted); flex-shrink: 0; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -359,7 +418,7 @@ with open(LOGO_FILE, "rb") as _f:
 st.markdown(f"""
 <div class="site-header">
   <img src="data:image/png;base64,{_logo_b64}" alt="Luluflix" />
-  <span class="site-header-right">version 2.1</span>
+  <span class="site-header-right">version 3.0</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -591,13 +650,37 @@ def watermark_options_ui(key_prefix: str) -> dict:
     return {"position": position, "custom_x": int(custom_x), "custom_y": int(custom_y)}
 
 
+def merge_videos(video_paths: list, output_path: str):
+    # FUSIONNE plusieurs vidéos sans coupure via ffmpeg concat demuxer
+    # Re-encode en libx264 pour uniformiser les streams et éviter les sauts
+    tmp_list = tempfile.mktemp(suffix=".txt")
+    with open(tmp_list, "w") as f:
+        for p in video_paths:
+            f.write(f"file '{p}'\n")
+    cmd = [
+        "ffmpeg", "-y",
+        "-f", "concat", "-safe", "0",
+        "-i", tmp_list,
+        "-c:v", "libx264", "-crf", "18", "-preset", "fast",
+        "-c:a", "aac", "-b:a", "192k",
+        "-movflags", "+faststart",
+        output_path
+    ]
+    result = subprocess.run(cmd, capture_output=True)
+    os.unlink(tmp_list)
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.decode())
+
+
 # SESSION STATE — initialisation des variables persistantes entre reruns
-for k in ["thumbnail", "rendered_bytes", "_last_video_name"]:
+for k in ["thumbnail", "rendered_bytes", "_last_video_name",
+          "cut_bytes", "_last_cut_name", "merge_bytes"]:
     if k not in st.session_state:
         st.session_state[k] = None
 
-tab_v, tab_p, tab_s = st.tabs([
-    "Watermark vidéo", "Watermark photo", "Capture d'écran"
+tab_v, tab_p, tab_s, tab_cut, tab_merge = st.tabs([
+    "Watermark vidéo", "Watermark photo", "Capture d'écran",
+    "✂️  Couper", "⊕  Fusionner"
 ])
 
 
@@ -869,10 +952,225 @@ with tab_s:
             </div>""", unsafe_allow_html=True)
 
 
-# FOOTER — mettre à jour le texte à chaque nouvelle version
+
+# ═══════════════════════════════════════════════════════════════════
+# ONGLET 4 — COUPER UNE VIDÉO
+# ═══════════════════════════════════════════════════════════════════
+
+with tab_cut:
+    col_ctrl_c, col_prev_c = st.columns([4, 6], gap="large")
+
+    with col_ctrl_c:
+        st.markdown('<p class="section-label">Source</p>', unsafe_allow_html=True)
+        cut_file = st.file_uploader(
+            "Déposez votre vidéo ici",
+            type=["mp4", "mov", "avi", "mkv", "webm"],
+            key="cut_u", label_visibility="collapsed"
+        )
+
+    if cut_file:
+        if st.session_state._last_cut_name != cut_file.name:
+            st.session_state.cut_bytes = None
+            st.session_state._last_cut_name = cut_file.name
+
+        tmp_c = tempfile.mkdtemp()
+        cp = os.path.join(tmp_c, "src" + os.path.splitext(cut_file.name)[1])
+        with open(cp, "wb") as f: f.write(cut_file.read())
+        nfo_c = get_video_info(cp)
+        dur_c = nfo_c["duration"]
+
+        with col_ctrl_c:
+            st.markdown(f"""
+            <div class="specs-row">
+              <div class="spec-cell"><span class="spec-k">Largeur</span><span class="spec-v">{nfo_c['width']} px</span></div>
+              <div class="spec-cell"><span class="spec-k">Hauteur</span><span class="spec-v">{nfo_c['height']} px</span></div>
+              <div class="spec-cell"><span class="spec-k">Durée</span><span class="spec-v">{fmt_time(dur_c)}</span></div>
+              <div class="spec-cell"><span class="spec-k">FPS</span><span class="spec-v">{nfo_c['fps']}</span></div>
+            </div>""", unsafe_allow_html=True)
+
+            st.markdown('<p class="section-label-mt">Début du segment</p>', unsafe_allow_html=True)
+            t_start = st.slider(
+                "Début", min_value=0.0, max_value=float(dur_c),
+                value=0.0, step=0.1, format="%.1f s",
+                key="cut_start", label_visibility="collapsed"
+            )
+            st.markdown('<p class="section-label-mt">Fin du segment</p>', unsafe_allow_html=True)
+            t_end = st.slider(
+                "Fin", min_value=0.0, max_value=float(dur_c),
+                value=float(dur_c), step=0.1, format="%.1f s",
+                key="cut_end", label_visibility="collapsed"
+            )
+
+            # Validation
+            if t_end <= t_start:
+                st.markdown('<div class="status status-err">⚠ La fin doit être après le début.</div>', unsafe_allow_html=True)
+                t_end = min(t_start + 0.1, dur_c)
+
+            seg_dur = t_end - t_start
+            st.markdown(f"""
+            <div class="cut-info-row">
+              <div class="cut-info-cell"><span>Début</span>{fmt_time(t_start)} ({t_start:.1f} s)</div>
+              <div class="cut-info-cell"><span>Fin</span>{fmt_time(t_end)} ({t_end:.1f} s)</div>
+              <div class="cut-info-cell"><span>Durée</span>{fmt_time(seg_dur)} ({seg_dur:.1f} s)</div>
+            </div>""", unsafe_allow_html=True)
+
+            st.markdown("<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True)
+
+            # Raffraîchir si les paramètres changent
+            cut_sig = (t_start, t_end, cut_file.name)
+            if st.session_state.get("_cut_sig") != cut_sig:
+                st.session_state.cut_bytes = None
+                st.session_state["_cut_sig"] = cut_sig
+
+            if not st.session_state.cut_bytes:
+                if st.button("Générer le découpage", key="cut_btn"):
+                    out_c = os.path.join(tmp_c, "cut_output.mp4")
+                    ph_c = st.empty()
+                    ph_c.markdown('<div class="encoding-wrap"><div class="encoding-ring"></div><span class="encoding-text">Découpage en cours…</span></div><div class="fake-progress-wrap"><div class="fake-progress-track"><div class="fake-progress-bar"></div></div></div>', unsafe_allow_html=True)
+                    try:
+                        trim_video(cp, out_c, t_start, t_end)
+                        ph_c.empty()
+                        with open(out_c, "rb") as f:
+                            st.session_state.cut_bytes = f.read()
+                        st.rerun()
+                    except Exception as e:
+                        ph_c.markdown(f'<div class="status status-err">Erreur : {e}</div>', unsafe_allow_html=True)
+            else:
+                st.download_button(
+                    "↓  Télécharger le segment",
+                    data=st.session_state.cut_bytes,
+                    file_name="segment_coupe.mp4",
+                    mime="video/mp4", key="cut_dl"
+                )
+                st.markdown('<div class="status status-ok">✓ Découpage terminé.</div>', unsafe_allow_html=True)
+
+        with col_prev_c:
+            st.markdown('<p class="section-label">Aperçu — frame de début</p>', unsafe_allow_html=True)
+            with st.spinner(""):
+                frame_c = extract_frame(cp, t_start)
+            st.image(cap_image_for_preview(frame_c), caption=f"@ {t_start:.1f} s", use_container_width=True)
+
+    else:
+        with col_ctrl_c:
+            st.markdown('<div class="status status-idle">Déposez une vidéo via "Upload".</div>', unsafe_allow_html=True)
+        with col_prev_c:
+            st.markdown("""
+            <div class="preview-placeholder">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
+                <line x1="8" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="16" y2="21"/>
+                <rect x="1" y="5" width="22" height="14" rx="2"/>
+              </svg>
+              <span>L'aperçu apparaîtra ici</span>
+            </div>""", unsafe_allow_html=True)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# ONGLET 5 — FUSIONNER DES VIDÉOS
+# ═══════════════════════════════════════════════════════════════════
+
+with tab_merge:
+    col_ctrl_m, col_prev_m = st.columns([4, 6], gap="large")
+
+    with col_ctrl_m:
+        st.markdown('<p class="section-label">Sources (dans l\'ordre de fusion)</p>', unsafe_allow_html=True)
+        merge_files = st.file_uploader(
+            "Déposez vos vidéos ici",
+            type=["mp4", "mov", "avi", "mkv", "webm"],
+            key="merge_u", label_visibility="collapsed",
+            accept_multiple_files=True
+        )
+
+    if merge_files and len(merge_files) >= 2:
+        # Sauvegarder les fichiers temporairement
+        tmp_m = tempfile.mkdtemp()
+        merge_paths = []
+        total_dur = 0.0
+        nfo_list = []
+        for i, mf in enumerate(merge_files):
+            mp = os.path.join(tmp_m, f"src_{i}" + os.path.splitext(mf.name)[1])
+            with open(mp, "wb") as f: f.write(mf.read())
+            merge_paths.append(mp)
+            nfo_m = get_video_info(mp)
+            nfo_list.append(nfo_m)
+            total_dur += nfo_m["duration"]
+
+        with col_ctrl_m:
+            st.markdown('<p class="section-label-mt">Fichiers à fusionner</p>', unsafe_allow_html=True)
+            for i, (mf, nfo_m) in enumerate(zip(merge_files, nfo_list)):
+                st.markdown(
+                    f'<div class="merge-item">'
+                    f'<div class="merge-item-idx">{i+1}</div>'
+                    f'<span class="merge-item-name">🎬 {mf.name}</span>'
+                    f'<span class="merge-item-dur">{fmt_time(nfo_m["duration"])} — {nfo_m["width"]}×{nfo_m["height"]}</span>'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
+
+            st.markdown(f"""
+            <div class="specs-row" style="margin-top:0.8rem;">
+              <div class="spec-cell"><span class="spec-k">Fichiers</span><span class="spec-v">{len(merge_files)}</span></div>
+              <div class="spec-cell"><span class="spec-k">Durée totale</span><span class="spec-v">{fmt_time(total_dur)}</span></div>
+              <div class="spec-cell"><span class="spec-k">Résolution</span><span class="spec-v">{nfo_list[0]['width']}×{nfo_list[0]['height']}</span></div>
+            </div>""", unsafe_allow_html=True)
+
+            st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
+
+            # Reset si la liste de fichiers change
+            merge_sig = tuple(mf.name for mf in merge_files)
+            if st.session_state.get("_merge_sig") != merge_sig:
+                st.session_state.merge_bytes = None
+                st.session_state["_merge_sig"] = merge_sig
+
+            if not st.session_state.merge_bytes:
+                if st.button("Fusionner les vidéos", key="merge_btn"):
+                    out_m = os.path.join(tmp_m, "fusion_output.mp4")
+                    ph_m = st.empty()
+                    ph_m.markdown('<div class="encoding-wrap"><div class="encoding-ring"></div><span class="encoding-text">Fusion en cours…</span></div><div class="fake-progress-wrap"><div class="fake-progress-track"><div class="fake-progress-bar"></div></div></div>', unsafe_allow_html=True)
+                    try:
+                        merge_videos(merge_paths, out_m)
+                        ph_m.empty()
+                        with open(out_m, "rb") as f:
+                            st.session_state.merge_bytes = f.read()
+                        st.rerun()
+                    except Exception as e:
+                        ph_m.markdown(f'<div class="status status-err">Erreur : {e}</div>', unsafe_allow_html=True)
+            else:
+                st.download_button(
+                    "↓  Télécharger la vidéo fusionnée",
+                    data=st.session_state.merge_bytes,
+                    file_name="fusion.mp4",
+                    mime="video/mp4", key="merge_dl"
+                )
+                st.markdown('<div class="status status-ok">✓ Fusion terminée.</div>', unsafe_allow_html=True)
+
+        with col_prev_m:
+            st.markdown('<p class="section-label">Aperçu — première frame de chaque vidéo</p>', unsafe_allow_html=True)
+            for i, (mp, mf) in enumerate(zip(merge_paths, merge_files)):
+                frame_m = extract_frame(mp, 0.0)
+                st.image(cap_image_for_preview(frame_m),
+                         caption=f"{i+1}. {mf.name}", use_container_width=True)
+
+    elif merge_files and len(merge_files) == 1:
+        with col_ctrl_m:
+            st.markdown('<div class="status status-idle">Ajoutez au moins une deuxième vidéo pour fusionner.</div>', unsafe_allow_html=True)
+    else:
+        with col_ctrl_m:
+            st.markdown('<div class="status status-idle">Déposez au moins 2 vidéos via "Upload".</div>', unsafe_allow_html=True)
+        with col_prev_m:
+            st.markdown("""
+            <div class="preview-placeholder">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
+                <path d="M22 12H2M17 7l5 5-5 5M7 7l-5 5 5 5"/>
+              </svg>
+              <span>L'aperçu apparaîtra ici</span>
+            </div>""", unsafe_allow_html=True)
+
+
+
 st.markdown("""
 <div class="site-footer">
   <span class="footer-name"></span>
-  <span>MàJ 2.1 : choix de l'emplacement du watermark ; chargement de plusieurs photos ; qualité de l'export améliorée.</span>
+  <span><i><b>[NOUVEAUTÉS v2.1]</b></i></br> 
+  Choix de l’emplacement du watermark (9 positions + option personnalisée), import de plusieurs photos à la fois et qualité d’export améliorée.</span>
 </div>
 """, unsafe_allow_html=True)
