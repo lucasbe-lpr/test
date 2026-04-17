@@ -1429,7 +1429,47 @@ with tab_audio:
                 _ab64 = _b64.b64encode(_vf.read()).decode()
             _aext = os.path.splitext(audio_vid_file.name)[1].lower().lstrip(".")
             _amime = "video/mp4" if _aext in ("mp4", "m4v") else f"video/{_aext}"
-            components.html(f"""
+
+            if "Supprimer" in audio_action:
+                # Aperçu sans son : attribut muted sur la balise video
+                components.html(f"""
+<div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
+  <video controls muted style="width:100%;display:block;max-height:380px;object-fit:contain;"
+         src="data:{_amime};base64,{_ab64}"></video>
+</div>
+<p style="font-family:sans-serif;font-size:0.72rem;color:#999;text-align:center;margin:6px 0 0;">
+  🔇 Aperçu muet — le son sera supprimé
+</p>""", height=440)
+
+            elif "Remplacer" in audio_action and audio_replace_file:
+                # Aperçu avec remplacement audio : la vidéo est mutée, un <audio> joue en parallèle
+                _aud_bytes = audio_replace_file.read()
+                _aud_b64 = _b64.b64encode(_aud_bytes).decode()
+                _aud_ext = os.path.splitext(audio_replace_file.name)[1].lower().lstrip(".")
+                _aud_mime_map = {"mp3": "audio/mpeg", "wav": "audio/wav",
+                                 "aac": "audio/aac", "m4a": "audio/mp4", "ogg": "audio/ogg"}
+                _aud_mime = _aud_mime_map.get(_aud_ext, "audio/mpeg")
+                components.html(f"""
+<div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
+  <video id="prev_vid" controls muted style="width:100%;display:block;max-height:360px;object-fit:contain;"
+         src="data:{_amime};base64,{_ab64}"></video>
+</div>
+<audio id="prev_aud" src="data:{_aud_mime};base64,{_aud_b64}" {"loop" if loop_audio else ""}></audio>
+<p style="font-family:sans-serif;font-size:0.72rem;color:#999;text-align:center;margin:6px 0 0;">
+  🎵 Aperçu avec le nouvel audio — <b>{audio_replace_file.name}</b>
+</p>
+<script>
+  const vid = document.getElementById('prev_vid');
+  const aud = document.getElementById('prev_aud');
+  vid.addEventListener('play',  () => aud.play());
+  vid.addEventListener('pause', () => aud.pause());
+  vid.addEventListener('seeked', () => {{ aud.currentTime = vid.currentTime; }});
+  vid.addEventListener('ended', () => {{ aud.pause(); aud.currentTime = 0; }});
+</script>""", height=450)
+
+            else:
+                # Aucun fichier audio sélectionné encore (mode Remplacer sans fichier) : aperçu normal
+                components.html(f"""
 <div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
   <video controls style="width:100%;display:block;max-height:380px;object-fit:contain;"
          src="data:{_amime};base64,{_ab64}"></video>
