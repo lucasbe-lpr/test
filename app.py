@@ -813,14 +813,13 @@ def crop_video(video_path: str, output_path: str,
 for k in ["thumbnail", "rendered_bytes", "_last_video_name",
           "cut_bytes", "_last_cut_name", "merge_bytes",
           "audio_bytes", "_last_audio_name",
-          "crop_bytes", "_last_crop_name",
-          "canva_result_bytes"]:
+          "crop_bytes", "_last_crop_name"]:
     if k not in st.session_state:
         st.session_state[k] = None
 
 tab_v, tab_p, tab_s, tab_cut, tab_merge, tab_audio, tab_crop, tab_canva = st.tabs([
     "Watermark vidéo", "Watermark photo", "Capture d'écran",
-    "Couperᴺᴱᵂ", "Fusionnerᴺᴱᵂ", "Sonᴺᴱᵂ", "Recadrerᴺᴱᵂ", "Canvaᴺᴱᵂ"
+    "Couper", "Fusionner", "Son", "Recadrer", "Canva"
 ])
 
 
@@ -1633,269 +1632,600 @@ with tab_crop:
             </div>""", unsafe_allow_html=True)
 
 
-
 # ═══════════════════════════════════════════════════════════════════
-# CANVA — Générateur de visuels réseaux sociaux 1080×1350 px
+# CANVA — GÉNÉRATEUR DE VISUELS RÉSEAUX SOCIAUX
 # ═══════════════════════════════════════════════════════════════════
-
-def _wrap_text_pillow(draw, text: str, font, max_width: int) -> list[str]:
-    """Retourne une liste de lignes découpées pour tenir dans max_width."""
-    words = text.split()
-    lines, current = [], ""
-    for word in words:
-        test = (current + " " + word).strip()
-        if draw.textlength(test, font=font) <= max_width:
-            current = test
-        else:
-            if current:
-                lines.append(current)
-            current = word
-    if current:
-        lines.append(current)
-    return lines if lines else [text]
-
-
-def _draw_bubble_rounded(draw, lines: list[str], font, x_center: int, y_top: int,
-                          text_color: tuple, bg_color: tuple,
-                          padding: int = 21, radius: int = 72) -> int:
-    """
-    Dessine UN rectangle arrondi unique qui épouse la forme des lignes de texte
-    (à la manière Canva : la largeur de chaque ligne influe sur le contour).
-    Retourne la coordonnée Y du bas du bloc.
-    """
-    from PIL import ImageDraw as _ID
-
-    line_h = font.getbbox("Ay")[3] - font.getbbox("Ay")[1]
-    inter = int(line_h * 0.18)          # interligne interne
-    total_h = len(lines) * line_h + (len(lines) - 1) * inter + 2 * padding
-
-    # Largeur de chaque ligne
-    line_widths = [int(draw.textlength(l, font=font)) for l in lines]
-
-    # ── Construire le chemin du contour irrégulier ───────────────────
-    # On part du coin supérieur-gauche et on tourne dans le sens horaire.
-    # Chaque ligne peut avoir une largeur différente → on crée des « marches ».
-    # Pour adoucir, on applique le rayon d'arrondi uniquement aux 4 vrais coins
-    # extérieurs ; les renfoncements intérieurs sont à angle droit (style Canva).
-
-    max_w = max(line_widths)
-    x0 = x_center - max_w // 2 - padding
-    x1 = x_center + max_w // 2 + padding
-    y0 = y_top
-    y1 = y_top + total_h
-
-    # Dessiner le rectangle extérieur englobant avec coins arrondis
-    draw.rounded_rectangle([x0, y0, x1, y1], radius=radius, fill=bg_color)
-
-    # ── Réécrire chaque ligne par-dessus ─────────────────────────────
-    y_cursor = y_top + padding
-    for line in lines:
-        lw = int(draw.textlength(line, font=font))
-        lx = x_center - lw // 2
-        draw.text((lx, y_cursor), line, font=font, fill=text_color)
-        y_cursor += line_h + inter
-
-    return y1   # bas du bloc
-
-
-def generate_canva_image(
-    bg_file,
-    surtitre: str,
-    titre: str,
-    zoom: float,
-    offset_x: int,
-    offset_y: int,
-    wm_position: str,
-    font_path: str = "Roboto-Bold.ttf",
-) -> Image.Image:
-    """Assemble le visuel 1080×1350 px complet."""
-    from PIL import ImageDraw, ImageFont
-
-    W, H = 1080, 1350
-
-    # ── Fond ──────────────────────────────────────────────────────────
-    canvas = Image.new("RGB", (W, H), (30, 30, 30))
-    if bg_file is not None:
-        bg = Image.open(bg_file).convert("RGB")
-        bw, bh = bg.size
-        # Calcul cover + zoom
-        scale = max(W / bw, H / bh) * zoom
-        new_bw = int(bw * scale)
-        new_bh = int(bh * scale)
-        bg = bg.resize((new_bw, new_bh), Image.LANCZOS)
-        px = (new_bw - W) // 2 + offset_x
-        py = (new_bh - H) // 2 + offset_y
-        px = max(0, min(px, new_bw - W))
-        py = max(0, min(py, new_bh - H))
-        canvas.paste(bg.crop((px, py, px + W, py + H)), (0, 0))
-
-    draw = ImageDraw.Draw(canvas)
-
-    # ── Polices ───────────────────────────────────────────────────────
-    try:
-        font_surtitre = ImageFont.truetype(font_path, 40)
-        font_titre    = ImageFont.truetype(font_path, 55)
-    except Exception:
-        font_surtitre = ImageFont.load_default()
-        font_titre    = ImageFont.load_default()
-
-    # ── Couleurs identité ─────────────────────────────────────────────
-    BLUE       = (0, 104, 177)
-    WHITE      = (255, 255, 255)
-    PAD        = 21
-    RADIUS     = 72
-    MAX_TXT_W  = W - 120   # marge latérale des cartouches
-
-    # ── Position verticale : ancrage en bas (80 px du bord) ──────────
-    line_h_t = font_titre.getbbox("Ay")[3] - font_titre.getbbox("Ay")[1]
-    inter_t   = int(line_h_t * 0.18)
-    line_h_s  = font_surtitre.getbbox("Ay")[3] - font_surtitre.getbbox("Ay")[1]
-    inter_s   = int(line_h_s * 0.18)
-
-    lines_titre    = _wrap_text_pillow(draw, titre,    font_titre,    MAX_TXT_W)
-    lines_surtitre = _wrap_text_pillow(draw, surtitre, font_surtitre, MAX_TXT_W)
-
-    h_titre    = len(lines_titre)    * line_h_t + (len(lines_titre) - 1)    * inter_t + 2 * PAD
-    h_surtitre = len(lines_surtitre) * line_h_s + (len(lines_surtitre) - 1) * inter_s + 2 * PAD
-
-    OVERLAP   = 18   # le surtitre mord sur le titre
-    BOTTOM_M  = 80   # marge basse
-
-    y_titre_top    = H - BOTTOM_M - h_titre
-    y_surtitre_top = y_titre_top - h_surtitre + OVERLAP
-
-    x_center = W // 2
-
-    # ── Dessin TITRE d'abord (en dessous) ────────────────────────────
-    _draw_bubble_rounded(
-        draw, lines_titre, font_titre,
-        x_center, y_titre_top,
-        text_color=WHITE, bg_color=BLUE,
-        padding=PAD, radius=RADIUS,
-    )
-
-    # ── Dessin SURTITRE ensuite (au premier plan) ─────────────────────
-    _draw_bubble_rounded(
-        draw, lines_surtitre, font_surtitre,
-        x_center, y_surtitre_top,
-        text_color=BLUE, bg_color=WHITE,
-        padding=PAD, radius=RADIUS,
-    )
-
-    # ── Watermark ─────────────────────────────────────────────────────
-    try:
-        result = composite_logo(canvas, DEFAULT_WM_FILE, position=wm_position)
-        canvas = result.convert("RGB")
-    except Exception:
-        pass
-
-    return canvas
-
 
 with tab_canva:
-    col_ctrl_cv, col_prev_cv = st.columns([4, 6], gap="large")
 
-    with col_ctrl_cv:
-        st.markdown('<p class="section-label">Image de fond</p>', unsafe_allow_html=True)
-        canva_bg = st.file_uploader(
-            "Déposez une image de fond",
-            type=["jpg", "jpeg", "png"],
-            key="canva_bg",
-            label_visibility="collapsed",
-        )
+    # Encode le watermark par défaut en base64 pour injection dans le JS
+    try:
+        with open(DEFAULT_WM_FILE, "rb") as _wm_f:
+            _default_wm_b64 = _b64h.b64encode(_wm_f.read()).decode()
+        _default_wm_src = f"data:image/png;base64,{_default_wm_b64}"
+    except Exception:
+        _default_wm_src = ""
 
-        st.markdown('<p class="section-label-mt">Cadrage de l\'image</p>', unsafe_allow_html=True)
-        canva_zoom   = st.slider("Zoom",          min_value=1.0, max_value=3.0, value=1.0, step=0.05, key="canva_zoom")
-        canva_off_x  = st.slider("Décalage X (px)", min_value=-500, max_value=500, value=0, step=5, key="canva_ox")
-        canva_off_y  = st.slider("Décalage Y (px)", min_value=-500, max_value=500, value=0, step=5, key="canva_oy")
+    components.html(f"""
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<style>
+  /* ── Reset & base ── */
+  *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{
+    font-family: 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    background: transparent;
+    color: #111;
+    font-size: 13px;
+  }}
 
-        st.markdown('<p class="section-label-mt">Textes</p>', unsafe_allow_html=True)
-        canva_surtitre = st.text_input("Surtitre (ex : Rhône)", value="Rhône", key="canva_surtitre")
-        canva_titre    = st.text_area("Titre principal",
-                                      value="Votre titre accrocheur ici",
-                                      height=100, key="canva_titre")
+  /* ── Layout principal : panneau gauche | aperçu ── */
+  .canva-layout {{
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    padding: 1.2rem 0 0.5rem;
+  }}
+  .canva-controls {{
+    width: 320px;
+    flex-shrink: 0;
+    border-right: 1px solid #e4e4e4;
+    padding-right: 2rem;
+  }}
+  .canva-preview-col {{
+    flex: 1;
+    min-width: 0;
+  }}
 
-        # Watermark : 4 positions simplifiées
-        WM_POS_CANVA = ["Haut gauche", "Haut droite", "Bas gauche", "Bas droite"]
-        st.markdown('<p class="section-label-mt">Watermark</p>', unsafe_allow_html=True)
-        canva_wm_pos = st.selectbox(
-            "Position du logo", WM_POS_CANVA,
-            index=WM_POS_CANVA.index("Haut droite"),
-            key="canva_wm_pos",
-            label_visibility="collapsed",
-        )
+  /* ── Labels de section (reprend .section-label de l'app) ── */
+  .sec {{
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: #999;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 0.45rem;
+    margin-top: 1.1rem;
+    display: block;
+  }}
+  .sec:first-child {{ margin-top: 0; }}
 
-        st.markdown("<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True)
+  /* ── Champs texte / couleur ── */
+  input[type=text], textarea, select {{
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid #e4e4e4;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 13px;
+    color: #111;
+    background: #fafafa;
+    transition: border-color 0.12s;
+    outline: none;
+  }}
+  input[type=text]:focus,
+  textarea:focus,
+  select:focus {{ border-color: #0068B1; background: #fff; }}
+  textarea {{ resize: vertical; min-height: 72px; }}
 
-        # Signature de tous les paramètres pour invalider le cache
-        canva_sig = (
-            canva_bg.name if canva_bg else None,
-            canva_surtitre, canva_titre,
-            canva_zoom, canva_off_x, canva_off_y,
-            canva_wm_pos,
-        )
-        if st.session_state.get("_canva_sig") != canva_sig:
-            st.session_state.canva_result_bytes = None
-            st.session_state["_canva_sig"] = canva_sig
+  /* ── Range sliders ── */
+  input[type=range] {{
+    width: 100%;
+    accent-color: #0068B1;
+    cursor: pointer;
+  }}
+  .range-row {{
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }}
+  .range-val {{
+    font-size: 0.72rem;
+    color: #555;
+    width: 32px;
+    text-align: right;
+    flex-shrink: 0;
+  }}
 
-        if st.button("Générer le visuel", key="canva_gen"):
-            with st.spinner("Génération en cours…"):
-                try:
-                    img_cv = generate_canva_image(
-                        bg_file    = canva_bg,
-                        surtitre   = canva_surtitre.strip(),
-                        titre      = canva_titre.strip(),
-                        zoom       = canva_zoom,
-                        offset_x   = canva_off_x,
-                        offset_y   = canva_off_y,
-                        wm_position= canva_wm_pos,
-                    )
-                    buf_cv = io.BytesIO()
-                    img_cv.save(buf_cv, format="JPEG", quality=95, subsampling=0)
-                    st.session_state.canva_result_bytes = buf_cv.getvalue()
-                    st.rerun()
-                except Exception as e:
-                    st.markdown(f'<div class="status status-err">Erreur : {e}</div>',
-                                unsafe_allow_html=True)
+  /* ── Colour pickers en ligne ── */
+  .color-row {{
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }}
+  .color-row label {{ font-size: 0.72rem; color: #555; white-space: nowrap; }}
+  input[type=color] {{
+    width: 32px; height: 28px;
+    border: 1px solid #e4e4e4;
+    border-radius: 4px;
+    padding: 1px 2px;
+    cursor: pointer;
+    background: #fff;
+  }}
 
-        if st.session_state.canva_result_bytes:
-            st.download_button(
-                "↓  Télécharger le visuel (JPEG)",
-                data      = st.session_state.canva_result_bytes,
-                file_name = "visuel_reseaux.jpg",
-                mime      = "image/jpeg",
-                key       = "canva_dl",
-            )
-            st.markdown('<div class="status status-ok">Visuel prêt à publier.</div>',
-                        unsafe_allow_html=True)
+  /* ── Checkbox ── */
+  .check-row {{
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 0.3rem;
+  }}
+  .check-row input {{ width: auto; accent-color: #0068B1; cursor: pointer; }}
+  .check-row label {{ font-size: 0.78rem; color: #555; cursor: pointer; }}
 
-    with col_prev_cv:
-        st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
-        if st.session_state.canva_result_bytes:
-            prev_cv = Image.open(io.BytesIO(st.session_state.canva_result_bytes))
-            st.image(cap_image_for_preview(prev_cv), use_container_width=True)
-        else:
-            # Aperçu live (sans watermark pour la rapidité)
-            try:
-                live_cv = generate_canva_image(
-                    bg_file     = canva_bg,
-                    surtitre    = canva_surtitre.strip(),
-                    titre       = canva_titre.strip(),
-                    zoom        = canva_zoom,
-                    offset_x    = canva_off_x,
-                    offset_y    = canva_off_y,
-                    wm_position = canva_wm_pos,
-                )
-                st.image(cap_image_for_preview(live_cv), use_container_width=True)
-            except Exception:
-                st.markdown("""
-                <div class="preview-placeholder">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
-                    <rect x="3" y="3" width="18" height="18" rx="2"/>
-                    <path d="M3 9h18M9 21V9"/>
-                  </svg>
-                  <span>Remplissez les champs pour voir l'aperçu</span>
-                </div>""", unsafe_allow_html=True)
+  /* ── Bouton télécharger ── */
+  .dl-btn {{
+    display: block;
+    width: 100%;
+    margin-top: 1.1rem;
+    padding: 0 1.2rem;
+    height: 36px;
+    background: #16a34a;
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    box-shadow: 0 1px 2px rgba(22,163,74,.18), 0 2px 6px rgba(22,163,74,.1);
+  }}
+  .dl-btn:hover {{ background: #15803d; transform: translateY(-1px); }}
+  .dl-btn:active {{ transform: translateY(0); }}
+
+  /* ── Zone aperçu (canvas wrapper) ── */
+  .preview-label {{
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: #999;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+    display: block;
+  }}
+  .canvas-wrap {{
+    position: relative;
+    width: 100%;
+    border: 1px solid #e4e4e4;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #222;
+    /* ratio 1080×1350 = 4:5 */
+    aspect-ratio: 1080 / 1350;
+  }}
+  canvas {{
+    display: block;
+    width: 100%;
+    height: 100%;
+  }}
+
+  /* ── Séparateur fin ── */
+  hr.thin {{
+    border: none;
+    border-top: 1px solid #e4e4e4;
+    margin: 1rem 0;
+  }}
+</style>
+</head>
+<body>
+
+<div class="canva-layout">
+
+  <!-- ════════════ PANNEAU DE CONTRÔLES ════════════ -->
+  <div class="canva-controls">
+
+    <span class="sec">Arrière-plan</span>
+    <input type="file" id="bgFile" accept="image/*">
+
+    <!-- Recadrage / zoom photo -->
+    <span class="sec">Zoom photo</span>
+    <div class="range-row">
+      <input type="range" id="bgZoom" min="100" max="300" value="100" step="1">
+      <span class="range-val" id="bgZoomVal">100%</span>
+    </div>
+    <span class="sec" style="margin-top:0.5rem;">Déplacement H</span>
+    <div class="range-row">
+      <input type="range" id="bgOffX" min="-100" max="100" value="0" step="1">
+      <span class="range-val" id="bgOffXVal">0</span>
+    </div>
+    <span class="sec" style="margin-top:0.5rem;">Déplacement V</span>
+    <div class="range-row">
+      <input type="range" id="bgOffY" min="-100" max="100" value="0" step="1">
+      <span class="range-val" id="bgOffYVal">0</span>
+    </div>
+
+    <hr class="thin">
+
+    <span class="sec">Surtitre</span>
+    <input type="text" id="surIn" value="Métropole de Lyon">
+
+    <span class="sec">Titre principal</span>
+    <textarea id="titleIn">5 millions de spécimens lâchés dans cette commune : une solution innovante contre le moustique tigre</textarea>
+
+    <span class="sec">Position verticale du titre</span>
+    <div class="range-row">
+      <input type="range" id="yIn" min="10" max="90" value="70" step="1">
+      <span class="range-val" id="yVal">70%</span>
+    </div>
+
+    <span class="sec" style="margin-top:0.5rem;">Position horizontale du titre</span>
+    <div class="range-row">
+      <input type="range" id="xIn" min="-300" max="300" value="0" step="1">
+      <span class="range-val" id="xVal">0</span>
+    </div>
+
+    <hr class="thin">
+
+    <span class="sec">Couleurs</span>
+    <div class="color-row" style="flex-wrap:wrap; gap:0.7rem;">
+      <div class="color-row">
+        <input type="color" id="colBloc" value="#0072bc">
+        <label for="colBloc">Bloc</label>
+      </div>
+      <div class="color-row">
+        <input type="color" id="colText" value="#ffffff">
+        <label for="colText">Texte titre</label>
+      </div>
+      <div class="color-row">
+        <input type="color" id="colSurBg" value="#ffffff">
+        <label for="colSurBg">Fond surtitre</label>
+      </div>
+      <div class="color-row">
+        <input type="color" id="colSurTxt" value="#0072bc">
+        <label for="colSurTxt">Texte surtitre</label>
+      </div>
+    </div>
+
+    <hr class="thin">
+
+    <span class="sec">Watermark</span>
+    <input type="file" id="wmFile" accept="image/*">
+    <div class="check-row" style="margin-top:0.5rem;">
+      <input type="checkbox" id="wmShow" checked>
+      <label for="wmShow">Afficher le watermark</label>
+    </div>
+
+    <span class="sec" style="margin-top:0.7rem;">Position watermark</span>
+    <select id="wmPos">
+      <option value="top-left">Haut gauche</option>
+      <option value="top-center">Haut centre</option>
+      <option value="top-right" selected>Haut droite</option>
+      <option value="mid-left">Milieu gauche</option>
+      <option value="center">Centre</option>
+      <option value="mid-right">Milieu droite</option>
+      <option value="bot-left">Bas gauche</option>
+      <option value="bot-center">Bas centre</option>
+      <option value="bot-right">Bas droite</option>
+      <option value="custom">Coordonnées personnalisées</option>
+    </select>
+
+    <div id="wmCustom" style="display:none; margin-top:0.5rem;">
+      <div style="display:flex;gap:0.5rem;">
+        <div style="flex:1;">
+          <span class="sec" style="margin-top:0.3rem;">X (px)</span>
+          <input type="text" id="wmCx" value="0" style="width:100%;">
+        </div>
+        <div style="flex:1;">
+          <span class="sec" style="margin-top:0.3rem;">Y (px)</span>
+          <input type="text" id="wmCy" value="0" style="width:100%;">
+        </div>
+      </div>
+    </div>
+
+    <span class="sec" style="margin-top:0.7rem;">Taille watermark</span>
+    <div class="range-row">
+      <input type="range" id="wmSize" min="5" max="40" value="13" step="1">
+      <span class="range-val" id="wmSizeVal">13%</span>
+    </div>
+
+    <button class="dl-btn" id="dlBtn">↓&nbsp;&nbsp;Télécharger le visuel</button>
+
+  </div><!-- /canva-controls -->
+
+  <!-- ════════════ APERÇU CANVAS ════════════ -->
+  <div class="canva-preview-col">
+    <span class="preview-label">Aperçu — 1080 × 1350 px</span>
+    <div class="canvas-wrap">
+      <canvas id="cv" width="1080" height="1350"></canvas>
+    </div>
+  </div>
+
+</div><!-- /canva-layout -->
+
+<!-- Filtre SVG goo (fusion des blocs bleus) — invisible -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none;">
+  <defs>
+    <filter id="goo">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur"/>
+      <feColorMatrix in="blur" mode="matrix"
+        values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -9" result="goo"/>
+      <feComposite in="SourceGraphic" in2="goo" operator="atop"/>
+    </filter>
+  </defs>
+</svg>
+
+<script>
+// ─── Références DOM ───────────────────────────────────────────────
+const cv      = document.getElementById('cv');
+const ctx     = cv.getContext('2d');
+const W = 1080, H = 1350;
+
+const bgFile  = document.getElementById('bgFile');
+const bgZoom  = document.getElementById('bgZoom');
+const bgOffX  = document.getElementById('bgOffX');
+const bgOffY  = document.getElementById('bgOffY');
+const surIn   = document.getElementById('surIn');
+const titleIn = document.getElementById('titleIn');
+const yIn     = document.getElementById('yIn');
+const xIn     = document.getElementById('xIn');
+const colBloc = document.getElementById('colBloc');
+const colText = document.getElementById('colText');
+const colSurBg= document.getElementById('colSurBg');
+const colSurTxt=document.getElementById('colSurTxt');
+const wmFile  = document.getElementById('wmFile');
+const wmShow  = document.getElementById('wmShow');
+const wmPos   = document.getElementById('wmPos');
+const wmCx    = document.getElementById('wmCx');
+const wmCy    = document.getElementById('wmCy');
+const wmSize  = document.getElementById('wmSize');
+const dlBtn   = document.getElementById('dlBtn');
+
+// ─── State ────────────────────────────────────────────────────────
+let bgImg   = null;
+let wmImg   = null;
+
+// Charger le watermark par défaut (lpr.png encodé depuis Python)
+const defaultWmSrc = "{_default_wm_src}";
+if (defaultWmSrc) {{
+  const img = new Image();
+  img.onload = () => {{ wmImg = img; render(); }};
+  img.src = defaultWmSrc;
+}}
+
+// ─── Helpers valeurs affichées ────────────────────────────────────
+function syncRangeLabels() {{
+  document.getElementById('bgZoomVal').textContent = bgZoom.value + '%';
+  document.getElementById('bgOffXVal').textContent = bgOffX.value;
+  document.getElementById('bgOffYVal').textContent = bgOffY.value;
+  document.getElementById('yVal').textContent      = yIn.value + '%';
+  document.getElementById('xVal').textContent      = xIn.value;
+  document.getElementById('wmSizeVal').textContent = wmSize.value + '%';
+}}
+
+// ─── Découpage texte en lignes (même logique que le canva.html) ───
+function splitLines(text, maxChars) {{
+  const words = text.split(' ');
+  const lines = [];
+  let cur = '';
+  words.forEach(w => {{
+    if ((cur + w).length < maxChars) cur += (cur ? ' ' : '') + w;
+    else {{ lines.push(cur); cur = w; }}
+  }});
+  if (cur) lines.push(cur);
+  return lines;
+}}
+
+// ─── Position watermark ───────────────────────────────────────────
+function wmXY(pos, logoW, logoH) {{
+  const mx = W * 0.05, my = H * 0.05;
+  switch(pos) {{
+    case 'top-left':    return [mx, my];
+    case 'top-center':  return [(W-logoW)/2, my];
+    case 'top-right':   return [W-logoW-mx, my];
+    case 'mid-left':    return [mx, (H-logoH)/2];
+    case 'center':      return [(W-logoW)/2, (H-logoH)/2];
+    case 'mid-right':   return [W-logoW-mx, (H-logoH)/2];
+    case 'bot-left':    return [mx, H-logoH-my];
+    case 'bot-center':  return [(W-logoW)/2, H-logoH-my];
+    case 'bot-right':   return [W-logoW-mx, H-logoH-my];
+    case 'custom':      return [parseInt(wmCx.value)||0, parseInt(wmCy.value)||0];
+    default:            return [W-logoW-mx, my];
+  }}
+}}
+
+// ─── RENDER PRINCIPAL ─────────────────────────────────────────────
+function render() {{
+  ctx.clearRect(0, 0, W, H);
+
+  // 1. FOND NOIR
+  ctx.fillStyle = '#222';
+  ctx.fillRect(0, 0, W, H);
+
+  // 2. IMAGE DE FOND avec zoom + déplacement
+  if (bgImg) {{
+    const zoom     = parseInt(bgZoom.value) / 100;
+    const offXpct  = parseInt(bgOffX.value) / 100;
+    const offYpct  = parseInt(bgOffY.value) / 100;
+
+    // Calcul du crop de base (object-fit: cover)
+    const imgRatio = bgImg.width / bgImg.height;
+    const cvRatio  = W / H;
+    let sw, sh, sx, sy;
+    if (imgRatio > cvRatio) {{
+      sh = bgImg.height;
+      sw = bgImg.height * cvRatio;
+      sx = (bgImg.width - sw) / 2;
+      sy = 0;
+    }} else {{
+      sw = bgImg.width;
+      sh = bgImg.width / cvRatio;
+      sx = 0;
+      sy = (bgImg.height - sh) / 2;
+    }}
+
+    // Zoom : réduire la zone source
+    const zoomedSw = sw / zoom;
+    const zoomedSh = sh / zoom;
+
+    // Déplacement
+    const maxDx = (sw - zoomedSw) / 2;
+    const maxDy = (sh - zoomedSh) / 2;
+    const dx = offXpct * maxDx;
+    const dy = offYpct * maxDy;
+
+    ctx.drawImage(bgImg,
+      sx + (sw - zoomedSw)/2 - dx,
+      sy + (sh - zoomedSh)/2 - dy,
+      zoomedSw, zoomedSh,
+      0, 0, W, H
+    );
+  }}
+
+  // 3. TEXTE — positionné selon les sliders Y et X
+  const yPct  = parseInt(yIn.value) / 100;
+  const xOff  = parseInt(xIn.value);
+  const baseY = H * yPct;
+
+  const FONT_SIZE  = 54;
+  const PAD_V      = 14;
+  const PAD_H      = 18;
+  const RADIUS     = 20;
+  const GAP        = -2;      // blocs fusionnés
+  const SUR_SIZE   = 32;
+  const SUR_PAD_H  = 10;
+  const SUR_PAD_V  = 6;
+  const SUR_MARGIN = -5;
+
+  const lines = splitLines(titleIn.value, 28);
+
+  // ── Mesurer les blocs ──────────────────────────────────────────
+  ctx.font = `bold ${{FONT_SIZE}}px 'Roboto Condensed', 'Helvetica Neue', Arial, sans-serif`;
+  const lineWidths = lines.map(l => ctx.measureText(l).width + PAD_H * 2);
+
+  // Surtitre
+  ctx.font = `bold ${{SUR_SIZE}}px 'Roboto', Arial, sans-serif`;
+  const surW = ctx.measureText(surIn.value).width + SUR_PAD_H * 2;
+  const surH = SUR_SIZE + SUR_PAD_V * 2;
+
+  const lineH    = FONT_SIZE + PAD_V * 2;
+  const totalH   = surH + Math.abs(SUR_MARGIN) + lines.length * lineH + (lines.length - 1) * GAP;
+  let topY       = baseY - totalH / 2;
+
+  const cx = W / 2 + xOff;   // centre horizontal avec décalage
+
+  // ── Dessin sur offscreen canvas pour le filtre goo ────────────
+  // (on dessine d'abord les blocs, puis on applique le goo via SVGFilter API si dispo,
+  //  sinon simplement on dessine avec un overlap pour la fusion visuelle)
+  // Note : CanvasRenderingContext2D ne supporte pas les filtres SVG complexes nativement,
+  // on simule la fusion avec un léger overlap et border-radius.
+
+  // Surtitre (badge blanc)
+  const surX = cx - surW / 2;
+  const surY = topY;
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.15)';
+  ctx.shadowBlur  = 12;
+  ctx.fillStyle   = colSurBg.value;
+  roundRect(ctx, surX, surY, surW, surH, RADIUS);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.font      = `bold ${{SUR_SIZE}}px 'Roboto', Arial, sans-serif`;
+  ctx.fillStyle = colSurTxt.value;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(surIn.value, cx, surY + surH / 2);
+
+  // Blocs du titre (fond coloré)
+  ctx.font = `bold ${{FONT_SIZE}}px 'Roboto Condensed', 'Helvetica Neue', Arial, sans-serif`;
+
+  let blockY = topY + surH + SUR_MARGIN;
+
+  lines.forEach((line, i) => {{
+    const bw = lineWidths[i];
+    const bx = cx - bw / 2;
+    const by = blockY;
+
+    // Overlap intentionnel de 2px pour fusionner visuellement comme le filtre goo
+    ctx.fillStyle = colBloc.value;
+    roundRect(ctx, bx, by - (i > 0 ? 2 : 0), bw, lineH + (i > 0 ? 2 : 0), RADIUS);
+    ctx.fill();
+
+    ctx.fillStyle   = colText.value;
+    ctx.textAlign   = 'center';
+    ctx.textBaseline= 'middle';
+    ctx.fillText(line, cx, by + lineH / 2);
+
+    blockY += lineH + GAP;
+  }});
+
+  // 4. WATERMARK
+  if (wmShow.checked && wmImg) {{
+    const diag    = Math.sqrt(W*W + H*H);
+    const pct     = parseInt(wmSize.value) / 100;
+    const logoW   = diag * pct;
+    const logoH   = wmImg.height * (logoW / wmImg.width);
+    const [lx, ly] = wmXY(wmPos.value, logoW, logoH);
+    ctx.drawImage(wmImg, lx, ly, logoW, logoH);
+  }}
+}}
+
+// ─── Utilitaire roundRect (compatible anciens Chrome) ─────────────
+function roundRect(ctx, x, y, w, h, r) {{
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}}
+
+// ─── Events ───────────────────────────────────────────────────────
+bgFile.onchange = e => {{
+  const reader = new FileReader();
+  reader.onload = ev => {{
+    const img = new Image();
+    img.onload = () => {{ bgImg = img; render(); }};
+    img.src = ev.target.result;
+  }};
+  reader.readAsDataURL(e.target.files[0]);
+}};
+
+wmFile.onchange = e => {{
+  const reader = new FileReader();
+  reader.onload = ev => {{
+    const img = new Image();
+    img.onload = () => {{ wmImg = img; render(); }};
+    img.src = ev.target.result;
+  }};
+  reader.readAsDataURL(e.target.files[0]);
+}};
+
+wmPos.onchange = () => {{
+  document.getElementById('wmCustom').style.display =
+    wmPos.value === 'custom' ? 'block' : 'none';
+  render();
+}};
+
+// Inputs texte / couleur / range → re-render live
+[surIn, titleIn, colBloc, colText, colSurBg, colSurTxt,
+ wmShow, wmCx, wmCy].forEach(el => el.addEventListener('input', () => {{ syncRangeLabels(); render(); }}));
+
+[bgZoom, bgOffX, bgOffY, yIn, xIn, wmSize].forEach(el => el.addEventListener('input', () => {{ syncRangeLabels(); render(); }}));
+
+// ─── Téléchargement ───────────────────────────────────────────────
+dlBtn.onclick = () => {{
+  const link = document.createElement('a');
+  link.download = 'visuel_rs.png';
+  link.href = cv.toDataURL('image/png');
+  link.click();
+}};
+
+// ─── Init ─────────────────────────────────────────────────────────
+syncRangeLabels();
+render();
+</script>
+</body>
+</html>
+""", height=860, scrolling=False)
 
 
 # FOOTER
