@@ -1670,7 +1670,7 @@ with tab_canva:
     """, unsafe_allow_html=True)
 
     # Valeurs par défaut des sliders (pour reset)
-    _CV_DEFAULTS = {"canva_y": 72, "canva_imgzoom": 100}
+    _CV_DEFAULTS = {"canva_y": 72, "canva_imgzoom": 115}
     for _k, _v in _CV_DEFAULTS.items():
         if _k not in st.session_state:
             st.session_state[_k] = _v
