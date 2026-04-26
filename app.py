@@ -471,7 +471,7 @@ with open(LOGO_FILE, "rb") as _f:
 st.markdown(f"""
 <div class="site-header">
   <img src="data:image/png;base64,{_logo_b64}" alt="Luluflix" />
-  <span class="site-header-right">version <code>4.0</code></span>
+  <span class="site-header-right">version <code>1.0</code></span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -1917,7 +1917,7 @@ with tab_canva:
 </head>
 <body>
 <div id="canvasWrap"><canvas id="c"></canvas></div>
-<div id="hint">Glisser pour repositionner la photo</div>
+<div id="hint">Il est possible d'attraper la photo pour la replacer.</div>
 <script>
 const CANVAS_W = {canva_w};
 const CANVAS_H = {canva_h};
