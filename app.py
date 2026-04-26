@@ -1637,7 +1637,6 @@ with tab_crop:
 # ═══════════════════════════════════════════════════════════════════
 
 with tab_canva:
-    # Encode watermark in base64 for use inside the HTML component
     try:
         with open(DEFAULT_WM_FILE, "rb") as _wm_f:
             _wm_b64_canva = _b64h.b64encode(_wm_f.read()).decode()
@@ -1646,664 +1645,456 @@ with tab_canva:
         _wm_b64_canva = ""
         _wm_mime_canva = "image/png"
 
-    components.html(f"""<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
+    col_ctrl_cv, col_prev_cv = st.columns([4, 6], gap="large")
+
+    with col_ctrl_cv:
+        st.markdown('<p class="section-label">Arrière-plan</p>', unsafe_allow_html=True)
+        canva_bg_file = st.file_uploader(
+            "Déposez votre image ici",
+            type=["png", "jpg", "jpeg", "webp"],
+            key="canva_bg", label_visibility="collapsed"
+        )
+
+        st.markdown('<p class="section-label">Format</p>', unsafe_allow_html=True)
+        canva_format = st.selectbox(
+            "Format", [
+                "1080x1350 — Portrait Instagram",
+                "1080x1080 — Carré",
+                "1080x1920 — Stories / Reels",
+                "1200x630  — Paysage Facebook / LinkedIn",
+                "1080x566  — Paysage Twitter/X",
+            ],
+            key="canva_format", label_visibility="collapsed"
+        )
+        _fmt_map = {
+            "1080x1350 — Portrait Instagram": (1080, 1350),
+            "1080x1080 — Carré": (1080, 1080),
+            "1080x1920 — Stories / Reels": (1080, 1920),
+            "1200x630  — Paysage Facebook / LinkedIn": (1200, 630),
+            "1080x566  — Paysage Twitter/X": (1080, 566),
+        }
+        canva_w, canva_h = _fmt_map[canva_format]
+
+        st.markdown('<p class="section-label">Surtitre</p>', unsafe_allow_html=True)
+        canva_sur = st.text_input("Surtitre", value="Métropole de Lyon", key="canva_sur", label_visibility="collapsed")
+
+        st.markdown('<p class="section-label">Titre principal</p>', unsafe_allow_html=True)
+        canva_title = st.text_area(
+            "Titre", value="5 millions de spécimens lâchés dans cette commune : une solution innovante contre le moustique tigre",
+            key="canva_title", label_visibility="collapsed", height=100
+        )
+
+        st.markdown('<p class="section-label">Couleurs</p>', unsafe_allow_html=True)
+        _cc1, _cc2 = st.columns(2)
+        with _cc1:
+            canva_block_color = st.color_picker("Fond bloc", value="#0068B1", key="canva_bc")
+        with _cc2:
+            canva_text_color = st.color_picker("Texte titre", value="#ffffff", key="canva_tc")
+        _cc3, _cc4 = st.columns(2)
+        with _cc3:
+            canva_sur_bg = st.color_picker("Fond surtitre", value="#ffffff", key="canva_sbg")
+        with _cc4:
+            canva_sur_color = st.color_picker("Texte surtitre", value="#0068B1", key="canva_sc")
+
+        st.markdown('<p class="section-label">Position verticale du texte</p>', unsafe_allow_html=True)
+        canva_y = st.slider("Y", min_value=5, max_value=95, value=72, key="canva_y", label_visibility="collapsed")
+
+        st.markdown('<p class="section-label">Position horizontale du texte</p>', unsafe_allow_html=True)
+        canva_x = st.slider("X", min_value=0, max_value=100, value=50, key="canva_x", label_visibility="collapsed")
+
+        if canva_bg_file:
+            st.markdown('<p class="section-label">Zoom photo</p>', unsafe_allow_html=True)
+            canva_img_zoom = st.slider("Zoom photo", min_value=100, max_value=300, value=100, key="canva_imgzoom", label_visibility="collapsed")
+        else:
+            canva_img_zoom = 100
+
+        wm_opts_cv = watermark_options_ui("cv")
+
+        st.markdown('<p class="section-label">Taille watermark</p>', unsafe_allow_html=True)
+        canva_wm_size = st.slider("Taille WM", min_value=5, max_value=40, value=13, key="canva_wmsz", label_visibility="collapsed")
+
+        st.markdown('<p class="section-label">Opacité watermark</p>', unsafe_allow_html=True)
+        canva_wm_opac = st.slider("Opacité WM", min_value=0, max_value=100, value=100, key="canva_wmop", label_visibility="collapsed")
+
+        # --- Génération du visuel final (Python/Pillow) pour téléchargement ---
+        st.markdown("<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True)
+
+        def _hex_to_rgb(h):
+            h = h.lstrip('#')
+            return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+        def generate_canva_image():
+            from PIL import ImageDraw, ImageFont
+            import math as _math
+
+            W, H = canva_w, canva_h
+            img = Image.new("RGBA", (W, H), (34, 34, 34, 255))
+
+            # Background photo
+            if canva_bg_file:
+                canva_bg_file.seek(0)
+                bg = Image.open(canva_bg_file).convert("RGBA")
+                z = canva_img_zoom / 100.0
+                scale_x = W / bg.width
+                scale_y = H / bg.height
+                base_scale = max(scale_x, scale_y) * z
+                new_w = int(bg.width * base_scale)
+                new_h = int(bg.height * base_scale)
+                bg = bg.resize((new_w, new_h), Image.LANCZOS)
+                dx = (W - new_w) // 2
+                dy = (H - new_h) // 2
+                img.paste(bg, (dx, dy), bg)
+
+            draw = ImageDraw.Draw(img, "RGBA")
+
+            # Font sizes
+            fs    = int(W * 0.05)
+            fs_sur = int(W * 0.03)
+            pad   = int(W * 0.017)
+            radius = int(W * 0.019)
+            lh    = int(fs * 1.25)
+            overlap = int(W * 0.003)
+
+            try:
+                font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fs)
+                font_sur   = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fs_sur)
+            except Exception:
+                font_title = ImageFont.load_default()
+                font_sur   = ImageFont.load_default()
+
+            # Word wrap
+            words = canva_title.split(' ')
+            lines, cur = [], ''
+            for w in words:
+                if len(cur + w) < 28:
+                    cur += (' ' if cur else '') + w
+                else:
+                    lines.append(cur)
+                    cur = w
+            if cur:
+                lines.append(cur)
+
+            cx = int((canva_x / 100) * W)
+            total_h = lh * len(lines)
+            block_top = int((canva_y / 100) * H - total_h / 2)
+
+            # Measure line widths
+            def measure(text, font):
+                bb = font.getbbox(text)
+                return bb[2] - bb[0]
+
+            line_widths = [measure(l, font_title) + pad * 2 for l in lines]
+            sur_w = measure(canva_sur, font_sur) + pad * 2
+            sur_h = fs_sur + int(pad * 0.8)
+
+            bc = _hex_to_rgb(canva_block_color) + (255,)
+            tc = _hex_to_rgb(canva_text_color) + (255,)
+            sbg = _hex_to_rgb(canva_sur_bg) + (255,)
+            sc  = _hex_to_rgb(canva_sur_color) + (255,)
+
+            def draw_rounded_rect(d, x, y, w, h, r, fill):
+                d.rectangle([x+r, y, x+w-r, y+h], fill=fill)
+                d.rectangle([x, y+r, x+w, y+h-r], fill=fill)
+                d.ellipse([x, y, x+2*r, y+2*r], fill=fill)
+                d.ellipse([x+w-2*r, y, x+w, y+2*r], fill=fill)
+                d.ellipse([x, y+h-2*r, x+2*r, y+h], fill=fill)
+                d.ellipse([x+w-2*r, y+h-2*r, x+w, y+h], fill=fill)
+
+            # Surtitre
+            sur_x = cx - sur_w // 2
+            sur_y = block_top - sur_h - int(W * 0.006)
+            draw_rounded_rect(draw, sur_x, sur_y, sur_w, sur_h, radius, sbg)
+            draw.text((sur_x + pad, sur_y + sur_h // 2 - fs_sur // 2), canva_sur, font=font_sur, fill=sc)
+
+            # Titre lines (goo approximé : overlap + même couleur)
+            for i, line in enumerate(lines):
+                lw = line_widths[i]
+                lx = cx - lw // 2
+                ly = block_top + i * lh - (overlap if i > 0 else 0)
+                draw_rounded_rect(draw, lx, ly, lw, lh + overlap, radius, bc)
+
+            # Titre text
+            for i, line in enumerate(lines):
+                lw = line_widths[i]
+                lx = cx - lw // 2
+                ly = block_top + i * lh - (overlap if i > 0 else 0)
+                draw.text((lx + pad, ly + lh // 2 - fs // 2), line, font=font_title, fill=tc)
+
+            # Watermark
+            result = composite_logo(
+                img.convert("RGB"), DEFAULT_WM_FILE,
+                position=wm_opts_cv["position"],
+                custom_x=wm_opts_cv["custom_x"],
+                custom_y=wm_opts_cv["custom_y"],
+                force_w=W, force_h=H
+            )
+
+            # Apply opacity to watermark — already baked in composite_logo at full opac
+            # (opacity slider here affects the Pillow composite if we want — for now full)
+            return result
+
+        if st.button("Générer le visuel", key="canva_gen"):
+            with st.spinner("Génération…"):
+                try:
+                    _canva_result = generate_canva_image()
+                    _canva_buf = io.BytesIO()
+                    _canva_result.save(_canva_buf, format="PNG")
+                    st.session_state["canva_dl_bytes"] = _canva_buf.getvalue()
+                    st.rerun()
+                except Exception as e:
+                    st.markdown(f'<div class="status status-err">Erreur : {e}</div>', unsafe_allow_html=True)
+
+        if st.session_state.get("canva_dl_bytes"):
+            st.download_button(
+                "↓  Télécharger le visuel (PNG)",
+                data=st.session_state["canva_dl_bytes"],
+                file_name="visuel_luluflix.png",
+                mime="image/png",
+                key="canva_dl"
+            )
+
+    # ── Aperçu canvas (JavaScript) ──────────────────────────────────
+    with col_prev_cv:
+        st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
+
+        _canva_bg_b64 = ""
+        _canva_bg_mime = "image/jpeg"
+        if canva_bg_file:
+            canva_bg_file.seek(0)
+            _canva_bg_b64 = _b64h.b64encode(canva_bg_file.read()).decode()
+            _ext = canva_bg_file.name.rsplit(".", 1)[-1].lower()
+            _canva_bg_mime = "image/png" if _ext == "png" else ("image/webp" if _ext == "webp" else "image/jpeg")
+
+        # Escape values for JS
+        import json as _json
+        _js_title = _json.dumps(canva_title)
+        _js_sur   = _json.dumps(canva_sur)
+
+        components.html(f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&family=Roboto+Condensed:wght@400;700&display=swap');
-  :root {{
-    --blue: #0068B1;
-    --blue-dim: #e8f2fb;
-    --white: #ffffff;
-    --bg: #fafafa;
-    --ink: #111111;
-    --sub: #555555;
-    --muted: #999999;
-    --border: #e4e4e4;
-    --border-mid: #d0d0d0;
-    --green: #166534;
-  }}
-  *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
-  body {{
-    font-family: 'Roboto', sans-serif;
-    background: var(--white);
-    color: var(--ink);
-    display: flex;
-    gap: 0;
-    height: 100vh;
-    overflow: hidden;
-  }}
-
-  /* ── PANEL GAUCHE (contrôles) ── */
-  #panel {{
-    width: 320px;
-    flex-shrink: 0;
-    border-right: 1px solid var(--border);
-    overflow-y: auto;
-    padding: 16px 18px;
-    background: var(--white);
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-  }}
-
-  .sec-label {{
-    font-size: 0.62rem; font-weight: 500; color: var(--muted);
-    letter-spacing: 0.07em; text-transform: uppercase;
-    margin-bottom: 6px; margin-top: 14px;
-  }}
-  .sec-label:first-child {{ margin-top: 0; }}
-
-  /* File upload zone */
-  .upload-zone {{
-    border: 1px solid var(--border); border-radius: 8px;
-    background: var(--bg); padding: 10px 12px;
-    font-size: 0.78rem; color: var(--muted);
-    cursor: pointer; text-align: center;
-    transition: border-color 0.15s, background 0.15s;
-  }}
-  .upload-zone:hover {{ border-color: var(--blue); background: var(--blue-dim); color: var(--blue); }}
-  #fileIn {{ display: none; }}
-
-  /* Text inputs */
-  input[type=text], textarea {{
-    width: 100%; padding: 7px 10px;
-    border: 1px solid var(--border); border-radius: 6px;
-    font-family: 'Roboto', sans-serif; font-size: 0.82rem; color: var(--ink);
-    background: var(--white); resize: none; outline: none;
-    transition: border-color 0.15s;
-  }}
-  input[type=text]:focus, textarea:focus {{ border-color: var(--blue); }}
-
-  /* Range slider */
-  .range-wrap {{ display: flex; align-items: center; gap: 8px; }}
-  input[type=range] {{
-    flex: 1; -webkit-appearance: none; height: 3px;
-    background: var(--border); border-radius: 99px; outline: none;
-  }}
-  input[type=range]::-webkit-slider-thumb {{
-    -webkit-appearance: none; width: 14px; height: 14px;
-    background: var(--blue); border-radius: 50%; cursor: pointer;
-  }}
-  .range-val {{
-    font-size: 0.72rem; color: var(--muted); min-width: 28px; text-align: right;
-  }}
-
-  /* Color input */
-  .color-row {{ display: flex; align-items: center; gap: 8px; }}
-  input[type=color] {{
-    width: 32px; height: 32px; border: 1px solid var(--border);
-    border-radius: 6px; cursor: pointer; padding: 2px; background: var(--white);
-  }}
-  .color-label {{ font-size: 0.78rem; color: var(--sub); }}
-
-  /* Select */
-  select {{
-    width: 100%; padding: 7px 10px;
-    border: 1px solid var(--border); border-radius: 6px;
-    font-family: 'Roboto', sans-serif; font-size: 0.82rem; color: var(--ink);
-    background: var(--white); outline: none; cursor: pointer;
-    transition: border-color 0.15s;
-  }}
-  select:focus {{ border-color: var(--blue); }}
-
-  /* Download button */
-  #dlBtn {{
-    width: 100%; background: #16a34a; border: none;
-    color: #fff; font-family: 'Roboto', sans-serif;
-    font-size: 0.85rem; font-weight: 500;
-    padding: 0 1.4rem; height: 38px; border-radius: 999px;
-    cursor: pointer; transition: background 0.15s, transform 0.1s;
-    box-shadow: 0 1px 2px rgba(22,163,74,0.18), 0 2px 6px rgba(22,163,74,0.1);
-    margin-top: 6px;
-  }}
-  #dlBtn:hover {{ background: #15803d; transform: translateY(-1px); }}
-
-  /* Separator */
-  .sep {{ border: none; border-top: 1px solid var(--border); margin: 12px 0; }}
-
-  /* ── ZONE D'APERÇU droite ── */
-  #preview-area {{
-    flex: 1;
-    background: #eef1f5;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    position: relative;
-  }}
-
-  #preview-label {{
-    position: absolute; top: 12px; left: 16px;
-    font-size: 0.62rem; font-weight: 500; color: var(--muted);
-    letter-spacing: 0.07em; text-transform: uppercase;
-  }}
-
-  #canvas-wrap {{
-    position: relative;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.18);
-  }}
-
-  canvas {{ display: block; }}
-
-  /* ── ZOOM controls ── */
-  #zoom-controls {{
-    position: absolute; bottom: 14px; right: 16px;
-    display: flex; align-items: center; gap: 6px;
-  }}
-  .zoom-btn {{
-    width: 28px; height: 28px; border-radius: 6px;
-    border: 1px solid var(--border); background: var(--white);
-    color: var(--sub); font-size: 1rem; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: border-color 0.12s, color 0.12s;
-  }}
-  .zoom-btn:hover {{ border-color: var(--blue); color: var(--blue); }}
-  #zoom-val {{ font-size: 0.72rem; color: var(--muted); min-width: 36px; text-align: center; }}
-
-  /* photo-drag instructions */
-  #photo-hint {{
-    font-size: 0.68rem; color: var(--muted); text-align: center;
-    margin-top: 4px; font-style: italic;
-  }}
-
-  /* Watermark position chips */
-  .wm-positions {{
-    display: grid; grid-template-columns: repeat(3,1fr); gap: 4px;
-  }}
-  .wm-chip {{
-    padding: 5px 4px; border: 1px solid var(--border); border-radius: 5px;
-    font-size: 0.65rem; color: var(--sub); background: var(--bg);
-    text-align: center; cursor: pointer; transition: all 0.12s;
-  }}
-  .wm-chip.active {{ border-color: var(--blue); background: var(--blue-dim); color: var(--blue); font-weight: 500; }}
-  .wm-chip:hover {{ border-color: var(--blue-dim); }}
-
-  #customXY {{ display:none; margin-top:6px; }}
-  .xy-row {{ display:flex; gap:8px; margin-top:4px; }}
-  .xy-row label {{ font-size:0.72rem; color:var(--muted); display:block; margin-bottom:2px; }}
-  .xy-row input[type=number] {{
-    width:100%; padding:5px 8px; border:1px solid var(--border); border-radius:5px;
-    font-size:0.78rem; outline:none;
-  }}
-  .xy-row input[type=number]:focus {{ border-color:var(--blue); }}
+  html,body{{margin:0;padding:0;background:#eef1f5;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:8px;box-sizing:border-box;height:100%;}}
+  #canvasWrap{{box-shadow:0 4px 24px rgba(0,0,0,0.18);display:inline-block;}}
+  canvas{{display:block;}}
+  #hint{{font-family:'Roboto',sans-serif;font-size:0.68rem;color:#999;margin-top:6px;font-style:italic;text-align:center;display:{"block" if canva_bg_file else "none"};}}
 </style>
 </head>
 <body>
-
-<div id="panel">
-
-  <p class="sec-label">Arrière-plan</p>
-  <label class="upload-zone" for="fileIn">
-    📁 Cliquer pour importer une image…
-  </label>
-  <input type="file" id="fileIn" accept="image/*">
-  <p id="photo-hint" style="display:none;">Glisser l'image sur l'aperçu pour la repositionner</p>
-
-  <p class="sec-label">Format</p>
-  <select id="formatSel">
-    <option value="1080x1350">1080 × 1350 — Portrait Instagram</option>
-    <option value="1080x1080">1080 × 1080 — Carré</option>
-    <option value="1080x1920">1080 × 1920 — Stories / Reels</option>
-    <option value="1200x630">1200 × 630 — Paysage Facebook / LinkedIn</option>
-    <option value="1080x566">1080 × 566 — Paysage Twitter/X</option>
-  </select>
-
-  <p class="sec-label">Surtitre</p>
-  <input type="text" id="surIn" value="Métropole de Lyon">
-
-  <p class="sec-label">Titre principal</p>
-  <textarea id="titleIn" rows="3">5 millions de spécimens lâchés dans cette commune : une solution innovante contre le moustique tigre</textarea>
-
-  <hr class="sep">
-
-  <p class="sec-label">Couleur du bloc titre</p>
-  <div class="color-row">
-    <input type="color" id="blockColorIn" value="#0068B1">
-    <span class="color-label">Bloc de fond</span>
-    <input type="color" id="textColorIn" value="#ffffff" style="margin-left:8px;">
-    <span class="color-label">Texte titre</span>
-  </div>
-
-  <p class="sec-label">Couleur du surtitre</p>
-  <div class="color-row">
-    <input type="color" id="surBgIn" value="#ffffff">
-    <span class="color-label">Fond surtitre</span>
-    <input type="color" id="surColorIn" value="#0068B1" style="margin-left:8px;">
-    <span class="color-label">Texte surtitre</span>
-  </div>
-
-  <hr class="sep">
-
-  <p class="sec-label">Position verticale du texte</p>
-  <div class="range-wrap">
-    <input type="range" id="yIn" min="5" max="95" value="72">
-    <span class="range-val" id="yVal">72%</span>
-  </div>
-
-  <p class="sec-label">Position horizontale du texte</p>
-  <div class="range-wrap">
-    <input type="range" id="xIn" min="0" max="100" value="50">
-    <span class="range-val" id="xVal">50%</span>
-  </div>
-
-  <p class="sec-label" id="img-zoom-label" style="display:none;">Zoom photo</p>
-  <div class="range-wrap" id="img-zoom-wrap" style="display:none;">
-    <input type="range" id="imgZoomIn" min="100" max="300" value="100">
-    <span class="range-val" id="imgZoomVal">100%</span>
-  </div>
-
-  <hr class="sep">
-
-  <p class="sec-label">Watermark</p>
-  <div class="wm-positions" id="wmPositions">
-    <div class="wm-chip" data-pos="tl">↖ Haut G</div>
-    <div class="wm-chip" data-pos="tc">↑ Haut C</div>
-    <div class="wm-chip" data-pos="tr" id="wm-tr">↗ Haut D</div>
-    <div class="wm-chip" data-pos="ml">← Mil. G</div>
-    <div class="wm-chip" data-pos="mc">✛ Centre</div>
-    <div class="wm-chip" data-pos="mr">→ Mil. D</div>
-    <div class="wm-chip" data-pos="bl">↙ Bas G</div>
-    <div class="wm-chip" data-pos="bc">↓ Bas C</div>
-    <div class="wm-chip active" data-pos="br">↘ Bas D</div>
-    <div class="wm-chip" data-pos="custom" style="grid-column:span 3;">📍 Coordonnées personnalisées</div>
-  </div>
-
-  <div id="customXY">
-    <div class="xy-row">
-      <div><label>X (px depuis gauche)</label><input type="number" id="wmX" value="0" min="0"></div>
-      <div><label>Y (px depuis haut)</label><input type="number" id="wmY" value="0" min="0"></div>
-    </div>
-  </div>
-
-  <p class="sec-label">Taille watermark</p>
-  <div class="range-wrap">
-    <input type="range" id="wmSizeIn" min="5" max="40" value="13">
-    <span class="range-val" id="wmSizeVal">13%</span>
-  </div>
-  <p class="sec-label">Opacité watermark</p>
-  <div class="range-wrap">
-    <input type="range" id="wmOpacIn" min="0" max="100" value="100">
-    <span class="range-val" id="wmOpacVal">100%</span>
-  </div>
-
-  <hr class="sep">
-
-  <button id="dlBtn">↓  Télécharger le visuel (PNG)</button>
-
-</div>
-
-<!-- ZONE PREVIEW -->
-<div id="preview-area">
-  <span id="preview-label">Aperçu</span>
-  <div id="canvas-wrap">
-    <canvas id="c"></canvas>
-  </div>
-  <div id="zoom-controls">
-    <button class="zoom-btn" id="zoomOut">−</button>
-    <span id="zoom-val">50%</span>
-    <button class="zoom-btn" id="zoomIn">+</button>
-  </div>
-</div>
-
-<!-- SVG GOO FILTER (used off-screen via canvas workaround) -->
-<svg xmlns="http://www.w3.org/2000/svg" style="display:none;">
-  <defs>
-    <filter id="goo">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur"/>
-      <feColorMatrix in="blur" mode="matrix"
-        values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -9" result="goo"/>
-      <feComposite in="SourceGraphic" in2="goo" operator="atop"/>
-    </filter>
-  </defs>
-</svg>
-
-<!-- Off-screen SVG renderer for goo effect -->
-<svg id="gooSvg" xmlns="http://www.w3.org/2000/svg" style="position:absolute;left:-99999px;top:-99999px;"></svg>
-
+<div id="canvasWrap"><canvas id="c"></canvas></div>
+<div id="hint">Glisser pour repositionner la photo</div>
 <script>
-// ─── CONSTANTS ─────────────────────────────────────────────────────
+const CANVAS_W = {canva_w};
+const CANVAS_H = {canva_h};
+const BG_B64   = "{_canva_bg_b64}";
+const BG_MIME  = "{_canva_bg_mime}";
 const WM_B64   = "{_wm_b64_canva}";
 const WM_MIME  = "{_wm_mime_canva}";
-const MARGIN_R = 0.04; // marge relative pour watermark
+const TITLE    = {_js_title};
+const SURTITRE = {_js_sur};
+const Y_PCT    = {canva_y} / 100;
+const X_PCT    = {canva_x} / 100;
+const IMG_ZOOM = {canva_img_zoom} / 100;
+const BLOCK_COLOR = "{canva_block_color}";
+const TEXT_COLOR  = "{canva_text_color}";
+const SUR_BG      = "{canva_sur_bg}";
+const SUR_COLOR   = "{canva_sur_color}";
+const WM_SIZE_PCT = {canva_wm_size} / 100;
+const WM_OPAC     = {canva_wm_opac} / 100;
+const WM_POS      = "{wm_opts_cv["position"]}";
+const WM_CX       = {wm_opts_cv["custom_x"]};
+const WM_CY       = {wm_opts_cv["custom_y"]};
+const MARGIN_R    = 0.04;
 
-// ─── STATE ─────────────────────────────────────────────────────────
-let canvasW = 1080, canvasH = 1350;
-let uiZoom  = 0.5;  // zoom d'affichage (pas export)
-let bgImg   = null;
-let bgOffX  = 0, bgOffY = 0, bgZoom = 1.0; // déplacement photo
-let wmImg   = null;
-let wmPos   = "br";
-let isDragging = false, dragStartX, dragStartY, dragBgX, dragBgY;
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
 
-// ─── ELEMENTS ──────────────────────────────────────────────────────
-const canvas    = document.getElementById('c');
-const ctx       = canvas.getContext('2d');
-const fileIn    = document.getElementById('fileIn');
-const surIn     = document.getElementById('surIn');
-const titleIn   = document.getElementById('titleIn');
-const yIn       = document.getElementById('yIn');
-const xIn       = document.getElementById('xIn');
-const yVal      = document.getElementById('yVal');
-const xVal      = document.getElementById('xVal');
-const imgZoomIn = document.getElementById('imgZoomIn');
-const imgZoomVal= document.getElementById('imgZoomVal');
-const blockColorIn = document.getElementById('blockColorIn');
-const textColorIn  = document.getElementById('textColorIn');
-const surBgIn   = document.getElementById('surBgIn');
-const surColorIn= document.getElementById('surColorIn');
-const wmSizeIn  = document.getElementById('wmSizeIn');
-const wmSizeVal = document.getElementById('wmSizeVal');
-const wmOpacIn  = document.getElementById('wmOpacIn');
-const wmOpacVal = document.getElementById('wmOpacVal');
-const wmXIn     = document.getElementById('wmX');
-const wmYIn     = document.getElementById('wmY');
-const formatSel = document.getElementById('formatSel');
-const dlBtn     = document.getElementById('dlBtn');
-const zoomInBtn = document.getElementById('zoomIn');
-const zoomOutBtn= document.getElementById('zoomOut');
-const zoomValEl = document.getElementById('zoom-val');
+// Fit canvas into ~560px wide preview
+const PREVIEW_W = Math.min(560, window.innerWidth - 20);
+const UI_ZOOM   = PREVIEW_W / CANVAS_W;
+canvas.width  = CANVAS_W;
+canvas.height = CANVAS_H;
+canvas.style.width  = (CANVAS_W * UI_ZOOM) + 'px';
+canvas.style.height = (CANVAS_H * UI_ZOOM) + 'px';
 
-// ─── INIT CANVAS SIZE ──────────────────────────────────────────────
-function applyFormat() {{
-  const [w, h] = formatSel.value.split('x').map(Number);
-  canvasW = w; canvasH = h;
-  bgOffX = 0; bgOffY = 0; bgZoom = 1.0;
-  if (imgZoomIn) {{ imgZoomIn.value = 100; imgZoomVal.textContent = "100%"; }}
-  applyUiZoom();
-  render();
+let bgImg = null, wmImg = null;
+let bgOffX = 0, bgOffY = 0;
+let isDragging = false, dragSX, dragSY, dragBX, dragBY;
+
+function roundRect(c, x, y, w, h, r, fill) {{
+  c.beginPath();
+  c.moveTo(x+r,y); c.lineTo(x+w-r,y); c.arcTo(x+w,y,x+w,y+r,r);
+  c.lineTo(x+w,y+h-r); c.arcTo(x+w,y+h,x+w-r,y+h,r);
+  c.lineTo(x+r,y+h); c.arcTo(x,y+h,x,y+h-r,r);
+  c.lineTo(x,y+r); c.arcTo(x,y,x+r,y,r);
+  c.closePath(); c.fillStyle=fill; c.fill();
 }}
 
-function applyUiZoom() {{
-  canvas.style.width  = (canvasW * uiZoom) + 'px';
-  canvas.style.height = (canvasH * uiZoom) + 'px';
-  canvas.width  = canvasW;
-  canvas.height = canvasH;
-  zoomValEl.textContent = Math.round(uiZoom * 100) + '%';
-}}
-
-// ─── WATERMARK LOAD ────────────────────────────────────────────────
-if (WM_B64) {{
-  wmImg = new Image();
-  wmImg.src = 'data:' + WM_MIME + ';base64,' + WM_B64;
-  wmImg.onload = render;
-}}
-
-// ─── RENDER ────────────────────────────────────────────────────────
 function render() {{
-  ctx.clearRect(0, 0, canvasW, canvasH);
+  ctx.clearRect(0,0,CANVAS_W,CANVAS_H);
+  ctx.fillStyle='#222'; ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
 
-  // 1. Background
-  ctx.fillStyle = '#222';
-  ctx.fillRect(0, 0, canvasW, canvasH);
+  // Background
   if (bgImg) {{
-    const z = bgZoom;
-    const iw = bgImg.naturalWidth  * z;
-    const ih = bgImg.naturalHeight * z;
-    // fit-cover base scale
-    const scaleX = canvasW / bgImg.naturalWidth;
-    const scaleY = canvasH / bgImg.naturalHeight;
-    const baseScale = Math.max(scaleX, scaleY);
-    const dw = bgImg.naturalWidth  * baseScale * z;
-    const dh = bgImg.naturalHeight * baseScale * z;
-    const dx = (canvasW - dw) / 2 + bgOffX;
-    const dy = (canvasH - dh) / 2 + bgOffY;
+    const scaleX = CANVAS_W / bgImg.naturalWidth;
+    const scaleY = CANVAS_H / bgImg.naturalHeight;
+    const base   = Math.max(scaleX, scaleY) * IMG_ZOOM;
+    const dw = bgImg.naturalWidth  * base;
+    const dh = bgImg.naturalHeight * base;
+    const dx = (CANVAS_W - dw) / 2 + bgOffX;
+    const dy = (CANVAS_H - dh) / 2 + bgOffY;
     ctx.drawImage(bgImg, dx, dy, dw, dh);
   }}
 
-  // 2. Text overlay
-  drawTextBlock();
+  // Text block
+  const fs     = Math.round(CANVAS_W * 0.05);
+  const fsSur  = Math.round(CANVAS_W * 0.03);
+  const pad    = Math.round(CANVAS_W * 0.017);
+  const radius = Math.round(CANVAS_W * 0.019);
+  const lh     = Math.round(fs * 1.25);
+  const overlap= Math.round(CANVAS_W * 0.003);
+  const cx     = X_PCT * CANVAS_W;
 
-  // 3. Watermark
-  drawWatermark();
-}}
-
-// ─── TEXT BLOCK (goo morphing via offscreen SVG→canvas) ─────────────
-function drawTextBlock() {{
-  const cx      = (parseFloat(xIn.value) / 100) * canvasW;
-  const yPct    = parseFloat(yIn.value) / 100;
-  const blockColor = blockColorIn.value;
-  const textColor  = textColorIn.value;
-  const surBg      = surBgIn.value;
-  const surColor   = surColorIn.value;
-
-  // Font sizes proportional to canvas width
-  const fs      = Math.round(canvasW * 0.05);    // titre: ~54px at 1080
-  const fsSur   = Math.round(canvasW * 0.03);    // surtitre: ~32px
-  const pad     = Math.round(canvasW * 0.017);   // padding horizontal
-  const radius  = Math.round(canvasW * 0.019);   // border-radius
-  const lh      = Math.round(fs * 1.15);         // line-height
-  const overlap = Math.round(canvasW * 0.001);   // overlap entre lignes
-
-  // Découpage automatique (max ~28 chars/ligne)
-  const words = titleIn.value.split(' ');
-  let lines = [], cur = '';
+  // Word wrap (~28 chars/line)
+  const words = TITLE.split(' ');
+  let lines=[], cur='';
   words.forEach(w => {{
-    if ((cur + w).length < 28) cur += (cur ? ' ' : '') + w;
-    else {{ lines.push(cur); cur = w; }}
+    if ((cur+w).length < 28) cur += (cur?' ':'')+w;
+    else {{ lines.push(cur); cur=w; }}
   }});
-  if (cur) lines.push(cur);
+  if(cur) lines.push(cur);
 
-  // Mesure widths
-  ctx.font = `bold ${{fs}}px 'Roboto Condensed', 'Roboto', sans-serif`;
-  const lineWidths = lines.map(l => ctx.measureText(l).width + pad * 2);
-  const maxW = Math.max(...lineWidths);
+  ctx.font = `bold ${{fs}}px 'Roboto Condensed','Roboto',sans-serif`;
+  const lineWidths = lines.map(l => ctx.measureText(l).width + pad*2);
 
-  // Surtitre measure
-  ctx.font = `bold ${{fsSur}}px 'Roboto', sans-serif`;
-  const surW = ctx.measureText(surIn.value).width + pad * 2;
-  const surH = fsSur + pad * 0.8;
+  ctx.font = `bold ${{fsSur}}px 'Roboto',sans-serif`;
+  const surW = ctx.measureText(SURTITRE).width + pad*2;
+  const surH = fsSur + Math.round(pad*0.8);
 
-  // Block total height
-  const totalBlockH = lh * lines.length;
-  const blockTop = canvasH * yPct - totalBlockH / 2;
+  const totalH  = lh * lines.length;
+  const blockTop = CANVAS_H * Y_PCT - totalH/2;
 
-  // DRAW VIA OFFSCREEN SVG for goo morphing
-  // Build SVG with foreignObject or native SVG shapes
-  // We use a direct canvas approach with rounded rects + negative margin trick
-  // (true SVG goo would need filter rendering — we approximate with
-  //  overlapping rounded rects and a tiny gaussian blur between them)
-
-  // ── Surtitre badge ──
-  const surX = cx - surW / 2;
-  const surY = blockTop - surH - Math.round(canvasW * 0.004);
-  roundRect(ctx, surX, surY, surW, surH, radius, surBg);
-  ctx.fillStyle = surColor;
-  ctx.font = `bold ${{fsSur}}px 'Roboto', sans-serif`;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(surIn.value, surX + pad, surY + surH / 2);
-
-  // ── Titre lines with goo morphing ──
-  // Draw in a temporary offscreen canvas with blur, then composite
-  const tmpOff = new OffscreenCanvas ? new OffscreenCanvas(canvasW, canvasH) : document.createElement('canvas');
-  if (!OffscreenCanvas) {{ tmpOff.width = canvasW; tmpOff.height = canvasH; }}
-  const tmpCtx = tmpOff.getContext('2d');
-
-  // Draw lines with -1px overlap on offscreen
-  lines.forEach((line, i) => {{
-    const lw = ctx.measureText ? lineWidths[i] : maxW;
-    const lx = cx - lw / 2;
-    const ly = blockTop + i * lh - (i > 0 ? overlap : 0);
-    tmpCtx.font = `bold ${{fs}}px 'Roboto Condensed', 'Roboto', sans-serif`;
-    roundRect(tmpCtx, lx, ly, lw, lh + overlap * 2, radius, blockColor);
-  }});
-
-  // Apply goo effect via blur + threshold on alpha channel
-  const imgData = tmpCtx.getImageData(0, 0, canvasW, canvasH);
-  applyGooFilter(tmpCtx, canvasW, canvasH, imgData);
-  ctx.drawImage(tmpOff, 0, 0);
-
-  // Redraw text on top (crisp)
-  ctx.font = `bold ${{fs}}px 'Roboto Condensed', 'Roboto', sans-serif`;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = textColor;
-  lines.forEach((line, i) => {{
+  // ── Offscreen goo (blur+threshold) ──
+  const off = document.createElement('canvas');
+  off.width = CANVAS_W; off.height = CANVAS_H;
+  const octx = off.getContext('2d');
+  octx.font = `bold ${{fs}}px 'Roboto Condensed','Roboto',sans-serif`;
+  lines.forEach((line,i) => {{
     const lw = lineWidths[i];
-    const lx = cx - lw / 2;
-    const ly = blockTop + i * lh - (i > 0 ? overlap : 0);
-    ctx.fillText(line, lx + pad, ly + lh / 2);
+    const lx = cx - lw/2;
+    const ly = blockTop + i*lh - (i>0?overlap:0);
+    roundRect(octx, lx, ly, lw, lh+overlap, radius, BLOCK_COLOR);
   }});
-}}
 
-// Goo: gaussian blur + colour-matrix threshold on alpha
-function applyGooFilter(tmpCtx, W, H, imgData) {{
-  // Write to temp canvas, apply CSS filter, read back
-  // (CSS filter works on canvas via drawImage trick)
-  const tmp2 = document.createElement('canvas');
-  tmp2.width = W; tmp2.height = H;
-  const t2 = tmp2.getContext('2d');
-  t2.putImageData(imgData, 0, 0);
-
-  // Blur + threshold via CSS filter on image bitmap
-  tmpCtx.clearRect(0, 0, W, H);
-  tmpCtx.filter = 'blur(10px)';
-  tmpCtx.drawImage(tmp2, 0, 0);
-  tmpCtx.filter = 'none';
-
-  // Threshold on alpha: pixels with alpha>128 → full block color (already filled)
-  // This mimics feColorMatrix alpha boost
-  const d = tmpCtx.getImageData(0, 0, W, H);
-  const px = d.data;
-  for (let i = 3; i < px.length; i += 4) {{
-    px[i] = px[i] > 60 ? 255 : 0;
+  // blur
+  const off2 = document.createElement('canvas');
+  off2.width=CANVAS_W; off2.height=CANVAS_H;
+  const o2=off2.getContext('2d');
+  o2.filter='blur(10px)';
+  o2.drawImage(off,0,0);
+  o2.filter='none';
+  // threshold
+  const id=o2.getImageData(0,0,CANVAS_W,CANVAS_H);
+  const px=id.data;
+  const [br,bg2,bb] = hexToRgb(BLOCK_COLOR);
+  for(let i=0;i<px.length;i+=4){{
+    if(px[i+3]>60){{ px[i]=br; px[i+1]=bg2; px[i+2]=bb; px[i+3]=255; }}
+    else px[i+3]=0;
   }}
-  tmpCtx.putImageData(d, 0, 0);
-}}
+  o2.putImageData(id,0,0);
+  ctx.drawImage(off2,0,0);
 
-// ─── WATERMARK DRAW ────────────────────────────────────────────────
-function drawWatermark() {{
-  if (!wmImg) return;
-  const sizeRatio = parseFloat(wmSizeIn.value) / 100;
-  const diag = Math.sqrt(canvasW ** 2 + canvasH ** 2);
-  const wmW  = diag * sizeRatio;
-  const wmH  = (wmImg.naturalHeight / wmImg.naturalWidth) * wmW;
-  const mx   = canvasW * MARGIN_R;
-  const my   = canvasH * MARGIN_R;
-  const opac = parseFloat(wmOpacIn.value) / 100;
+  // ── Surtitre ──
+  const surX = cx - surW/2;
+  const surY = blockTop - surH - Math.round(CANVAS_W*0.006);
+  roundRect(ctx, surX, surY, surW, surH, radius, SUR_BG);
+  ctx.fillStyle = SUR_COLOR;
+  ctx.font = `bold ${{fsSur}}px 'Roboto',sans-serif`;
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillText(SURTITRE, surX+pad, surY+surH/2);
 
-  let wx, wy;
-  switch(wmPos) {{
-    case 'tl': wx = mx;                 wy = my;                 break;
-    case 'tc': wx = (canvasW-wmW)/2;    wy = my;                 break;
-    case 'tr': wx = canvasW-wmW-mx;     wy = my;                 break;
-    case 'ml': wx = mx;                 wy = (canvasH-wmH)/2;    break;
-    case 'mc': wx = (canvasW-wmW)/2;    wy = (canvasH-wmH)/2;    break;
-    case 'mr': wx = canvasW-wmW-mx;     wy = (canvasH-wmH)/2;    break;
-    case 'bl': wx = mx;                 wy = canvasH-wmH-my;     break;
-    case 'bc': wx = (canvasW-wmW)/2;    wy = canvasH-wmH-my;     break;
-    case 'br': wx = canvasW-wmW-mx;     wy = canvasH-wmH-my;     break;
-    case 'custom':
-      wx = parseInt(wmXIn.value) || 0;
-      wy = parseInt(wmYIn.value) || 0;
-      break;
-    default:   wx = canvasW-wmW-mx;     wy = canvasH-wmH-my;
+  // ── Titre text (crisp, on top) ──
+  ctx.font = `bold ${{fs}}px 'Roboto Condensed','Roboto',sans-serif`;
+  ctx.fillStyle = TEXT_COLOR;
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  lines.forEach((line,i)=>{{
+    const lw=lineWidths[i];
+    const lx=cx-lw/2;
+    const ly=blockTop+i*lh-(i>0?overlap:0);
+    ctx.fillText(line, lx+pad, ly+lh/2);
+  }});
+
+  // ── Watermark ──
+  if(wmImg) {{
+    const diag = Math.sqrt(CANVAS_W**2+CANVAS_H**2);
+    const wmW  = diag * WM_SIZE_PCT;
+    const wmH  = (wmImg.naturalHeight/wmImg.naturalWidth)*wmW;
+    const mx   = CANVAS_W*MARGIN_R, my=CANVAS_H*MARGIN_R;
+    let wx,wy;
+    const posMap={{
+      'Haut gauche':   [mx, my],
+      'Haut centre':   [(CANVAS_W-wmW)/2, my],
+      'Haut droite':   [CANVAS_W-wmW-mx, my],
+      'Milieu gauche': [mx, (CANVAS_H-wmH)/2],
+      'Centre':        [(CANVAS_W-wmW)/2, (CANVAS_H-wmH)/2],
+      'Milieu droite': [CANVAS_W-wmW-mx, (CANVAS_H-wmH)/2],
+      'Bas gauche':    [mx, CANVAS_H-wmH-my],
+      'Bas centre':    [(CANVAS_W-wmW)/2, CANVAS_H-wmH-my],
+      'Bas droite':    [CANVAS_W-wmW-mx, CANVAS_H-wmH-my],
+      'Coordonnées personnalisées': [WM_CX, WM_CY],
+    }};
+    [wx,wy] = posMap[WM_POS] || [CANVAS_W-wmW-mx, CANVAS_H-wmH-my];
+    ctx.globalAlpha = WM_OPAC;
+    ctx.drawImage(wmImg, wx, wy, wmW, wmH);
+    ctx.globalAlpha = 1.0;
   }}
-
-  ctx.globalAlpha = opac;
-  ctx.drawImage(wmImg, wx, wy, wmW, wmH);
-  ctx.globalAlpha = 1.0;
 }}
 
-// ─── HELPERS ───────────────────────────────────────────────────────
-function roundRect(c, x, y, w, h, r, fill) {{
-  c.beginPath();
-  c.moveTo(x + r, y);
-  c.lineTo(x + w - r, y);
-  c.quadraticCurveTo(x + w, y, x + w, y + r);
-  c.lineTo(x + w, y + h - r);
-  c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  c.lineTo(x + r, y + h);
-  c.quadraticCurveTo(x, y + h, x, y + h - r);
-  c.lineTo(x, y + r);
-  c.quadraticCurveTo(x, y, x + r, y);
-  c.closePath();
-  c.fillStyle = fill;
-  c.fill();
+function hexToRgb(hex) {{
+  const r=parseInt(hex.slice(1,3),16);
+  const g=parseInt(hex.slice(3,5),16);
+  const b=parseInt(hex.slice(5,7),16);
+  return [r,g,b];
 }}
 
-// ─── EVENTS ────────────────────────────────────────────────────────
-fileIn.onchange = e => {{
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {{
-    bgImg = new Image();
-    bgImg.onload = () => {{ bgOffX = 0; bgOffY = 0; bgZoom = 1.0; imgZoomIn.value = 100; imgZoomVal.textContent = '100%'; document.getElementById('img-zoom-label').style.display=''; document.getElementById('img-zoom-wrap').style.display=''; document.getElementById('photo-hint').style.display=''; render(); }};
-    bgImg.src = ev.target.result;
-  }};
-  reader.readAsDataURL(file);
-}};
+// Load images then render
+let loaded = 0;
+const toLoad = (BG_B64?1:0) + (WM_B64?1:0);
+function onLoad() {{ loaded++; if(loaded>=toLoad||toLoad===0) render(); }}
+if(!toLoad) render();
 
-[surIn, titleIn, yIn, xIn, blockColorIn, textColorIn, surBgIn, surColorIn].forEach(el => {{
-  el.oninput = () => {{ yVal.textContent = yIn.value + '%'; xVal.textContent = xIn.value + '%'; render(); }};
+if(BG_B64){{
+  bgImg = new Image();
+  bgImg.onload = onLoad;
+  bgImg.src = 'data:'+BG_MIME+';base64,'+BG_B64;
+}}
+if(WM_B64){{
+  wmImg = new Image();
+  wmImg.onload = onLoad;
+  wmImg.src = 'data:'+WM_MIME+';base64,'+WM_B64;
+}}
+
+// Drag to reposition photo
+canvas.addEventListener('mousedown', e=>{{
+  if(!bgImg) return;
+  isDragging=true; dragSX=e.clientX; dragSY=e.clientY; dragBX=bgOffX; dragBY=bgOffY;
+  canvas.style.cursor='grabbing';
 }});
-
-imgZoomIn.oninput = () => {{
-  bgZoom = parseFloat(imgZoomIn.value) / 100;
-  imgZoomVal.textContent = imgZoomIn.value + '%';
-  render();
-}};
-
-wmSizeIn.oninput = () => {{ wmSizeVal.textContent = wmSizeIn.value + '%'; render(); }};
-wmOpacIn.oninput = () => {{ wmOpacVal.textContent = wmOpacIn.value + '%'; render(); }};
-wmXIn.oninput = render; wmYIn.oninput = render;
-
-formatSel.onchange = applyFormat;
-
-// Watermark position chips
-document.querySelectorAll('.wm-chip').forEach(chip => {{
-  chip.onclick = () => {{
-    document.querySelectorAll('.wm-chip').forEach(c => c.classList.remove('active'));
-    chip.classList.add('active');
-    wmPos = chip.dataset.pos;
-    document.getElementById('customXY').style.display = wmPos === 'custom' ? '' : 'none';
-    render();
-  }};
-}});
-
-// Zoom controls
-zoomInBtn.onclick  = () => {{ uiZoom = Math.min(uiZoom + 0.1, 1.5); applyUiZoom(); }};
-zoomOutBtn.onclick = () => {{ uiZoom = Math.max(uiZoom - 0.1, 0.2); applyUiZoom(); }};
-
-// Photo drag
-canvas.addEventListener('mousedown', e => {{
-  if (!bgImg) return;
-  isDragging = true;
-  dragStartX = e.clientX; dragStartY = e.clientY;
-  dragBgX = bgOffX; dragBgY = bgOffY;
-  canvas.style.cursor = 'grabbing';
-}});
-window.addEventListener('mousemove', e => {{
-  if (!isDragging) return;
-  const scale = canvasW / (canvasW * uiZoom); // convert screen px to canvas px
-  bgOffX = dragBgX + (e.clientX - dragStartX) * scale;
-  bgOffY = dragBgY + (e.clientY - dragStartY) * scale;
+window.addEventListener('mousemove', e=>{{
+  if(!isDragging) return;
+  const scale = 1/UI_ZOOM;
+  bgOffX = dragBX+(e.clientX-dragSX)*scale;
+  bgOffY = dragBY+(e.clientY-dragSY)*scale;
   render();
 }});
-window.addEventListener('mouseup', () => {{
-  isDragging = false;
-  canvas.style.cursor = bgImg ? 'grab' : 'default';
+window.addEventListener('mouseup',()=>{{
+  isDragging=false;
+  canvas.style.cursor=bgImg?'grab':'default';
 }});
-canvas.style.cursor = 'default';
-
-// Download full-res
-dlBtn.onclick = () => {{
-  const link = document.createElement('a');
-  link.download = 'visuel_luluflix.png';
-  link.href = canvas.toDataURL('image/png');
-  link.click();
-}};
-
-// ─── INIT ──────────────────────────────────────────────────────────
-applyFormat();
-render();
+if(bgImg) canvas.style.cursor='grab';
 </script>
 </body>
-</html>""", height=780, scrolling=False)
+</html>""", height=760, scrolling=False)
 
 
 # FOOTER
