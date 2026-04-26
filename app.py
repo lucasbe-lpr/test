@@ -471,7 +471,7 @@ with open(LOGO_FILE, "rb") as _f:
 st.markdown(f"""
 <div class="site-header">
   <img src="data:image/png;base64,{_logo_b64}" alt="Luluflix" />
-  <span class="site-header-right">version <code>3.0</code></span>
+  <span class="site-header-right">version <code>4.0</code></span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -819,7 +819,7 @@ for k in ["thumbnail", "rendered_bytes", "_last_video_name",
 
 tab_v, tab_p, tab_s, tab_cut, tab_merge, tab_audio, tab_crop, tab_canva = st.tabs([
     "Watermark vidéo", "Watermark photo", "Capture d'écran",
-    "Couper", "Fusionner", "Son", "Recadrer", "Générateur de visuels"
+    "Couper", "Fusionner", "Son", "Recadrer", "Template RS"
 ])
 
 
@@ -1713,11 +1713,11 @@ with tab_canva:
 
         # ── Textes ──────────────────────────────────────────────────
         st.markdown('<p class="section-label">Surtitre</p>', unsafe_allow_html=True)
-        canva_sur = st.text_input("Surtitre", value="Métropole de Lyon", key="canva_sur", label_visibility="collapsed")
+        canva_sur = st.text_input("Surtitre", value="Modifier le surtitre", key="canva_sur", label_visibility="collapsed")
 
         st.markdown('<p class="section-label">Titre principal</p>', unsafe_allow_html=True)
         canva_title = st.text_area(
-            "Titre", value="5 millions de spécimens lâchés dans cette commune : une solution innovante contre le moustique tigre",
+            "Titre", value="Modifier le titre",
             key="canva_title", label_visibility="collapsed", height=80
         )
 
@@ -2136,7 +2136,7 @@ if(bgImg) canvas.style.cursor='grab';
 # FOOTER
 st.markdown("""
 <div class="site-footer">
-  <span class="footer-name">Dernière màj le <i>17/04/2026</i></span>
+  <span class="footer-name">Dernière màj le <i>26/04/2026</i></span>
   <span>Envoyez-moi <a href="mailto:lucas.bessonnat@leprogres.fr">les messages d'erreur par mail</a>.<br>
   Après plusieurs utilisations, appuyez sur la touche <code>F5</code> pour faire du bien au cache de l'app.</br>
   <b>Aucune donnée n'est envoyée sur un serveur</b> <i>(tout tourne localement dans votre navigateur).</i>
