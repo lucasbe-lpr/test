@@ -819,7 +819,7 @@ for k in ["thumbnail", "rendered_bytes", "_last_video_name",
 
 tab_v, tab_p, tab_s, tab_cut, tab_merge, tab_audio, tab_crop, tab_canva = st.tabs([
     "Watermark vidéo", "Watermark photo", "Capture d'écran",
-    "Couper", "Fusionner", "Son", "Recadrer", "Canva"
+    "Couper", "Fusionner", "Son", "Recadrer", "Générateur de visuels"
 ])
 
 
@@ -1633,309 +1633,322 @@ with tab_crop:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# CANVA — GÉNÉRATEUR DE VISUELS RÉSEAUX SOCIAUX
+# GÉNÉRATEUR DE VISUELS (CANVA)
 # ═══════════════════════════════════════════════════════════════════
 
 with tab_canva:
-
-    # Encode le watermark par défaut en base64 pour injection dans le JS
+    # Encode watermark in base64 for use inside the HTML component
     try:
         with open(DEFAULT_WM_FILE, "rb") as _wm_f:
-            _default_wm_b64 = _b64h.b64encode(_wm_f.read()).decode()
-        _default_wm_src = f"data:image/png;base64,{_default_wm_b64}"
+            _wm_b64_canva = _b64h.b64encode(_wm_f.read()).decode()
+        _wm_mime_canva = "image/png"
     except Exception:
-        _default_wm_src = ""
+        _wm_b64_canva = ""
+        _wm_mime_canva = "image/png"
 
-    components.html(f"""
-<!DOCTYPE html>
+    components.html(f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <style>
-  /* ── Reset & base ── */
+  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&family=Roboto+Condensed:wght@400;700&display=swap');
+  :root {{
+    --blue: #0068B1;
+    --blue-dim: #e8f2fb;
+    --white: #ffffff;
+    --bg: #fafafa;
+    --ink: #111111;
+    --sub: #555555;
+    --muted: #999999;
+    --border: #e4e4e4;
+    --border-mid: #d0d0d0;
+    --green: #166534;
+  }}
   *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
   body {{
-    font-family: 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-    background: transparent;
-    color: #111;
-    font-size: 13px;
+    font-family: 'Roboto', sans-serif;
+    background: var(--white);
+    color: var(--ink);
+    display: flex;
+    gap: 0;
+    height: 100vh;
+    overflow: hidden;
   }}
 
-  /* ── Layout principal : panneau gauche | aperçu ── */
-  .canva-layout {{
-    display: flex;
-    gap: 2rem;
-    align-items: flex-start;
-    padding: 1.2rem 0 0.5rem;
-  }}
-  .canva-controls {{
+  /* ── PANEL GAUCHE (contrôles) ── */
+  #panel {{
     width: 320px;
     flex-shrink: 0;
-    border-right: 1px solid #e4e4e4;
-    padding-right: 2rem;
-  }}
-  .canva-preview-col {{
-    flex: 1;
-    min-width: 0;
-  }}
-
-  /* ── Labels de section (reprend .section-label de l'app) ── */
-  .sec {{
-    font-size: 0.68rem;
-    font-weight: 500;
-    color: #999;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    margin-bottom: 0.45rem;
-    margin-top: 1.1rem;
-    display: block;
-  }}
-  .sec:first-child {{ margin-top: 0; }}
-
-  /* ── Champs texte / couleur ── */
-  input[type=text], textarea, select {{
-    width: 100%;
-    padding: 7px 10px;
-    border: 1px solid #e4e4e4;
-    border-radius: 6px;
-    font-family: inherit;
-    font-size: 13px;
-    color: #111;
-    background: #fafafa;
-    transition: border-color 0.12s;
-    outline: none;
-  }}
-  input[type=text]:focus,
-  textarea:focus,
-  select:focus {{ border-color: #0068B1; background: #fff; }}
-  textarea {{ resize: vertical; min-height: 72px; }}
-
-  /* ── Range sliders ── */
-  input[type=range] {{
-    width: 100%;
-    accent-color: #0068B1;
-    cursor: pointer;
-  }}
-  .range-row {{
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px 18px;
+    background: var(--white);
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    flex-direction: column;
+    gap: 0;
+  }}
+
+  .sec-label {{
+    font-size: 0.62rem; font-weight: 500; color: var(--muted);
+    letter-spacing: 0.07em; text-transform: uppercase;
+    margin-bottom: 6px; margin-top: 14px;
+  }}
+  .sec-label:first-child {{ margin-top: 0; }}
+
+  /* File upload zone */
+  .upload-zone {{
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg); padding: 10px 12px;
+    font-size: 0.78rem; color: var(--muted);
+    cursor: pointer; text-align: center;
+    transition: border-color 0.15s, background 0.15s;
+  }}
+  .upload-zone:hover {{ border-color: var(--blue); background: var(--blue-dim); color: var(--blue); }}
+  #fileIn {{ display: none; }}
+
+  /* Text inputs */
+  input[type=text], textarea {{
+    width: 100%; padding: 7px 10px;
+    border: 1px solid var(--border); border-radius: 6px;
+    font-family: 'Roboto', sans-serif; font-size: 0.82rem; color: var(--ink);
+    background: var(--white); resize: none; outline: none;
+    transition: border-color 0.15s;
+  }}
+  input[type=text]:focus, textarea:focus {{ border-color: var(--blue); }}
+
+  /* Range slider */
+  .range-wrap {{ display: flex; align-items: center; gap: 8px; }}
+  input[type=range] {{
+    flex: 1; -webkit-appearance: none; height: 3px;
+    background: var(--border); border-radius: 99px; outline: none;
+  }}
+  input[type=range]::-webkit-slider-thumb {{
+    -webkit-appearance: none; width: 14px; height: 14px;
+    background: var(--blue); border-radius: 50%; cursor: pointer;
   }}
   .range-val {{
-    font-size: 0.72rem;
-    color: #555;
-    width: 32px;
-    text-align: right;
-    flex-shrink: 0;
+    font-size: 0.72rem; color: var(--muted); min-width: 28px; text-align: right;
   }}
 
-  /* ── Colour pickers en ligne ── */
-  .color-row {{
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-  }}
-  .color-row label {{ font-size: 0.72rem; color: #555; white-space: nowrap; }}
+  /* Color input */
+  .color-row {{ display: flex; align-items: center; gap: 8px; }}
   input[type=color] {{
-    width: 32px; height: 28px;
-    border: 1px solid #e4e4e4;
-    border-radius: 4px;
-    padding: 1px 2px;
-    cursor: pointer;
-    background: #fff;
+    width: 32px; height: 32px; border: 1px solid var(--border);
+    border-radius: 6px; cursor: pointer; padding: 2px; background: var(--white);
   }}
+  .color-label {{ font-size: 0.78rem; color: var(--sub); }}
 
-  /* ── Checkbox ── */
-  .check-row {{
+  /* Select */
+  select {{
+    width: 100%; padding: 7px 10px;
+    border: 1px solid var(--border); border-radius: 6px;
+    font-family: 'Roboto', sans-serif; font-size: 0.82rem; color: var(--ink);
+    background: var(--white); outline: none; cursor: pointer;
+    transition: border-color 0.15s;
+  }}
+  select:focus {{ border-color: var(--blue); }}
+
+  /* Download button */
+  #dlBtn {{
+    width: 100%; background: #16a34a; border: none;
+    color: #fff; font-family: 'Roboto', sans-serif;
+    font-size: 0.85rem; font-weight: 500;
+    padding: 0 1.4rem; height: 38px; border-radius: 999px;
+    cursor: pointer; transition: background 0.15s, transform 0.1s;
+    box-shadow: 0 1px 2px rgba(22,163,74,0.18), 0 2px 6px rgba(22,163,74,0.1);
+    margin-top: 6px;
+  }}
+  #dlBtn:hover {{ background: #15803d; transform: translateY(-1px); }}
+
+  /* Separator */
+  .sep {{ border: none; border-top: 1px solid var(--border); margin: 12px 0; }}
+
+  /* ── ZONE D'APERÇU droite ── */
+  #preview-area {{
+    flex: 1;
+    background: #eef1f5;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.45rem;
-    margin-top: 0.3rem;
-  }}
-  .check-row input {{ width: auto; accent-color: #0068B1; cursor: pointer; }}
-  .check-row label {{ font-size: 0.78rem; color: #555; cursor: pointer; }}
-
-  /* ── Bouton télécharger ── */
-  .dl-btn {{
-    display: block;
-    width: 100%;
-    margin-top: 1.1rem;
-    padding: 0 1.2rem;
-    height: 36px;
-    background: #16a34a;
-    color: #fff;
-    border: none;
-    border-radius: 999px;
-    font-family: inherit;
-    font-size: 0.85rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.15s, transform 0.1s;
-    box-shadow: 0 1px 2px rgba(22,163,74,.18), 0 2px 6px rgba(22,163,74,.1);
-  }}
-  .dl-btn:hover {{ background: #15803d; transform: translateY(-1px); }}
-  .dl-btn:active {{ transform: translateY(0); }}
-
-  /* ── Zone aperçu (canvas wrapper) ── */
-  .preview-label {{
-    font-size: 0.68rem;
-    font-weight: 500;
-    color: #999;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    margin-bottom: 0.5rem;
-    display: block;
-  }}
-  .canvas-wrap {{
-    position: relative;
-    width: 100%;
-    border: 1px solid #e4e4e4;
-    border-radius: 10px;
+    justify-content: center;
     overflow: hidden;
-    background: #222;
-    /* ratio 1080×1350 = 4:5 */
-    aspect-ratio: 1080 / 1350;
-  }}
-  canvas {{
-    display: block;
-    width: 100%;
-    height: 100%;
+    position: relative;
   }}
 
-  /* ── Séparateur fin ── */
-  hr.thin {{
-    border: none;
-    border-top: 1px solid #e4e4e4;
-    margin: 1rem 0;
+  #preview-label {{
+    position: absolute; top: 12px; left: 16px;
+    font-size: 0.62rem; font-weight: 500; color: var(--muted);
+    letter-spacing: 0.07em; text-transform: uppercase;
   }}
+
+  #canvas-wrap {{
+    position: relative;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+  }}
+
+  canvas {{ display: block; }}
+
+  /* ── ZOOM controls ── */
+  #zoom-controls {{
+    position: absolute; bottom: 14px; right: 16px;
+    display: flex; align-items: center; gap: 6px;
+  }}
+  .zoom-btn {{
+    width: 28px; height: 28px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--white);
+    color: var(--sub); font-size: 1rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.12s, color 0.12s;
+  }}
+  .zoom-btn:hover {{ border-color: var(--blue); color: var(--blue); }}
+  #zoom-val {{ font-size: 0.72rem; color: var(--muted); min-width: 36px; text-align: center; }}
+
+  /* photo-drag instructions */
+  #photo-hint {{
+    font-size: 0.68rem; color: var(--muted); text-align: center;
+    margin-top: 4px; font-style: italic;
+  }}
+
+  /* Watermark position chips */
+  .wm-positions {{
+    display: grid; grid-template-columns: repeat(3,1fr); gap: 4px;
+  }}
+  .wm-chip {{
+    padding: 5px 4px; border: 1px solid var(--border); border-radius: 5px;
+    font-size: 0.65rem; color: var(--sub); background: var(--bg);
+    text-align: center; cursor: pointer; transition: all 0.12s;
+  }}
+  .wm-chip.active {{ border-color: var(--blue); background: var(--blue-dim); color: var(--blue); font-weight: 500; }}
+  .wm-chip:hover {{ border-color: var(--blue-dim); }}
+
+  #customXY {{ display:none; margin-top:6px; }}
+  .xy-row {{ display:flex; gap:8px; margin-top:4px; }}
+  .xy-row label {{ font-size:0.72rem; color:var(--muted); display:block; margin-bottom:2px; }}
+  .xy-row input[type=number] {{
+    width:100%; padding:5px 8px; border:1px solid var(--border); border-radius:5px;
+    font-size:0.78rem; outline:none;
+  }}
+  .xy-row input[type=number]:focus {{ border-color:var(--blue); }}
 </style>
 </head>
 <body>
 
-<div class="canva-layout">
+<div id="panel">
 
-  <!-- ════════════ PANNEAU DE CONTRÔLES ════════════ -->
-  <div class="canva-controls">
+  <p class="sec-label">Arrière-plan</p>
+  <label class="upload-zone" for="fileIn">
+    📁 Cliquer pour importer une image…
+  </label>
+  <input type="file" id="fileIn" accept="image/*">
+  <p id="photo-hint" style="display:none;">Glisser l'image sur l'aperçu pour la repositionner</p>
 
-    <span class="sec">Arrière-plan</span>
-    <input type="file" id="bgFile" accept="image/*">
+  <p class="sec-label">Format</p>
+  <select id="formatSel">
+    <option value="1080x1350">1080 × 1350 — Portrait Instagram</option>
+    <option value="1080x1080">1080 × 1080 — Carré</option>
+    <option value="1080x1920">1080 × 1920 — Stories / Reels</option>
+    <option value="1200x630">1200 × 630 — Paysage Facebook / LinkedIn</option>
+    <option value="1080x566">1080 × 566 — Paysage Twitter/X</option>
+  </select>
 
-    <!-- Recadrage / zoom photo -->
-    <span class="sec">Zoom photo</span>
-    <div class="range-row">
-      <input type="range" id="bgZoom" min="100" max="300" value="100" step="1">
-      <span class="range-val" id="bgZoomVal">100%</span>
-    </div>
-    <span class="sec" style="margin-top:0.5rem;">Déplacement H</span>
-    <div class="range-row">
-      <input type="range" id="bgOffX" min="-100" max="100" value="0" step="1">
-      <span class="range-val" id="bgOffXVal">0</span>
-    </div>
-    <span class="sec" style="margin-top:0.5rem;">Déplacement V</span>
-    <div class="range-row">
-      <input type="range" id="bgOffY" min="-100" max="100" value="0" step="1">
-      <span class="range-val" id="bgOffYVal">0</span>
-    </div>
+  <p class="sec-label">Surtitre</p>
+  <input type="text" id="surIn" value="Métropole de Lyon">
 
-    <hr class="thin">
+  <p class="sec-label">Titre principal</p>
+  <textarea id="titleIn" rows="3">5 millions de spécimens lâchés dans cette commune : une solution innovante contre le moustique tigre</textarea>
 
-    <span class="sec">Surtitre</span>
-    <input type="text" id="surIn" value="Métropole de Lyon">
+  <hr class="sep">
 
-    <span class="sec">Titre principal</span>
-    <textarea id="titleIn">5 millions de spécimens lâchés dans cette commune : une solution innovante contre le moustique tigre</textarea>
+  <p class="sec-label">Couleur du bloc titre</p>
+  <div class="color-row">
+    <input type="color" id="blockColorIn" value="#0068B1">
+    <span class="color-label">Bloc de fond</span>
+    <input type="color" id="textColorIn" value="#ffffff" style="margin-left:8px;">
+    <span class="color-label">Texte titre</span>
+  </div>
 
-    <span class="sec">Position verticale du titre</span>
-    <div class="range-row">
-      <input type="range" id="yIn" min="10" max="90" value="70" step="1">
-      <span class="range-val" id="yVal">70%</span>
-    </div>
+  <p class="sec-label">Couleur du surtitre</p>
+  <div class="color-row">
+    <input type="color" id="surBgIn" value="#ffffff">
+    <span class="color-label">Fond surtitre</span>
+    <input type="color" id="surColorIn" value="#0068B1" style="margin-left:8px;">
+    <span class="color-label">Texte surtitre</span>
+  </div>
 
-    <span class="sec" style="margin-top:0.5rem;">Position horizontale du titre</span>
-    <div class="range-row">
-      <input type="range" id="xIn" min="-300" max="300" value="0" step="1">
-      <span class="range-val" id="xVal">0</span>
-    </div>
+  <hr class="sep">
 
-    <hr class="thin">
+  <p class="sec-label">Position verticale du texte</p>
+  <div class="range-wrap">
+    <input type="range" id="yIn" min="5" max="95" value="72">
+    <span class="range-val" id="yVal">72%</span>
+  </div>
 
-    <span class="sec">Couleurs</span>
-    <div class="color-row" style="flex-wrap:wrap; gap:0.7rem;">
-      <div class="color-row">
-        <input type="color" id="colBloc" value="#0072bc">
-        <label for="colBloc">Bloc</label>
-      </div>
-      <div class="color-row">
-        <input type="color" id="colText" value="#ffffff">
-        <label for="colText">Texte titre</label>
-      </div>
-      <div class="color-row">
-        <input type="color" id="colSurBg" value="#ffffff">
-        <label for="colSurBg">Fond surtitre</label>
-      </div>
-      <div class="color-row">
-        <input type="color" id="colSurTxt" value="#0072bc">
-        <label for="colSurTxt">Texte surtitre</label>
-      </div>
-    </div>
+  <p class="sec-label">Position horizontale du texte</p>
+  <div class="range-wrap">
+    <input type="range" id="xIn" min="0" max="100" value="50">
+    <span class="range-val" id="xVal">50%</span>
+  </div>
 
-    <hr class="thin">
+  <p class="sec-label" id="img-zoom-label" style="display:none;">Zoom photo</p>
+  <div class="range-wrap" id="img-zoom-wrap" style="display:none;">
+    <input type="range" id="imgZoomIn" min="100" max="300" value="100">
+    <span class="range-val" id="imgZoomVal">100%</span>
+  </div>
 
-    <span class="sec">Watermark</span>
-    <input type="file" id="wmFile" accept="image/*">
-    <div class="check-row" style="margin-top:0.5rem;">
-      <input type="checkbox" id="wmShow" checked>
-      <label for="wmShow">Afficher le watermark</label>
-    </div>
+  <hr class="sep">
 
-    <span class="sec" style="margin-top:0.7rem;">Position watermark</span>
-    <select id="wmPos">
-      <option value="top-left">Haut gauche</option>
-      <option value="top-center">Haut centre</option>
-      <option value="top-right" selected>Haut droite</option>
-      <option value="mid-left">Milieu gauche</option>
-      <option value="center">Centre</option>
-      <option value="mid-right">Milieu droite</option>
-      <option value="bot-left">Bas gauche</option>
-      <option value="bot-center">Bas centre</option>
-      <option value="bot-right">Bas droite</option>
-      <option value="custom">Coordonnées personnalisées</option>
-    </select>
+  <p class="sec-label">Watermark</p>
+  <div class="wm-positions" id="wmPositions">
+    <div class="wm-chip" data-pos="tl">↖ Haut G</div>
+    <div class="wm-chip" data-pos="tc">↑ Haut C</div>
+    <div class="wm-chip" data-pos="tr" id="wm-tr">↗ Haut D</div>
+    <div class="wm-chip" data-pos="ml">← Mil. G</div>
+    <div class="wm-chip" data-pos="mc">✛ Centre</div>
+    <div class="wm-chip" data-pos="mr">→ Mil. D</div>
+    <div class="wm-chip" data-pos="bl">↙ Bas G</div>
+    <div class="wm-chip" data-pos="bc">↓ Bas C</div>
+    <div class="wm-chip active" data-pos="br">↘ Bas D</div>
+    <div class="wm-chip" data-pos="custom" style="grid-column:span 3;">📍 Coordonnées personnalisées</div>
+  </div>
 
-    <div id="wmCustom" style="display:none; margin-top:0.5rem;">
-      <div style="display:flex;gap:0.5rem;">
-        <div style="flex:1;">
-          <span class="sec" style="margin-top:0.3rem;">X (px)</span>
-          <input type="text" id="wmCx" value="0" style="width:100%;">
-        </div>
-        <div style="flex:1;">
-          <span class="sec" style="margin-top:0.3rem;">Y (px)</span>
-          <input type="text" id="wmCy" value="0" style="width:100%;">
-        </div>
-      </div>
-    </div>
-
-    <span class="sec" style="margin-top:0.7rem;">Taille watermark</span>
-    <div class="range-row">
-      <input type="range" id="wmSize" min="5" max="40" value="13" step="1">
-      <span class="range-val" id="wmSizeVal">13%</span>
-    </div>
-
-    <button class="dl-btn" id="dlBtn">↓&nbsp;&nbsp;Télécharger le visuel</button>
-
-  </div><!-- /canva-controls -->
-
-  <!-- ════════════ APERÇU CANVAS ════════════ -->
-  <div class="canva-preview-col">
-    <span class="preview-label">Aperçu — 1080 × 1350 px</span>
-    <div class="canvas-wrap">
-      <canvas id="cv" width="1080" height="1350"></canvas>
+  <div id="customXY">
+    <div class="xy-row">
+      <div><label>X (px depuis gauche)</label><input type="number" id="wmX" value="0" min="0"></div>
+      <div><label>Y (px depuis haut)</label><input type="number" id="wmY" value="0" min="0"></div>
     </div>
   </div>
 
-</div><!-- /canva-layout -->
+  <p class="sec-label">Taille watermark</p>
+  <div class="range-wrap">
+    <input type="range" id="wmSizeIn" min="5" max="40" value="13">
+    <span class="range-val" id="wmSizeVal">13%</span>
+  </div>
+  <p class="sec-label">Opacité watermark</p>
+  <div class="range-wrap">
+    <input type="range" id="wmOpacIn" min="0" max="100" value="100">
+    <span class="range-val" id="wmOpacVal">100%</span>
+  </div>
 
-<!-- Filtre SVG goo (fusion des blocs bleus) — invisible -->
+  <hr class="sep">
+
+  <button id="dlBtn">↓  Télécharger le visuel (PNG)</button>
+
+</div>
+
+<!-- ZONE PREVIEW -->
+<div id="preview-area">
+  <span id="preview-label">Aperçu</span>
+  <div id="canvas-wrap">
+    <canvas id="c"></canvas>
+  </div>
+  <div id="zoom-controls">
+    <button class="zoom-btn" id="zoomOut">−</button>
+    <span id="zoom-val">50%</span>
+    <button class="zoom-btn" id="zoomIn">+</button>
+  </div>
+</div>
+
+<!-- SVG GOO FILTER (used off-screen via canvas workaround) -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none;">
   <defs>
     <filter id="goo">
@@ -1947,285 +1960,350 @@ with tab_canva:
   </defs>
 </svg>
 
+<!-- Off-screen SVG renderer for goo effect -->
+<svg id="gooSvg" xmlns="http://www.w3.org/2000/svg" style="position:absolute;left:-99999px;top:-99999px;"></svg>
+
 <script>
-// ─── Références DOM ───────────────────────────────────────────────
-const cv      = document.getElementById('cv');
-const ctx     = cv.getContext('2d');
-const W = 1080, H = 1350;
+// ─── CONSTANTS ─────────────────────────────────────────────────────
+const WM_B64   = "{_wm_b64_canva}";
+const WM_MIME  = "{_wm_mime_canva}";
+const MARGIN_R = 0.04; // marge relative pour watermark
 
-const bgFile  = document.getElementById('bgFile');
-const bgZoom  = document.getElementById('bgZoom');
-const bgOffX  = document.getElementById('bgOffX');
-const bgOffY  = document.getElementById('bgOffY');
-const surIn   = document.getElementById('surIn');
-const titleIn = document.getElementById('titleIn');
-const yIn     = document.getElementById('yIn');
-const xIn     = document.getElementById('xIn');
-const colBloc = document.getElementById('colBloc');
-const colText = document.getElementById('colText');
-const colSurBg= document.getElementById('colSurBg');
-const colSurTxt=document.getElementById('colSurTxt');
-const wmFile  = document.getElementById('wmFile');
-const wmShow  = document.getElementById('wmShow');
-const wmPos   = document.getElementById('wmPos');
-const wmCx    = document.getElementById('wmCx');
-const wmCy    = document.getElementById('wmCy');
-const wmSize  = document.getElementById('wmSize');
-const dlBtn   = document.getElementById('dlBtn');
-
-// ─── State ────────────────────────────────────────────────────────
+// ─── STATE ─────────────────────────────────────────────────────────
+let canvasW = 1080, canvasH = 1350;
+let uiZoom  = 0.5;  // zoom d'affichage (pas export)
 let bgImg   = null;
+let bgOffX  = 0, bgOffY = 0, bgZoom = 1.0; // déplacement photo
 let wmImg   = null;
+let wmPos   = "br";
+let isDragging = false, dragStartX, dragStartY, dragBgX, dragBgY;
 
-// Charger le watermark par défaut (lpr.png encodé depuis Python)
-const defaultWmSrc = "{_default_wm_src}";
-if (defaultWmSrc) {{
-  const img = new Image();
-  img.onload = () => {{ wmImg = img; render(); }};
-  img.src = defaultWmSrc;
+// ─── ELEMENTS ──────────────────────────────────────────────────────
+const canvas    = document.getElementById('c');
+const ctx       = canvas.getContext('2d');
+const fileIn    = document.getElementById('fileIn');
+const surIn     = document.getElementById('surIn');
+const titleIn   = document.getElementById('titleIn');
+const yIn       = document.getElementById('yIn');
+const xIn       = document.getElementById('xIn');
+const yVal      = document.getElementById('yVal');
+const xVal      = document.getElementById('xVal');
+const imgZoomIn = document.getElementById('imgZoomIn');
+const imgZoomVal= document.getElementById('imgZoomVal');
+const blockColorIn = document.getElementById('blockColorIn');
+const textColorIn  = document.getElementById('textColorIn');
+const surBgIn   = document.getElementById('surBgIn');
+const surColorIn= document.getElementById('surColorIn');
+const wmSizeIn  = document.getElementById('wmSizeIn');
+const wmSizeVal = document.getElementById('wmSizeVal');
+const wmOpacIn  = document.getElementById('wmOpacIn');
+const wmOpacVal = document.getElementById('wmOpacVal');
+const wmXIn     = document.getElementById('wmX');
+const wmYIn     = document.getElementById('wmY');
+const formatSel = document.getElementById('formatSel');
+const dlBtn     = document.getElementById('dlBtn');
+const zoomInBtn = document.getElementById('zoomIn');
+const zoomOutBtn= document.getElementById('zoomOut');
+const zoomValEl = document.getElementById('zoom-val');
+
+// ─── INIT CANVAS SIZE ──────────────────────────────────────────────
+function applyFormat() {{
+  const [w, h] = formatSel.value.split('x').map(Number);
+  canvasW = w; canvasH = h;
+  bgOffX = 0; bgOffY = 0; bgZoom = 1.0;
+  if (imgZoomIn) {{ imgZoomIn.value = 100; imgZoomVal.textContent = "100%"; }}
+  applyUiZoom();
+  render();
 }}
 
-// ─── Helpers valeurs affichées ────────────────────────────────────
-function syncRangeLabels() {{
-  document.getElementById('bgZoomVal').textContent = bgZoom.value + '%';
-  document.getElementById('bgOffXVal').textContent = bgOffX.value;
-  document.getElementById('bgOffYVal').textContent = bgOffY.value;
-  document.getElementById('yVal').textContent      = yIn.value + '%';
-  document.getElementById('xVal').textContent      = xIn.value;
-  document.getElementById('wmSizeVal').textContent = wmSize.value + '%';
+function applyUiZoom() {{
+  canvas.style.width  = (canvasW * uiZoom) + 'px';
+  canvas.style.height = (canvasH * uiZoom) + 'px';
+  canvas.width  = canvasW;
+  canvas.height = canvasH;
+  zoomValEl.textContent = Math.round(uiZoom * 100) + '%';
 }}
 
-// ─── Découpage texte en lignes (même logique que le canva.html) ───
-function splitLines(text, maxChars) {{
-  const words = text.split(' ');
-  const lines = [];
-  let cur = '';
+// ─── WATERMARK LOAD ────────────────────────────────────────────────
+if (WM_B64) {{
+  wmImg = new Image();
+  wmImg.src = 'data:' + WM_MIME + ';base64,' + WM_B64;
+  wmImg.onload = render;
+}}
+
+// ─── RENDER ────────────────────────────────────────────────────────
+function render() {{
+  ctx.clearRect(0, 0, canvasW, canvasH);
+
+  // 1. Background
+  ctx.fillStyle = '#222';
+  ctx.fillRect(0, 0, canvasW, canvasH);
+  if (bgImg) {{
+    const z = bgZoom;
+    const iw = bgImg.naturalWidth  * z;
+    const ih = bgImg.naturalHeight * z;
+    // fit-cover base scale
+    const scaleX = canvasW / bgImg.naturalWidth;
+    const scaleY = canvasH / bgImg.naturalHeight;
+    const baseScale = Math.max(scaleX, scaleY);
+    const dw = bgImg.naturalWidth  * baseScale * z;
+    const dh = bgImg.naturalHeight * baseScale * z;
+    const dx = (canvasW - dw) / 2 + bgOffX;
+    const dy = (canvasH - dh) / 2 + bgOffY;
+    ctx.drawImage(bgImg, dx, dy, dw, dh);
+  }}
+
+  // 2. Text overlay
+  drawTextBlock();
+
+  // 3. Watermark
+  drawWatermark();
+}}
+
+// ─── TEXT BLOCK (goo morphing via offscreen SVG→canvas) ─────────────
+function drawTextBlock() {{
+  const cx      = (parseFloat(xIn.value) / 100) * canvasW;
+  const yPct    = parseFloat(yIn.value) / 100;
+  const blockColor = blockColorIn.value;
+  const textColor  = textColorIn.value;
+  const surBg      = surBgIn.value;
+  const surColor   = surColorIn.value;
+
+  // Font sizes proportional to canvas width
+  const fs      = Math.round(canvasW * 0.05);    // titre: ~54px at 1080
+  const fsSur   = Math.round(canvasW * 0.03);    // surtitre: ~32px
+  const pad     = Math.round(canvasW * 0.017);   // padding horizontal
+  const radius  = Math.round(canvasW * 0.019);   // border-radius
+  const lh      = Math.round(fs * 1.15);         // line-height
+  const overlap = Math.round(canvasW * 0.001);   // overlap entre lignes
+
+  // Découpage automatique (max ~28 chars/ligne)
+  const words = titleIn.value.split(' ');
+  let lines = [], cur = '';
   words.forEach(w => {{
-    if ((cur + w).length < maxChars) cur += (cur ? ' ' : '') + w;
+    if ((cur + w).length < 28) cur += (cur ? ' ' : '') + w;
     else {{ lines.push(cur); cur = w; }}
   }});
   if (cur) lines.push(cur);
-  return lines;
-}}
 
-// ─── Position watermark ───────────────────────────────────────────
-function wmXY(pos, logoW, logoH) {{
-  const mx = W * 0.05, my = H * 0.05;
-  switch(pos) {{
-    case 'top-left':    return [mx, my];
-    case 'top-center':  return [(W-logoW)/2, my];
-    case 'top-right':   return [W-logoW-mx, my];
-    case 'mid-left':    return [mx, (H-logoH)/2];
-    case 'center':      return [(W-logoW)/2, (H-logoH)/2];
-    case 'mid-right':   return [W-logoW-mx, (H-logoH)/2];
-    case 'bot-left':    return [mx, H-logoH-my];
-    case 'bot-center':  return [(W-logoW)/2, H-logoH-my];
-    case 'bot-right':   return [W-logoW-mx, H-logoH-my];
-    case 'custom':      return [parseInt(wmCx.value)||0, parseInt(wmCy.value)||0];
-    default:            return [W-logoW-mx, my];
-  }}
-}}
+  // Mesure widths
+  ctx.font = `bold ${{fs}}px 'Roboto Condensed', 'Roboto', sans-serif`;
+  const lineWidths = lines.map(l => ctx.measureText(l).width + pad * 2);
+  const maxW = Math.max(...lineWidths);
 
-// ─── RENDER PRINCIPAL ─────────────────────────────────────────────
-function render() {{
-  ctx.clearRect(0, 0, W, H);
+  // Surtitre measure
+  ctx.font = `bold ${{fsSur}}px 'Roboto', sans-serif`;
+  const surW = ctx.measureText(surIn.value).width + pad * 2;
+  const surH = fsSur + pad * 0.8;
 
-  // 1. FOND NOIR
-  ctx.fillStyle = '#222';
-  ctx.fillRect(0, 0, W, H);
+  // Block total height
+  const totalBlockH = lh * lines.length;
+  const blockTop = canvasH * yPct - totalBlockH / 2;
 
-  // 2. IMAGE DE FOND avec zoom + déplacement
-  if (bgImg) {{
-    const zoom     = parseInt(bgZoom.value) / 100;
-    const offXpct  = parseInt(bgOffX.value) / 100;
-    const offYpct  = parseInt(bgOffY.value) / 100;
+  // DRAW VIA OFFSCREEN SVG for goo morphing
+  // Build SVG with foreignObject or native SVG shapes
+  // We use a direct canvas approach with rounded rects + negative margin trick
+  // (true SVG goo would need filter rendering — we approximate with
+  //  overlapping rounded rects and a tiny gaussian blur between them)
 
-    // Calcul du crop de base (object-fit: cover)
-    const imgRatio = bgImg.width / bgImg.height;
-    const cvRatio  = W / H;
-    let sw, sh, sx, sy;
-    if (imgRatio > cvRatio) {{
-      sh = bgImg.height;
-      sw = bgImg.height * cvRatio;
-      sx = (bgImg.width - sw) / 2;
-      sy = 0;
-    }} else {{
-      sw = bgImg.width;
-      sh = bgImg.width / cvRatio;
-      sx = 0;
-      sy = (bgImg.height - sh) / 2;
-    }}
-
-    // Zoom : réduire la zone source
-    const zoomedSw = sw / zoom;
-    const zoomedSh = sh / zoom;
-
-    // Déplacement
-    const maxDx = (sw - zoomedSw) / 2;
-    const maxDy = (sh - zoomedSh) / 2;
-    const dx = offXpct * maxDx;
-    const dy = offYpct * maxDy;
-
-    ctx.drawImage(bgImg,
-      sx + (sw - zoomedSw)/2 - dx,
-      sy + (sh - zoomedSh)/2 - dy,
-      zoomedSw, zoomedSh,
-      0, 0, W, H
-    );
-  }}
-
-  // 3. TEXTE — positionné selon les sliders Y et X
-  const yPct  = parseInt(yIn.value) / 100;
-  const xOff  = parseInt(xIn.value);
-  const baseY = H * yPct;
-
-  const FONT_SIZE  = 54;
-  const PAD_V      = 14;
-  const PAD_H      = 18;
-  const RADIUS     = 20;
-  const GAP        = -2;      // blocs fusionnés
-  const SUR_SIZE   = 32;
-  const SUR_PAD_H  = 10;
-  const SUR_PAD_V  = 6;
-  const SUR_MARGIN = -5;
-
-  const lines = splitLines(titleIn.value, 28);
-
-  // ── Mesurer les blocs ──────────────────────────────────────────
-  ctx.font = `bold ${{FONT_SIZE}}px 'Roboto Condensed', 'Helvetica Neue', Arial, sans-serif`;
-  const lineWidths = lines.map(l => ctx.measureText(l).width + PAD_H * 2);
-
-  // Surtitre
-  ctx.font = `bold ${{SUR_SIZE}}px 'Roboto', Arial, sans-serif`;
-  const surW = ctx.measureText(surIn.value).width + SUR_PAD_H * 2;
-  const surH = SUR_SIZE + SUR_PAD_V * 2;
-
-  const lineH    = FONT_SIZE + PAD_V * 2;
-  const totalH   = surH + Math.abs(SUR_MARGIN) + lines.length * lineH + (lines.length - 1) * GAP;
-  let topY       = baseY - totalH / 2;
-
-  const cx = W / 2 + xOff;   // centre horizontal avec décalage
-
-  // ── Dessin sur offscreen canvas pour le filtre goo ────────────
-  // (on dessine d'abord les blocs, puis on applique le goo via SVGFilter API si dispo,
-  //  sinon simplement on dessine avec un overlap pour la fusion visuelle)
-  // Note : CanvasRenderingContext2D ne supporte pas les filtres SVG complexes nativement,
-  // on simule la fusion avec un léger overlap et border-radius.
-
-  // Surtitre (badge blanc)
+  // ── Surtitre badge ──
   const surX = cx - surW / 2;
-  const surY = topY;
-  ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.15)';
-  ctx.shadowBlur  = 12;
-  ctx.fillStyle   = colSurBg.value;
-  roundRect(ctx, surX, surY, surW, surH, RADIUS);
-  ctx.fill();
-  ctx.restore();
-
-  ctx.font      = `bold ${{SUR_SIZE}}px 'Roboto', Arial, sans-serif`;
-  ctx.fillStyle = colSurTxt.value;
-  ctx.textAlign = 'center';
+  const surY = blockTop - surH - Math.round(canvasW * 0.004);
+  roundRect(ctx, surX, surY, surW, surH, radius, surBg);
+  ctx.fillStyle = surColor;
+  ctx.font = `bold ${{fsSur}}px 'Roboto', sans-serif`;
+  ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText(surIn.value, cx, surY + surH / 2);
+  ctx.fillText(surIn.value, surX + pad, surY + surH / 2);
 
-  // Blocs du titre (fond coloré)
-  ctx.font = `bold ${{FONT_SIZE}}px 'Roboto Condensed', 'Helvetica Neue', Arial, sans-serif`;
+  // ── Titre lines with goo morphing ──
+  // Draw in a temporary offscreen canvas with blur, then composite
+  const tmpOff = new OffscreenCanvas ? new OffscreenCanvas(canvasW, canvasH) : document.createElement('canvas');
+  if (!OffscreenCanvas) {{ tmpOff.width = canvasW; tmpOff.height = canvasH; }}
+  const tmpCtx = tmpOff.getContext('2d');
 
-  let blockY = topY + surH + SUR_MARGIN;
-
+  // Draw lines with -1px overlap on offscreen
   lines.forEach((line, i) => {{
-    const bw = lineWidths[i];
-    const bx = cx - bw / 2;
-    const by = blockY;
-
-    // Overlap intentionnel de 2px pour fusionner visuellement comme le filtre goo
-    ctx.fillStyle = colBloc.value;
-    roundRect(ctx, bx, by - (i > 0 ? 2 : 0), bw, lineH + (i > 0 ? 2 : 0), RADIUS);
-    ctx.fill();
-
-    ctx.fillStyle   = colText.value;
-    ctx.textAlign   = 'center';
-    ctx.textBaseline= 'middle';
-    ctx.fillText(line, cx, by + lineH / 2);
-
-    blockY += lineH + GAP;
+    const lw = ctx.measureText ? lineWidths[i] : maxW;
+    const lx = cx - lw / 2;
+    const ly = blockTop + i * lh - (i > 0 ? overlap : 0);
+    tmpCtx.font = `bold ${{fs}}px 'Roboto Condensed', 'Roboto', sans-serif`;
+    roundRect(tmpCtx, lx, ly, lw, lh + overlap * 2, radius, blockColor);
   }});
 
-  // 4. WATERMARK
-  if (wmShow.checked && wmImg) {{
-    const diag    = Math.sqrt(W*W + H*H);
-    const pct     = parseInt(wmSize.value) / 100;
-    const logoW   = diag * pct;
-    const logoH   = wmImg.height * (logoW / wmImg.width);
-    const [lx, ly] = wmXY(wmPos.value, logoW, logoH);
-    ctx.drawImage(wmImg, lx, ly, logoW, logoH);
+  // Apply goo effect via blur + threshold on alpha channel
+  const imgData = tmpCtx.getImageData(0, 0, canvasW, canvasH);
+  applyGooFilter(tmpCtx, canvasW, canvasH, imgData);
+  ctx.drawImage(tmpOff, 0, 0);
+
+  // Redraw text on top (crisp)
+  ctx.font = `bold ${{fs}}px 'Roboto Condensed', 'Roboto', sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = textColor;
+  lines.forEach((line, i) => {{
+    const lw = lineWidths[i];
+    const lx = cx - lw / 2;
+    const ly = blockTop + i * lh - (i > 0 ? overlap : 0);
+    ctx.fillText(line, lx + pad, ly + lh / 2);
+  }});
+}}
+
+// Goo: gaussian blur + colour-matrix threshold on alpha
+function applyGooFilter(tmpCtx, W, H, imgData) {{
+  // Write to temp canvas, apply CSS filter, read back
+  // (CSS filter works on canvas via drawImage trick)
+  const tmp2 = document.createElement('canvas');
+  tmp2.width = W; tmp2.height = H;
+  const t2 = tmp2.getContext('2d');
+  t2.putImageData(imgData, 0, 0);
+
+  // Blur + threshold via CSS filter on image bitmap
+  tmpCtx.clearRect(0, 0, W, H);
+  tmpCtx.filter = 'blur(10px)';
+  tmpCtx.drawImage(tmp2, 0, 0);
+  tmpCtx.filter = 'none';
+
+  // Threshold on alpha: pixels with alpha>128 → full block color (already filled)
+  // This mimics feColorMatrix alpha boost
+  const d = tmpCtx.getImageData(0, 0, W, H);
+  const px = d.data;
+  for (let i = 3; i < px.length; i += 4) {{
+    px[i] = px[i] > 60 ? 255 : 0;
   }}
+  tmpCtx.putImageData(d, 0, 0);
 }}
 
-// ─── Utilitaire roundRect (compatible anciens Chrome) ─────────────
-function roundRect(ctx, x, y, w, h, r) {{
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
+// ─── WATERMARK DRAW ────────────────────────────────────────────────
+function drawWatermark() {{
+  if (!wmImg) return;
+  const sizeRatio = parseFloat(wmSizeIn.value) / 100;
+  const diag = Math.sqrt(canvasW ** 2 + canvasH ** 2);
+  const wmW  = diag * sizeRatio;
+  const wmH  = (wmImg.naturalHeight / wmImg.naturalWidth) * wmW;
+  const mx   = canvasW * MARGIN_R;
+  const my   = canvasH * MARGIN_R;
+  const opac = parseFloat(wmOpacIn.value) / 100;
+
+  let wx, wy;
+  switch(wmPos) {{
+    case 'tl': wx = mx;                 wy = my;                 break;
+    case 'tc': wx = (canvasW-wmW)/2;    wy = my;                 break;
+    case 'tr': wx = canvasW-wmW-mx;     wy = my;                 break;
+    case 'ml': wx = mx;                 wy = (canvasH-wmH)/2;    break;
+    case 'mc': wx = (canvasW-wmW)/2;    wy = (canvasH-wmH)/2;    break;
+    case 'mr': wx = canvasW-wmW-mx;     wy = (canvasH-wmH)/2;    break;
+    case 'bl': wx = mx;                 wy = canvasH-wmH-my;     break;
+    case 'bc': wx = (canvasW-wmW)/2;    wy = canvasH-wmH-my;     break;
+    case 'br': wx = canvasW-wmW-mx;     wy = canvasH-wmH-my;     break;
+    case 'custom':
+      wx = parseInt(wmXIn.value) || 0;
+      wy = parseInt(wmYIn.value) || 0;
+      break;
+    default:   wx = canvasW-wmW-mx;     wy = canvasH-wmH-my;
+  }}
+
+  ctx.globalAlpha = opac;
+  ctx.drawImage(wmImg, wx, wy, wmW, wmH);
+  ctx.globalAlpha = 1.0;
 }}
 
-// ─── Events ───────────────────────────────────────────────────────
-bgFile.onchange = e => {{
+// ─── HELPERS ───────────────────────────────────────────────────────
+function roundRect(c, x, y, w, h, r, fill) {{
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.lineTo(x + w - r, y);
+  c.quadraticCurveTo(x + w, y, x + w, y + r);
+  c.lineTo(x + w, y + h - r);
+  c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  c.lineTo(x + r, y + h);
+  c.quadraticCurveTo(x, y + h, x, y + h - r);
+  c.lineTo(x, y + r);
+  c.quadraticCurveTo(x, y, x + r, y);
+  c.closePath();
+  c.fillStyle = fill;
+  c.fill();
+}}
+
+// ─── EVENTS ────────────────────────────────────────────────────────
+fileIn.onchange = e => {{
+  const file = e.target.files[0];
+  if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {{
-    const img = new Image();
-    img.onload = () => {{ bgImg = img; render(); }};
-    img.src = ev.target.result;
+    bgImg = new Image();
+    bgImg.onload = () => {{ bgOffX = 0; bgOffY = 0; bgZoom = 1.0; imgZoomIn.value = 100; imgZoomVal.textContent = '100%'; document.getElementById('img-zoom-label').style.display=''; document.getElementById('img-zoom-wrap').style.display=''; document.getElementById('photo-hint').style.display=''; render(); }};
+    bgImg.src = ev.target.result;
   }};
-  reader.readAsDataURL(e.target.files[0]);
+  reader.readAsDataURL(file);
 }};
 
-wmFile.onchange = e => {{
-  const reader = new FileReader();
-  reader.onload = ev => {{
-    const img = new Image();
-    img.onload = () => {{ wmImg = img; render(); }};
-    img.src = ev.target.result;
-  }};
-  reader.readAsDataURL(e.target.files[0]);
-}};
+[surIn, titleIn, yIn, xIn, blockColorIn, textColorIn, surBgIn, surColorIn].forEach(el => {{
+  el.oninput = () => {{ yVal.textContent = yIn.value + '%'; xVal.textContent = xIn.value + '%'; render(); }};
+}});
 
-wmPos.onchange = () => {{
-  document.getElementById('wmCustom').style.display =
-    wmPos.value === 'custom' ? 'block' : 'none';
+imgZoomIn.oninput = () => {{
+  bgZoom = parseFloat(imgZoomIn.value) / 100;
+  imgZoomVal.textContent = imgZoomIn.value + '%';
   render();
 }};
 
-// Inputs texte / couleur / range → re-render live
-[surIn, titleIn, colBloc, colText, colSurBg, colSurTxt,
- wmShow, wmCx, wmCy].forEach(el => el.addEventListener('input', () => {{ syncRangeLabels(); render(); }}));
+wmSizeIn.oninput = () => {{ wmSizeVal.textContent = wmSizeIn.value + '%'; render(); }};
+wmOpacIn.oninput = () => {{ wmOpacVal.textContent = wmOpacIn.value + '%'; render(); }};
+wmXIn.oninput = render; wmYIn.oninput = render;
 
-[bgZoom, bgOffX, bgOffY, yIn, xIn, wmSize].forEach(el => el.addEventListener('input', () => {{ syncRangeLabels(); render(); }}));
+formatSel.onchange = applyFormat;
 
-// ─── Téléchargement ───────────────────────────────────────────────
+// Watermark position chips
+document.querySelectorAll('.wm-chip').forEach(chip => {{
+  chip.onclick = () => {{
+    document.querySelectorAll('.wm-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    wmPos = chip.dataset.pos;
+    document.getElementById('customXY').style.display = wmPos === 'custom' ? '' : 'none';
+    render();
+  }};
+}});
+
+// Zoom controls
+zoomInBtn.onclick  = () => {{ uiZoom = Math.min(uiZoom + 0.1, 1.5); applyUiZoom(); }};
+zoomOutBtn.onclick = () => {{ uiZoom = Math.max(uiZoom - 0.1, 0.2); applyUiZoom(); }};
+
+// Photo drag
+canvas.addEventListener('mousedown', e => {{
+  if (!bgImg) return;
+  isDragging = true;
+  dragStartX = e.clientX; dragStartY = e.clientY;
+  dragBgX = bgOffX; dragBgY = bgOffY;
+  canvas.style.cursor = 'grabbing';
+}});
+window.addEventListener('mousemove', e => {{
+  if (!isDragging) return;
+  const scale = canvasW / (canvasW * uiZoom); // convert screen px to canvas px
+  bgOffX = dragBgX + (e.clientX - dragStartX) * scale;
+  bgOffY = dragBgY + (e.clientY - dragStartY) * scale;
+  render();
+}});
+window.addEventListener('mouseup', () => {{
+  isDragging = false;
+  canvas.style.cursor = bgImg ? 'grab' : 'default';
+}});
+canvas.style.cursor = 'default';
+
+// Download full-res
 dlBtn.onclick = () => {{
   const link = document.createElement('a');
-  link.download = 'visuel_rs.png';
-  link.href = cv.toDataURL('image/png');
+  link.download = 'visuel_luluflix.png';
+  link.href = canvas.toDataURL('image/png');
   link.click();
 }};
 
-// ─── Init ─────────────────────────────────────────────────────────
-syncRangeLabels();
+// ─── INIT ──────────────────────────────────────────────────────────
+applyFormat();
 render();
 </script>
 </body>
-</html>
-""", height=860, scrolling=False)
+</html>""", height=780, scrolling=False)
 
 
 # FOOTER
