@@ -1671,7 +1671,7 @@ with tab_canva:
     """, unsafe_allow_html=True)
 
     # Valeurs par défaut des sliders (pour reset)
-    _CV_DEFAULTS = {"canva_y": 72, "canva_x": 50, "canva_imgzoom": 100, "canva_wmsz": 13, "canva_wmop": 100}
+    _CV_DEFAULTS = {"canva_y": 72, "canva_imgzoom": 100}
     for _k, _v in _CV_DEFAULTS.items():
         if _k not in st.session_state:
             st.session_state[_k] = _v
@@ -1680,18 +1680,9 @@ with tab_canva:
     if st.session_state.get("_cv_reset_y"):
         st.session_state["canva_y"] = _CV_DEFAULTS["canva_y"]
         st.session_state["_cv_reset_y"] = False
-    if st.session_state.get("_cv_reset_x"):
-        st.session_state["canva_x"] = _CV_DEFAULTS["canva_x"]
-        st.session_state["_cv_reset_x"] = False
     if st.session_state.get("_cv_reset_zoom"):
         st.session_state["canva_imgzoom"] = _CV_DEFAULTS["canva_imgzoom"]
         st.session_state["_cv_reset_zoom"] = False
-    if st.session_state.get("_cv_reset_wmsz"):
-        st.session_state["canva_wmsz"] = _CV_DEFAULTS["canva_wmsz"]
-        st.session_state["_cv_reset_wmsz"] = False
-    if st.session_state.get("_cv_reset_wmop"):
-        st.session_state["canva_wmop"] = _CV_DEFAULTS["canva_wmop"]
-        st.session_state["_cv_reset_wmop"] = False
 
     with col_ctrl_cv:
 
@@ -1711,8 +1702,6 @@ with tab_canva:
                     "1080×1350 — Portrait",
                     "1080×1080 — Carré",
                     "1080×1920 — Stories",
-                    "1200×630  — Paysage FB/LI",
-                    "1080×566  — Paysage Twitter",
                 ],
                 key="canva_format", label_visibility="collapsed"
             )
@@ -1720,8 +1709,6 @@ with tab_canva:
             "1080×1350 — Portrait":     (1080, 1350),
             "1080×1080 — Carré":        (1080, 1080),
             "1080×1920 — Stories":      (1080, 1920),
-            "1200×630  — Paysage FB/LI":(1200,  630),
-            "1080×566  — Paysage Twitter":(1080, 566),
         }
         canva_w, canva_h = _fmt_map[canva_format]
 
@@ -1750,64 +1737,18 @@ with tab_canva:
         # ── Sliders position + zoom (label + reset inline) ──────────
         st.markdown('<p class="section-label" style="margin-top:10px;">Position du texte</p>', unsafe_allow_html=True)
 
-        _sy1, _sy2 = st.columns([5, 1])
-        with _sy1:
-            canva_y = st.slider("Position Y", min_value=5, max_value=95, key="canva_y", label_visibility="collapsed")
-        with _sy2:
-            st.markdown('<div class="cv-reset">', unsafe_allow_html=True)
-            if st.button("↺ Y", key="_cv_reset_y"):
-                st.session_state["_cv_reset_y"] = True
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        _sx1, _sx2 = st.columns([5, 1])
-        with _sx1:
-            canva_x = st.slider("Position X", min_value=0, max_value=100, key="canva_x", label_visibility="collapsed")
-        with _sx2:
-            st.markdown('<div class="cv-reset">', unsafe_allow_html=True)
-            if st.button("↺ X", key="_cv_reset_x"):
-                st.session_state["_cv_reset_x"] = True
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+        canva_y = st.slider("Position Y", min_value=5, max_value=95, key="canva_y", label_visibility="collapsed")
 
         if canva_bg_file:
             st.markdown('<p class="section-label" style="margin-top:6px;">Zoom photo</p>', unsafe_allow_html=True)
-            _sz1, _sz2 = st.columns([5, 1])
-            with _sz1:
-                canva_img_zoom = st.slider("Zoom photo", min_value=100, max_value=300, key="canva_imgzoom", label_visibility="collapsed")
-            with _sz2:
-                st.markdown('<div class="cv-reset">', unsafe_allow_html=True)
-                if st.button("↺ Z", key="_cv_reset_zoom"):
-                    st.session_state["_cv_reset_zoom"] = True
-                    st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
+            canva_img_zoom = st.slider("Zoom photo", min_value=100, max_value=300, key="canva_imgzoom", label_visibility="collapsed")
         else:
             canva_img_zoom = 100
 
         # ── Watermark ────────────────────────────────────────────────
         wm_opts_cv = watermark_options_ui("cv")
-
-        _sw1, _sw2 = st.columns([5, 1])
-        with _sw1:
-            st.markdown('<p class="section-label" style="margin-top:4px;">Taille WM</p>', unsafe_allow_html=True)
-            canva_wm_size = st.slider("Taille WM", min_value=5, max_value=40, key="canva_wmsz", label_visibility="collapsed")
-        with _sw2:
-            st.markdown('<div class="cv-reset" style="margin-top:22px;">', unsafe_allow_html=True)
-            if st.button("↺", key="_cv_reset_wmsz"):
-                st.session_state["_cv_reset_wmsz"] = True
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        _so1, _so2 = st.columns([5, 1])
-        with _so1:
-            st.markdown('<p class="section-label" style="margin-top:4px;">Opacité WM</p>', unsafe_allow_html=True)
-            canva_wm_opac = st.slider("Opacité WM", min_value=0, max_value=100, key="canva_wmop", label_visibility="collapsed")
-        with _so2:
-            st.markdown('<div class="cv-reset" style="margin-top:22px;">', unsafe_allow_html=True)
-            if st.button("↺ ", key="_cv_reset_wmop"):
-                st.session_state["_cv_reset_wmop"] = True
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+        canva_wm_size = 13
+        canva_wm_opac = 100
 
         # --- Génération du visuel final (Python/Pillow) pour téléchargement ---
         st.markdown("<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True)
@@ -1867,7 +1808,7 @@ with tab_canva:
             if cur:
                 lines.append(cur)
 
-            cx = int((canva_x / 100) * W)
+            cx = int((50 / 100) * W)
             total_h = lh * len(lines)
             block_top = int((canva_y / 100) * H - total_h / 2)
 
@@ -1986,14 +1927,14 @@ const WM_MIME  = "{_wm_mime_canva}";
 const TITLE    = {_js_title};
 const SURTITRE = {_js_sur};
 const Y_PCT    = {canva_y} / 100;
-const X_PCT    = {canva_x} / 100;
+const X_PCT    = 50 / 100;
 const IMG_ZOOM = {canva_img_zoom} / 100;
 const BLOCK_COLOR = "{canva_block_color}";
 const TEXT_COLOR  = "{canva_text_color}";
 const SUR_BG      = "{canva_sur_bg}";
 const SUR_COLOR   = "{canva_sur_color}";
-const WM_SIZE_PCT = {canva_wm_size} / 100;
-const WM_OPAC     = {canva_wm_opac} / 100;
+const WM_SIZE_PCT = 13 / 100;
+const WM_OPAC     = 1.0;
 const WM_POS      = "{wm_opts_cv["position"]}";
 const WM_CX       = {wm_opts_cv["custom_x"]};
 const WM_CY       = {wm_opts_cv["custom_y"]};
@@ -2187,7 +2128,7 @@ window.addEventListener('mouseup',()=>{{
 if(bgImg) canvas.style.cursor='grab';
 </script>
 </body>
-</html>""", height=760, scrolling=False)
+</html>""", height=int(560 * canva_h / canva_w) + 40, scrolling=False)
 
 
 # FOOTER
