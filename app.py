@@ -1829,7 +1829,7 @@ with tab_canva:
 
             # Surtitre
             sur_x = cx - sur_w // 2
-            sur_y = block_top - sur_h - int(W * -0.010)
+            sur_y = block_top - sur_h - int(W * -0.000)
             draw_rounded_rect(draw, sur_x, sur_y, sur_w, sur_h, radius, sbg)
             draw.text((sur_x + pad, sur_y + sur_h // 2 - fs_sur // 2), canva_sur, font=font_sur, fill=sc)
 
@@ -2041,7 +2041,7 @@ function render() {{
 
   // ── Surtitre ──
   const surX = cx - surW/2;
-  const surY = blockTop - surH - Math.round(CANVAS_W*-0.010);
+  const surY = blockTop - surH - Math.round(CANVAS_W*-0.000);
   roundRect(ctx, surX, surY, surW, surH, radius, SUR_BG);
   ctx.fillStyle = SUR_COLOR;
   ctx.font = `bold ${{fsSur}}px 'Roboto',sans-serif`;
