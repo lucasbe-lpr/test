@@ -1647,74 +1647,167 @@ with tab_canva:
 
     col_ctrl_cv, col_prev_cv = st.columns([4, 6], gap="large")
 
-    with col_ctrl_cv:
-        st.markdown('<p class="section-label">Arrière-plan</p>', unsafe_allow_html=True)
-        canva_bg_file = st.file_uploader(
-            "Déposez votre image ici",
-            type=["png", "jpg", "jpeg", "webp"],
-            key="canva_bg", label_visibility="collapsed"
-        )
+    # CSS compact spécifique à cet onglet (labels inline + sliders resserrés)
+    st.markdown("""
+    <style>
+    /* Réduit l'espace autour des sliders dans l'onglet Canva */
+    [data-testid="stSlider"] { margin-bottom: 0 !important; padding-bottom: 0 !important; }
+    [data-testid="stSlider"] > div { padding-bottom: 0 !important; }
+    /* Réduit la hauteur des color pickers */
+    [data-testid="stColorPicker"] { margin-bottom: 0 !important; }
+    [data-testid="stColorPicker"] label { font-size: 0.72rem !important; margin-bottom: 2px !important; }
+    /* Bouton reset : petit, discret, pill */
+    .cv-reset > button {
+      height: 26px !important; min-height: 26px !important;
+      font-size: 0.7rem !important; padding: 0 0.7rem !important;
+      background: var(--bg, #fafafa) !important;
+      border: 1px solid var(--border, #e4e4e4) !important;
+      color: var(--muted, #999) !important;
+      box-shadow: none !important;
+      border-radius: 999px !important;
+    }
+    .cv-reset > button:hover { border-color: var(--blue, #0068B1) !important; color: var(--blue, #0068B1) !important; background: var(--blue-dim, #e8f2fb) !important; }
+    </style>
+    """, unsafe_allow_html=True)
 
-        st.markdown('<p class="section-label">Format</p>', unsafe_allow_html=True)
-        canva_format = st.selectbox(
-            "Format", [
-                "1080x1350 — Portrait Instagram",
-                "1080x1080 — Carré",
-                "1080x1920 — Stories / Reels",
-                "1200x630  — Paysage Facebook / LinkedIn",
-                "1080x566  — Paysage Twitter/X",
-            ],
-            key="canva_format", label_visibility="collapsed"
-        )
+    # Valeurs par défaut des sliders (pour reset)
+    _CV_DEFAULTS = {"canva_y": 72, "canva_x": 50, "canva_imgzoom": 100, "canva_wmsz": 13, "canva_wmop": 100}
+    for _k, _v in _CV_DEFAULTS.items():
+        if _k not in st.session_state:
+            st.session_state[_k] = _v
+
+    # Boutons reset → modifient le session_state avant de re-render
+    if st.session_state.get("_cv_reset_y"):
+        st.session_state["canva_y"] = _CV_DEFAULTS["canva_y"]
+        st.session_state["_cv_reset_y"] = False
+    if st.session_state.get("_cv_reset_x"):
+        st.session_state["canva_x"] = _CV_DEFAULTS["canva_x"]
+        st.session_state["_cv_reset_x"] = False
+    if st.session_state.get("_cv_reset_zoom"):
+        st.session_state["canva_imgzoom"] = _CV_DEFAULTS["canva_imgzoom"]
+        st.session_state["_cv_reset_zoom"] = False
+    if st.session_state.get("_cv_reset_wmsz"):
+        st.session_state["canva_wmsz"] = _CV_DEFAULTS["canva_wmsz"]
+        st.session_state["_cv_reset_wmsz"] = False
+    if st.session_state.get("_cv_reset_wmop"):
+        st.session_state["canva_wmop"] = _CV_DEFAULTS["canva_wmop"]
+        st.session_state["_cv_reset_wmop"] = False
+
+    with col_ctrl_cv:
+
+        # ── Source + Format sur 2 colonnes ──────────────────────────
+        _cr1, _cr2 = st.columns(2)
+        with _cr1:
+            st.markdown('<p class="section-label">Arrière-plan</p>', unsafe_allow_html=True)
+            canva_bg_file = st.file_uploader(
+                "Déposez votre image ici",
+                type=["png", "jpg", "jpeg", "webp"],
+                key="canva_bg", label_visibility="collapsed"
+            )
+        with _cr2:
+            st.markdown('<p class="section-label">Format</p>', unsafe_allow_html=True)
+            canva_format = st.selectbox(
+                "Format", [
+                    "1080×1350 — Portrait",
+                    "1080×1080 — Carré",
+                    "1080×1920 — Stories",
+                    "1200×630  — Paysage FB/LI",
+                    "1080×566  — Paysage Twitter",
+                ],
+                key="canva_format", label_visibility="collapsed"
+            )
         _fmt_map = {
-            "1080x1350 — Portrait Instagram": (1080, 1350),
-            "1080x1080 — Carré": (1080, 1080),
-            "1080x1920 — Stories / Reels": (1080, 1920),
-            "1200x630  — Paysage Facebook / LinkedIn": (1200, 630),
-            "1080x566  — Paysage Twitter/X": (1080, 566),
+            "1080×1350 — Portrait":     (1080, 1350),
+            "1080×1080 — Carré":        (1080, 1080),
+            "1080×1920 — Stories":      (1080, 1920),
+            "1200×630  — Paysage FB/LI":(1200,  630),
+            "1080×566  — Paysage Twitter":(1080, 566),
         }
         canva_w, canva_h = _fmt_map[canva_format]
 
+        # ── Textes ──────────────────────────────────────────────────
         st.markdown('<p class="section-label">Surtitre</p>', unsafe_allow_html=True)
         canva_sur = st.text_input("Surtitre", value="Métropole de Lyon", key="canva_sur", label_visibility="collapsed")
 
         st.markdown('<p class="section-label">Titre principal</p>', unsafe_allow_html=True)
         canva_title = st.text_area(
             "Titre", value="5 millions de spécimens lâchés dans cette commune : une solution innovante contre le moustique tigre",
-            key="canva_title", label_visibility="collapsed", height=100
+            key="canva_title", label_visibility="collapsed", height=80
         )
 
+        # ── Couleurs (4 pickers sur 2 lignes × 2 colonnes) ──────────
         st.markdown('<p class="section-label">Couleurs</p>', unsafe_allow_html=True)
-        _cc1, _cc2 = st.columns(2)
+        _cc1, _cc2, _cc3, _cc4 = st.columns(4)
         with _cc1:
-            canva_block_color = st.color_picker("Fond bloc", value="#0068B1", key="canva_bc")
+            canva_block_color = st.color_picker("Fond titre", value="#0068B1", key="canva_bc")
         with _cc2:
             canva_text_color = st.color_picker("Texte titre", value="#ffffff", key="canva_tc")
-        _cc3, _cc4 = st.columns(2)
         with _cc3:
             canva_sur_bg = st.color_picker("Fond surtitre", value="#ffffff", key="canva_sbg")
         with _cc4:
             canva_sur_color = st.color_picker("Texte surtitre", value="#0068B1", key="canva_sc")
 
-        st.markdown('<p class="section-label">Position verticale du texte</p>', unsafe_allow_html=True)
-        canva_y = st.slider("Y", min_value=5, max_value=95, value=72, key="canva_y", label_visibility="collapsed")
+        # ── Sliders position + zoom (label + reset inline) ──────────
+        st.markdown('<p class="section-label" style="margin-top:10px;">Position du texte</p>', unsafe_allow_html=True)
 
-        st.markdown('<p class="section-label">Position horizontale du texte</p>', unsafe_allow_html=True)
-        canva_x = st.slider("X", min_value=0, max_value=100, value=50, key="canva_x", label_visibility="collapsed")
+        _sy1, _sy2 = st.columns([5, 1])
+        with _sy1:
+            canva_y = st.slider("Position Y", min_value=5, max_value=95, key="canva_y", label_visibility="collapsed")
+        with _sy2:
+            st.markdown('<div class="cv-reset">', unsafe_allow_html=True)
+            if st.button("↺ Y", key="_cv_reset_y"):
+                st.session_state["_cv_reset_y"] = True
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        _sx1, _sx2 = st.columns([5, 1])
+        with _sx1:
+            canva_x = st.slider("Position X", min_value=0, max_value=100, key="canva_x", label_visibility="collapsed")
+        with _sx2:
+            st.markdown('<div class="cv-reset">', unsafe_allow_html=True)
+            if st.button("↺ X", key="_cv_reset_x"):
+                st.session_state["_cv_reset_x"] = True
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
         if canva_bg_file:
-            st.markdown('<p class="section-label">Zoom photo</p>', unsafe_allow_html=True)
-            canva_img_zoom = st.slider("Zoom photo", min_value=100, max_value=300, value=100, key="canva_imgzoom", label_visibility="collapsed")
+            st.markdown('<p class="section-label" style="margin-top:6px;">Zoom photo</p>', unsafe_allow_html=True)
+            _sz1, _sz2 = st.columns([5, 1])
+            with _sz1:
+                canva_img_zoom = st.slider("Zoom photo", min_value=100, max_value=300, key="canva_imgzoom", label_visibility="collapsed")
+            with _sz2:
+                st.markdown('<div class="cv-reset">', unsafe_allow_html=True)
+                if st.button("↺ Z", key="_cv_reset_zoom"):
+                    st.session_state["_cv_reset_zoom"] = True
+                    st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
         else:
             canva_img_zoom = 100
 
+        # ── Watermark ────────────────────────────────────────────────
         wm_opts_cv = watermark_options_ui("cv")
 
-        st.markdown('<p class="section-label">Taille watermark</p>', unsafe_allow_html=True)
-        canva_wm_size = st.slider("Taille WM", min_value=5, max_value=40, value=13, key="canva_wmsz", label_visibility="collapsed")
+        _sw1, _sw2 = st.columns([5, 1])
+        with _sw1:
+            st.markdown('<p class="section-label" style="margin-top:4px;">Taille WM</p>', unsafe_allow_html=True)
+            canva_wm_size = st.slider("Taille WM", min_value=5, max_value=40, key="canva_wmsz", label_visibility="collapsed")
+        with _sw2:
+            st.markdown('<div class="cv-reset" style="margin-top:22px;">', unsafe_allow_html=True)
+            if st.button("↺", key="_cv_reset_wmsz"):
+                st.session_state["_cv_reset_wmsz"] = True
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        st.markdown('<p class="section-label">Opacité watermark</p>', unsafe_allow_html=True)
-        canva_wm_opac = st.slider("Opacité WM", min_value=0, max_value=100, value=100, key="canva_wmop", label_visibility="collapsed")
+        _so1, _so2 = st.columns([5, 1])
+        with _so1:
+            st.markdown('<p class="section-label" style="margin-top:4px;">Opacité WM</p>', unsafe_allow_html=True)
+            canva_wm_opac = st.slider("Opacité WM", min_value=0, max_value=100, key="canva_wmop", label_visibility="collapsed")
+        with _so2:
+            st.markdown('<div class="cv-reset" style="margin-top:22px;">', unsafe_allow_html=True)
+            if st.button("↺ ", key="_cv_reset_wmop"):
+                st.session_state["_cv_reset_wmop"] = True
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
         # --- Génération du visuel final (Python/Pillow) pour téléchargement ---
         st.markdown("<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True)
