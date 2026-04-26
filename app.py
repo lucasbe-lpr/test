@@ -1615,8 +1615,7 @@ with tab_crop:
             draw2.rectangle([cx, cy, cx + cw - 1, cy + ch - 1],
                             outline=(0, 104, 177), width=3)
             st.image(cap_image_for_preview(prev_r),
-                     caption=f"{chosen[0]} — {out_w}×{out_h} px — {crop_pos}",
-                     use_container_width=True)
+                     caption=f"{chosen[0]} — {out_w}×{out_h} px — {crop_pos}")
 
     else:
         with col_ctrl_r:
@@ -1722,17 +1721,11 @@ with tab_canva:
             key="canva_title", label_visibility="collapsed", height=80
         )
 
-        # ── Couleurs (4 pickers sur 2 lignes × 2 colonnes) ──────────
-        st.markdown('<p class="section-label">Couleurs</p>', unsafe_allow_html=True)
-        _cc1, _cc2, _cc3, _cc4 = st.columns(4)
-        with _cc1:
-            canva_block_color = st.color_picker("Fond titre", value="#0068B1", key="canva_bc")
-        with _cc2:
-            canva_text_color = st.color_picker("Texte titre", value="#ffffff", key="canva_tc")
-        with _cc3:
-            canva_sur_bg = st.color_picker("Fond surtitre", value="#ffffff", key="canva_sbg")
-        with _cc4:
-            canva_sur_color = st.color_picker("Texte surtitre", value="#0068B1", key="canva_sc")
+        # Couleurs fixes
+        canva_block_color = "#0068B1"
+        canva_text_color  = "#ffffff"
+        canva_sur_bg      = "#ffffff"
+        canva_sur_color   = "#0068B1" 
 
         # ── Sliders position + zoom (label + reset inline) ──────────
         st.markdown('<p class="section-label" style="margin-top:10px;">Position du texte</p>', unsafe_allow_html=True)
@@ -1891,20 +1884,28 @@ with tab_canva:
     with col_prev_cv:
         st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
 
-        _canva_bg_b64 = ""
-        _canva_bg_mime = "image/jpeg"
-        if canva_bg_file:
+        if not canva_bg_file:
+            st.markdown("""
+            <div class="preview-placeholder">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <path d="M21 15l-5-5L5 21"/>
+              </svg>
+              <span>Glissez une image pour voir l'aperçu</span>
+            </div>""", unsafe_allow_html=True)
+        else:
             canva_bg_file.seek(0)
             _canva_bg_b64 = _b64h.b64encode(canva_bg_file.read()).decode()
             _ext = canva_bg_file.name.rsplit(".", 1)[-1].lower()
             _canva_bg_mime = "image/png" if _ext == "png" else ("image/webp" if _ext == "webp" else "image/jpeg")
 
-        # Escape values for JS
-        import json as _json
-        _js_title = _json.dumps(canva_title)
-        _js_sur   = _json.dumps(canva_sur)
+            # Escape values for JS
+            import json as _json
+            _js_title = _json.dumps(canva_title)
+            _js_sur   = _json.dumps(canva_sur)
 
-        components.html(f"""<!DOCTYPE html>
+            components.html(f"""<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8">
 <style>
@@ -2129,6 +2130,7 @@ if(bgImg) canvas.style.cursor='grab';
 </script>
 </body>
 </html>""", height=int(560 * canva_h / canva_w) + 40, scrolling=False)
+
 
 
 # FOOTER
