@@ -1917,7 +1917,7 @@ with tab_canva:
 </head>
 <body>
 <div id="canvasWrap"><canvas id="c"></canvas></div>
-<div id="hint">Il est possible d'attraper la photo pour la replacer.</div>
+<div id="hint">Attrapez la photo pour la replacer dans le cadre.</div>
 <script>
 const CANVAS_W = {canva_w};
 const CANVAS_H = {canva_h};
