@@ -902,9 +902,11 @@ with tab_p :
         with col_ctrl_p :
         
             st .markdown ('<p class="section-label-mt">Fichiers importés</p>',unsafe_allow_html =True )
+            _photo_dims =[]
             for pf in photo_files :
                 img_tmp =Image .open (pf )
                 W_tmp ,H_tmp =img_tmp .size 
+                _photo_dims .append ((W_tmp ,H_tmp ))
                 pf .seek (0 )
                 st .markdown (
                 f'<div class="photo-batch-item">'
@@ -916,11 +918,42 @@ with tab_p :
 
             wm_opts_p =watermark_options_ui ("p")
 
-        def build_photo_output (pf ,opts ):
+            st .markdown ('<p class="section-label-mt">Zoom photo</p>',unsafe_allow_html =True )
+            _photo_zoom =st .slider ("Zoom photo",min_value =100 ,max_value =300 ,value =100 ,
+            key ="p_imgzoom",label_visibility ="collapsed")
+
+            if len (photo_files )>1 :
+                st .markdown ('<p class="section-label-mt">Aperçu de la photo</p>',unsafe_allow_html =True )
+                _preview_idx =st .selectbox (
+                "Photo à prévisualiser",
+                options =list (range (len (photo_files ))),
+                format_func =lambda i :photo_files [i ].name ,
+                key ="p_preview_idx",label_visibility ="collapsed"
+                )
+            else :
+                _preview_idx =0
+
+        def build_photo_output (pf ,opts ,zoom =100 ,off_x =0 ,off_y =0 ):
         
             pf .seek (0 )
-            base =Image .open (pf )
-            result =composite_logo (base ,lp2 ,**opts )
+            base =Image .open (pf ).convert ("RGBA")
+            W_b ,H_b =base .size 
+            if zoom !=100 or off_x !=0 or off_y !=0 :
+                z =zoom /100.0 
+                new_w =int (W_b *z )
+                new_h =int (H_b *z )
+                resized =base .resize ((new_w ,new_h ),Image .LANCZOS )
+                canvas_img =Image .new ("RGBA",(W_b ,H_b ),(34 ,34 ,34 ,255 ))
+                dx =int ((W_b -new_w )/2 +off_x )
+                dy =int ((H_b -new_h )/2 +off_y )
+                src_x =max (0 ,-dx );src_y =max (0 ,-dy )
+                dst_x =max (0 ,dx );dst_y =max (0 ,dy )
+                crop_w =min (new_w -src_x ,W_b -dst_x )
+                crop_h =min (new_h -src_y ,H_b -dst_y )
+                if crop_w >0 and crop_h >0 :
+                    canvas_img .paste (resized .crop ((src_x ,src_y ,src_x +crop_w ,src_y +crop_h )),(dst_x ,dst_y ))
+                base =canvas_img 
+            result =composite_logo (base ,lp2 ,**opts ,force_w =W_b ,force_h =H_b )
             buf =io .BytesIO ()
             ext =pf .name .rsplit (".",1 )[-1 ].lower ()
             if ext =="png":
@@ -930,22 +963,159 @@ with tab_p :
                 result .convert ("RGB").save (buf ,format ="JPEG",quality =100 ,subsampling =0 )
                 return buf .getvalue (),pf .name .rsplit (".",1 )[0 ]+"_wm.jpg","image/jpeg"
 
-                
+        
+        _pf_prev =photo_files [_preview_idx ]
+        _pf_prev .seek (0 )
+        _pf_prev_b64 =_b64h .b64encode (_pf_prev .read ()).decode ()
+        _pf_ext =_pf_prev .name .rsplit (".",1 )[-1 ].lower ()
+        _pf_mime ="image/png"if _pf_ext =="png"else "image/jpeg"
+
+        try :
+            with open (lp2 ,"rb")as _wm_pf :
+                _wm_b64_p =_b64h .b64encode (_wm_pf .read ()).decode ()
+        except Exception :
+            _wm_b64_p =""
+
+        _pw ,_ph =_photo_dims [_preview_idx ]
+        _prev_canvas_h =min (500 ,int (460 *_ph /_pw ))
+
         with col_prev_p :
-            st .markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
-            grid_cols =st .columns (2 )
-            for idx ,pf in enumerate (photo_files ):
-                pf .seek (0 )
-                base_prev =Image .open (pf )
-                result_prev =composite_logo (base_prev ,lp2 ,**wm_opts_p )
-                with grid_cols [idx %2 ]:
-                    st .image (cap_image_for_preview (result_prev .convert ("RGB")),
-                    caption =pf .name ,use_container_width =True )
-            st .markdown ('</div>',unsafe_allow_html =True )
+            st .markdown ('<p class="section-label">Aperçu interactif — glissez pour repositionner</p>',unsafe_allow_html =True )
+            _wm_pos_p =wm_opts_p ["position"]
+            _wm_cx_p =wm_opts_p ["custom_x"]
+            _wm_cy_p =wm_opts_p ["custom_y"]
+            components .html (f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8">
+<style>
+  html,body{{margin:0;padding:0;background:#eef1f5;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:8px;box-sizing:border-box;height:100%;overflow:hidden;}}
+  #canvasWrap{{box-shadow:0 4px 24px rgba(0,0,0,0.18);display:inline-block;}}
+  canvas{{display:block;}}
+</style>
+</head>
+<body>
+<div id="canvasWrap"><canvas id="c"></canvas></div>
+<script>
+const CANVAS_W  = {_pw };
+const CANVAS_H  = {_ph };
+const BG_B64    = "{_pf_prev_b64 }";
+const BG_MIME   = "{_pf_mime }";
+const WM_B64    = "{_wm_b64_p }";
+const IMG_ZOOM  = {_photo_zoom } / 100;
+const WM_SIZE_PCT = 0.1307;
+const MARGIN_R  = 0.05;
+const WM_POS    = "{_wm_pos_p }";
+const WM_CX     = {_wm_cx_p };
+const WM_CY     = {_wm_cy_p };
+
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+
+const AVAIL_H   = {_prev_canvas_h };
+const PREVIEW_W = Math.min(Math.floor(AVAIL_H * CANVAS_W / CANVAS_H), window.innerWidth - 20);
+const UI_ZOOM   = PREVIEW_W / CANVAS_W;
+canvas.width  = CANVAS_W;
+canvas.height = CANVAS_H;
+canvas.style.width  = (CANVAS_W * UI_ZOOM) + 'px';
+canvas.style.height = (CANVAS_H * UI_ZOOM) + 'px';
+
+let bgImg = null, wmImg = null;
+let bgOffX = 0, bgOffY = 0;
+let isDragging = false, dragSX, dragSY, dragBX, dragBY;
+
+function clampOffset() {{
+  if (!bgImg) return;
+  const scaleX = CANVAS_W / bgImg.naturalWidth;
+  const scaleY = CANVAS_H / bgImg.naturalHeight;
+  const base   = Math.max(scaleX, scaleY) * IMG_ZOOM;
+  const dw = bgImg.naturalWidth  * base;
+  const dh = bgImg.naturalHeight * base;
+  const maxOffX = dw / 2 - CANVAS_W / 2;
+  const maxOffY = dh / 2 - CANVAS_H / 2;
+  bgOffX = Math.max(-maxOffX, Math.min(maxOffX, bgOffX));
+  bgOffY = Math.max(-maxOffY, Math.min(maxOffY, bgOffY));
+}}
+
+function render() {{
+  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.fillStyle = '#222';
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+  if (bgImg) {{
+    const scaleX = CANVAS_W / bgImg.naturalWidth;
+    const scaleY = CANVAS_H / bgImg.naturalHeight;
+    const base   = Math.max(scaleX, scaleY) * IMG_ZOOM;
+    const dw = bgImg.naturalWidth  * base;
+    const dh = bgImg.naturalHeight * base;
+    const dx = (CANVAS_W - dw) / 2 + bgOffX;
+    const dy = (CANVAS_H - dh) / 2 + bgOffY;
+    ctx.drawImage(bgImg, dx, dy, dw, dh);
+  }}
+
+  if (wmImg) {{
+    const diag = Math.sqrt(CANVAS_W**2 + CANVAS_H**2);
+    const wmW  = diag * WM_SIZE_PCT;
+    const wmH  = (wmImg.naturalHeight / wmImg.naturalWidth) * wmW;
+    const mx   = CANVAS_W * MARGIN_R;
+    const my   = CANVAS_H * MARGIN_R;
+    const posMap = {{
+      'Haut gauche':   [mx, my],
+      'Haut centre':   [(CANVAS_W - wmW) / 2, my],
+      'Haut droite':   [CANVAS_W - wmW - mx, my],
+      'Milieu gauche': [mx, (CANVAS_H - wmH) / 2],
+      'Centre':        [(CANVAS_W - wmW) / 2, (CANVAS_H - wmH) / 2],
+      'Milieu droite': [CANVAS_W - wmW - mx, (CANVAS_H - wmH) / 2],
+      'Bas gauche':    [mx, CANVAS_H - wmH - my],
+      'Bas centre':    [(CANVAS_W - wmW) / 2, CANVAS_H - wmH - my],
+      'Bas droite':    [CANVAS_W - wmW - mx, CANVAS_H - wmH - my],
+      'Coordonnées personnalisées': [WM_CX, WM_CY],
+    }};
+    const [wx, wy] = posMap[WM_POS] || [CANVAS_W - wmW - mx, CANVAS_H - wmH - my];
+    ctx.drawImage(wmImg, wx, wy, wmW, wmH);
+  }}
+}}
+
+let loaded = 0;
+const toLoad = (BG_B64 ? 1 : 0) + (WM_B64 ? 1 : 0);
+function onLoad() {{ loaded++; if (loaded >= toLoad || toLoad === 0) render(); }}
+if (!toLoad) render();
+
+if (BG_B64) {{
+  bgImg = new Image();
+  bgImg.onload = onLoad;
+  bgImg.src = 'data:' + BG_MIME + ';base64,' + BG_B64;
+  canvas.style.cursor = 'grab';
+}}
+if (WM_B64) {{
+  wmImg = new Image();
+  wmImg.onload = onLoad;
+  wmImg.src = 'data:image/png;base64,' + WM_B64;
+}}
+
+canvas.addEventListener('mousedown', e => {{
+  if (!bgImg) return;
+  isDragging = true; dragSX = e.clientX; dragSY = e.clientY; dragBX = bgOffX; dragBY = bgOffY;
+  canvas.style.cursor = 'grabbing';
+}});
+window.addEventListener('mousemove', e => {{
+  if (!isDragging) return;
+  const scale = 1 / UI_ZOOM;
+  bgOffX = dragBX + (e.clientX - dragSX) * scale;
+  bgOffY = dragBY + (e.clientY - dragSY) * scale;
+  clampOffset();
+  render();
+}});
+window.addEventListener('mouseup', () => {{
+  isDragging = false;
+  canvas.style.cursor = bgImg ? 'grab' : 'default';
+}});
+</script>
+</body>
+</html>""",height =_prev_canvas_h +52 ,scrolling =False )
 
         with col_ctrl_p :
             if len (photo_files )==1 :
-                data ,fname ,mime =build_photo_output (photo_files [0 ],wm_opts_p )
+                data ,fname ,mime =build_photo_output (photo_files [0 ],wm_opts_p ,zoom =_photo_zoom )
                 st .download_button ("↓  Télécharger la photo",data =data ,
                 file_name =fname ,mime =mime ,key ="pdl_single")
             else :
@@ -956,7 +1126,7 @@ with tab_p :
                     row_files =photo_files [i :i +2 ]
                     btn_cols =st .columns (len (row_files ),gap ="small")
                     for j ,pf in enumerate (row_files ):
-                        data ,fname ,mime =build_photo_output (pf ,wm_opts_p )
+                        data ,fname ,mime =build_photo_output (pf ,wm_opts_p ,zoom =_photo_zoom )
                         with btn_cols [j ]:
                             st .download_button (
                             f"↓  {pf .name }",
@@ -968,7 +1138,7 @@ with tab_p :
                 zip_buf =io .BytesIO ()
                 with zipfile .ZipFile (zip_buf ,"w",zipfile .ZIP_STORED )as zf :
                     for pf in photo_files :
-                        data ,fname ,_ =build_photo_output (pf ,wm_opts_p )
+                        data ,fname ,_ =build_photo_output (pf ,wm_opts_p ,zoom =_photo_zoom )
                         zf .writestr (fname ,data )
                 st .download_button (
                 "↓  Tout télécharger (.zip)",
@@ -1266,10 +1436,12 @@ with tab_merge :
 
         with col_prev_m :
             st .markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
+            _grid_m =st .columns (2 )
             for i ,(mp ,mf )in enumerate (zip (merge_paths ,merge_files )):
                 frame_m =extract_frame (mp ,0.0 )
-                st .image (cap_image_for_preview (frame_m ),
-                caption =f"{i +1 }. {mf .name }",use_container_width =True )
+                with _grid_m [i %2 ]:
+                    st .image (cap_image_for_preview (frame_m ),
+                    caption =f"{i +1 }. {mf .name }",use_container_width =True )
 
     elif merge_files and len (merge_files )==1 :
         with col_ctrl_m :
@@ -1598,7 +1770,7 @@ with tab_canva :
         _wm_b64_canva =""
         _wm_mime_canva ="image/png"
 
-    col_ctrl_cv ,col_prev_cv =st .columns ([5 ,5 ],gap ="large")
+    col_ctrl_cv ,col_prev_cv =st .columns ([4 ,6 ],gap ="large")
 
     
     st .markdown ("""
@@ -1768,16 +1940,19 @@ with tab_canva :
                 font_sur =ImageFont .load_default ()
 
                 
-            words =canva_title .split (' ')
-            lines ,cur =[],''
-            for w in words :
-                if len (cur +w )<28 :
-                    cur +=(' 'if cur else '')+w 
-                else :
-                    lines .append (cur )
-                    cur =w 
-            if cur :
-                lines .append (cur )
+            # Respect explicit newlines, then auto-wrap each segment
+            hard_lines = canva_title.split('\n')
+            lines, cur = [], ''
+            for segment in hard_lines:
+                for w in segment.split(' '):
+                    if len(cur + w) < 28:
+                        cur += (' ' if cur else '') + w
+                    else:
+                        lines.append(cur)
+                        cur = w
+                if cur:
+                    lines.append(cur)
+                    cur = ''
 
             cx =int ((50 /100 )*W )
             total_h =lh *len (lines )
@@ -1955,21 +2130,26 @@ function render() {{
     ctx.drawImage(bgImg, dx, dy, dw, dh);
   }}
 
-  const fs     = Math.round(CANVAS_W * 0.05);
-  const fsSur  = Math.round(CANVAS_W * 0.03);
+  const fs     = Math.round(CANVAS_W * 0.056);
+  const fsSur  = Math.round(CANVAS_W * 0.04);
   const pad    = Math.round(CANVAS_W * 0.017);
   const radius = Math.round(CANVAS_W * 0.019);
   const lh     = Math.round(fs * 1.25);
   const overlap= Math.round(CANVAS_W * 0.003);
   const cx     = X_PCT * CANVAS_W;
 
-  const words = TITLE.split(' ');
-  let lines=[], cur='';
-  words.forEach(w => {{
-    if ((cur+w).length < 38) cur += (cur?' ':'')+w;
-    else {{ lines.push(cur); cur=w; }}
+  // Respect explicit newlines, then auto-wrap each segment
+  const hardLines = TITLE.split('\n');
+  let lines = [];
+  hardLines.forEach(segment => {{
+    const words = segment.split(' ');
+    let cur = '';
+    words.forEach(w => {{
+      if ((cur+w).length < 34) cur += (cur?' ':'')+w;
+      else {{ lines.push(cur); cur=w; }}
+    }});
+    if(cur) lines.push(cur);
   }});
-  if(cur) lines.push(cur);
 
   ctx.font = `bold ${{fs}}px 'Roboto Condensed','Roboto',sans-serif`;
   const lineWidths = lines.map(l => ctx.measureText(l).width + pad*2);
