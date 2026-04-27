@@ -1640,7 +1640,7 @@ with tab_canva :
     with col_ctrl_cv :
 
     
-        _cr1 ,_cr2 ,_cr3 =st .columns (3 )
+        _cr1 ,_cr2 =st .columns (2 )
         with _cr1 :
             st .markdown ('<p class="section-label">Arrière-plan</p>',unsafe_allow_html =True )
             canva_bg_file =st .file_uploader (
@@ -1658,24 +1658,6 @@ with tab_canva :
             ],
             key ="canva_format",label_visibility ="collapsed"
             )
-        with _cr3 :
-            st .markdown ('<p class="section-label">Watermark</p>',unsafe_allow_html =True )
-            wm_opts_cv ={
-            "position":st .selectbox (
-            "Position watermark",POSITIONS ,
-            index =POSITIONS .index (DEFAULT_POSITION ),
-            key ="cv_pos",label_visibility ="collapsed"
-            ),
-            "custom_x":0 ,
-            "custom_y":0 ,
-            }
-            if wm_opts_cv ["position"]=="Coordonnées personnalisées":
-                _wx ,_wy =st .columns (2 )
-                with _wx :
-                    wm_opts_cv ["custom_x"]=int (st .number_input ("X",min_value =0 ,value =0 ,step =1 ,key ="cv_cx"))
-                with _wy :
-                    wm_opts_cv ["custom_y"]=int (st .number_input ("Y",min_value =0 ,value =0 ,step =1 ,key ="cv_cy"))
-
         _fmt_map ={
         "1080×1350 — Portrait":(1080 ,1350 ),
         "1080×1080 — Carré":(1080 ,1080 ),
@@ -1683,6 +1665,7 @@ with tab_canva :
         }
         canva_w ,canva_h =_fmt_map [canva_format ]
 
+        
         st .markdown ('<p class="section-label">Surtitre</p>',unsafe_allow_html =True )
         canva_sur =st .text_input ("Surtitre",value ="Modifier le surtitre",key ="canva_sur",label_visibility ="collapsed")
 
@@ -1692,12 +1675,15 @@ with tab_canva :
         key ="canva_title",label_visibility ="collapsed",height =80 
         )
 
+        
         canva_block_color ="#0068B1"
         canva_text_color ="#ffffff"
         canva_sur_bg ="#ffffff"
         canva_sur_color ="#0068B1"
 
+        
         st .markdown ('<p class="section-label" style="margin-top:10px;">Position du texte</p>',unsafe_allow_html =True )
+
         canva_y =st .slider ("Position Y",min_value =5 ,max_value =95 ,key ="canva_y",label_visibility ="collapsed")
 
         if canva_bg_file :
@@ -1706,6 +1692,8 @@ with tab_canva :
         else :
             canva_img_zoom =100 
 
+            
+        wm_opts_cv =watermark_options_ui ("cv")
         canva_wm_size =13 
         canva_wm_opac =100 
 
@@ -1838,46 +1826,12 @@ with tab_canva :
             
             return result 
 
-        _canvas_export =st .text_area (
-        "canvas_export",value ="",key ="canva_export_data",
-        label_visibility ="collapsed",
-        height =1 ,
-        help ="hidden"
-        )
-        st .markdown ("""<style>
-        [data-testid="stTextArea"][aria-label="canvas_export"],
-        div:has(> [data-testid="stTextArea"] textarea[aria-label="canvas_export"]) { display:none!important; }
-        textarea[data-testid="stTextArea"] { display:none!important; }
-        </style>""",unsafe_allow_html =True )
+        st .markdown ("""
+<div style="margin-top:1.2rem; padding:0.75rem 1rem; background:#e8f2fb; border:1px solid #b3d4f0; border-radius:8px; font-size:0.82rem; color:#0068B1; line-height:1.6;">
+  💾 Pour télécharger le visuel, <b>faites un clic droit sur l'aperçu</b> puis sélectionnez <b>« Enregistrer l'image sous… »</b>
+</div>""",unsafe_allow_html =True )
 
-        if st .button ("Générer le visuel",key ="canva_gen"):
-            raw =st .session_state .get ("canva_export_data","")
-            if raw and raw .startswith ("data:image/png;base64,"):
-                import base64 as _b64dec 
-                png_bytes =_b64dec .b64decode (raw .split (",",1 )[1 ])
-                st .session_state ["canva_dl_bytes"]=png_bytes 
-                st .rerun ()
-            else :
-                with st .spinner ("Génération…"):
-                    try :
-                        _canva_result =generate_canva_image ()
-                        _canva_buf =io .BytesIO ()
-                        _canva_result .save (_canva_buf ,format ="PNG")
-                        st .session_state ["canva_dl_bytes"]=_canva_buf .getvalue ()
-                        st .rerun ()
-                    except Exception as e :
-                        st .markdown (f'<div class="status status-err">Erreur : {e }</div>',unsafe_allow_html =True )
-
-        if st .session_state .get ("canva_dl_bytes"):
-            st .download_button (
-            "↓  Télécharger le visuel (PNG)",
-            data =st .session_state ["canva_dl_bytes"],
-            file_name ="visuel_luluflix.png",
-            mime ="image/png",
-            key ="canva_dl"
-            )
-
-            
+        
     with col_prev_cv :
         st .markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
 
@@ -1902,20 +1856,17 @@ with tab_canva :
             _js_title =_json .dumps (canva_title )
             _js_sur =_json .dumps (canva_sur )
 
-            _preview_h =min (700 ,int (560 *canva_h /canva_w ))
             components .html (f"""<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8">
 <style>
-  html,body{{margin:0;padding:0;background:#eef1f5;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:8px;box-sizing:border-box;height:100%;overflow:hidden;}}
+  html,body{{margin:0;padding:0;background:#eef1f5;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:8px;box-sizing:border-box;height:100%;}}
   #canvasWrap{{box-shadow:0 4px 24px rgba(0,0,0,0.18);display:inline-block;}}
   canvas{{display:block;}}
-  #hint{{font-family:'Roboto',sans-serif;font-size:0.68rem;color:#999;margin-top:6px;font-style:italic;text-align:center;display:{"block"if canva_bg_file else "none"};}}
 </style>
 </head>
 <body>
 <div id="canvasWrap"><canvas id="c"></canvas></div>
-<div id="hint">Attrapez la photo pour la replacer dans le cadre.</div>
 <script>
 const CANVAS_W = {canva_w };
 const CANVAS_H = {canva_h };
@@ -1942,8 +1893,8 @@ const MARGIN_R    = 0.04;
 const canvas = document.getElementById('c');
 const ctx    = canvas.getContext('2d');
 
-const AVAIL_H   = {_preview_h } - 52;
-const PREVIEW_W = Math.min(Math.floor(AVAIL_H * CANVAS_W / CANVAS_H), window.innerWidth - 20);
+// Fit canvas into ~560px wide preview
+const PREVIEW_W = Math.min(560, window.innerWidth - 20);
 const UI_ZOOM   = PREVIEW_W / CANVAS_W;
 canvas.width  = CANVAS_W;
 canvas.height = CANVAS_H;
@@ -1953,19 +1904,6 @@ canvas.style.height = (CANVAS_H * UI_ZOOM) + 'px';
 let bgImg = null, wmImg = null;
 let bgOffX = 0, bgOffY = 0;
 let isDragging = false, dragSX, dragSY, dragBX, dragBY;
-
-function clampOffset() {{
-  if (!bgImg) return;
-  const scaleX = CANVAS_W / bgImg.naturalWidth;
-  const scaleY = CANVAS_H / bgImg.naturalHeight;
-  const base   = Math.max(scaleX, scaleY) * IMG_ZOOM;
-  const dw = bgImg.naturalWidth  * base;
-  const dh = bgImg.naturalHeight * base;
-  const maxOffX = dw / 2 - CANVAS_W / 2;
-  const maxOffY = dh / 2 - CANVAS_H / 2;
-  bgOffX = Math.max(-maxOffX, Math.min(maxOffX, bgOffX));
-  bgOffY = Math.max(-maxOffY, Math.min(maxOffY, bgOffY));
-}}
 
 function roundRect(c, x, y, w, h, r, fill) {{
   c.beginPath();
@@ -1980,6 +1918,7 @@ function render() {{
   ctx.clearRect(0,0,CANVAS_W,CANVAS_H);
   ctx.fillStyle='#222'; ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
 
+  // Background
   if (bgImg) {{
     const scaleX = CANVAS_W / bgImg.naturalWidth;
     const scaleY = CANVAS_H / bgImg.naturalHeight;
@@ -1991,6 +1930,7 @@ function render() {{
     ctx.drawImage(bgImg, dx, dy, dw, dh);
   }}
 
+  // Text block
   const fs     = Math.round(CANVAS_W * 0.05);
   const fsSur  = Math.round(CANVAS_W * 0.03);
   const pad    = Math.round(CANVAS_W * 0.017);
@@ -1999,6 +1939,7 @@ function render() {{
   const overlap= Math.round(CANVAS_W * 0.003);
   const cx     = X_PCT * CANVAS_W;
 
+  // Word wrap (~28 chars/line)
   const words = TITLE.split(' ');
   let lines=[], cur='';
   words.forEach(w => {{
@@ -2017,6 +1958,7 @@ function render() {{
   const totalH  = lh * lines.length;
   const blockTop = CANVAS_H * Y_PCT - totalH/2;
 
+  // ── Offscreen goo (blur+threshold) ──
   const off = document.createElement('canvas');
   off.width = CANVAS_W; off.height = CANVAS_H;
   const octx = off.getContext('2d');
@@ -2028,12 +1970,14 @@ function render() {{
     roundRect(octx, lx, ly, lw, lh+overlap, radius, BLOCK_COLOR);
   }});
 
+  // blur
   const off2 = document.createElement('canvas');
   off2.width=CANVAS_W; off2.height=CANVAS_H;
   const o2=off2.getContext('2d');
   o2.filter='blur(10px)';
   o2.drawImage(off,0,0);
   o2.filter='none';
+  // threshold
   const id=o2.getImageData(0,0,CANVAS_W,CANVAS_H);
   const px=id.data;
   const [br,bg2,bb] = hexToRgb(BLOCK_COLOR);
@@ -2044,6 +1988,7 @@ function render() {{
   o2.putImageData(id,0,0);
   ctx.drawImage(off2,0,0);
 
+  // ── Surtitre ──
   const surX = cx - surW/2;
   const surY = blockTop - surH - Math.round(CANVAS_W*-0.000);
   roundRect(ctx, surX, surY, surW, surH, radius, SUR_BG);
@@ -2052,6 +1997,7 @@ function render() {{
   ctx.textAlign='left'; ctx.textBaseline='middle';
   ctx.fillText(SURTITRE, surX+pad, surY+surH/2);
 
+  // ── Titre text (crisp, on top) ──
   ctx.font = `bold ${{fs}}px 'Roboto Condensed','Roboto',sans-serif`;
   ctx.fillStyle = TEXT_COLOR;
   ctx.textAlign='left'; ctx.textBaseline='middle';
@@ -2062,6 +2008,7 @@ function render() {{
     ctx.fillText(line, lx+pad, ly+lh/2);
   }});
 
+  // ── Watermark ──
   if(wmImg) {{
     const diag = Math.sqrt(CANVAS_W**2+CANVAS_H**2);
     const wmW  = diag * WM_SIZE_PCT;
@@ -2094,6 +2041,7 @@ function hexToRgb(hex) {{
   return [r,g,b];
 }}
 
+// Load images then render
 let loaded = 0;
 const toLoad = (BG_B64?1:0) + (WM_B64?1:0);
 function onLoad() {{ loaded++; if(loaded>=toLoad||toLoad===0) {{ render(); setTimeout(exportCanvas, 100); }} }}
@@ -2110,6 +2058,7 @@ if(WM_B64){{
   wmImg.src = 'data:'+WM_MIME+';base64,'+WM_B64;
 }}
 
+// Drag to reposition photo
 canvas.addEventListener('mousedown', e=>{{
   if(!bgImg) return;
   isDragging=true; dragSX=e.clientX; dragSY=e.clientY; dragBX=bgOffX; dragBY=bgOffY;
@@ -2120,7 +2069,6 @@ window.addEventListener('mousemove', e=>{{
   const scale = 1/UI_ZOOM;
   bgOffX = dragBX+(e.clientX-dragSX)*scale;
   bgOffY = dragBY+(e.clientY-dragSY)*scale;
-  clampOffset();
   render();
 }});
 window.addEventListener('mouseup',()=>{{
@@ -2132,11 +2080,7 @@ if(bgImg) canvas.style.cursor='grab';
 
 function exportCanvas() {{
   try {{
-    const nativeCanvas = document.createElement('canvas');
-    nativeCanvas.width  = CANVAS_W;
-    nativeCanvas.height = CANVAS_H;
-    nativeCanvas.getContext('2d').drawImage(canvas, 0, 0, CANVAS_W, CANVAS_H);
-    const dataUrl = nativeCanvas.toDataURL('image/png');
+    const dataUrl = canvas.toDataURL('image/png');
     const allTA = window.parent.document.querySelectorAll('textarea');
     allTA.forEach(ta => {{
       if(ta.value === '' || ta.value.startsWith('data:image')) {{
@@ -2149,7 +2093,7 @@ function exportCanvas() {{
 }}
 </script>
 </body>
-</html>""",height =_preview_h +52 ,scrolling =False )
+</html>""",height =int (560 *canva_h /canva_w )+40 ,scrolling =False )
 
             
 st .markdown ("""
