@@ -9,8 +9,6 @@ import io
 import zipfile
 from PIL import Image
 
-
-# FICHIERS STATIQUES — logo principal, watermark par défaut, favicon
 LOGO_FILE       = "luluflix.png"
 DEFAULT_WM_FILE = "lpr.png"
 FAVICON_FILE    = "favicon.png"
@@ -27,26 +25,24 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-
-# CSS GLOBAL — toute la DA est ici, ne pas toucher sans raison
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&family=Roboto+Condensed:wght@400;500;700&display=swap');
 
 /* VARIABLES DE COULEUR ET DE TAILLE — modifier ici pour changer le thème */
 :root {
-  --blue:        #0068B1;
-  --blue-dim:    #e8f2fb;
-  --white:       #ffffff;
-  --bg:          #fafafa;
-  --ink:         #111111;
-  --sub:         #555555;
-  --muted:       #999999;
-  --border:      #e4e4e4;
-  --border-mid:  #d0d0d0;
-  --green:       #166534;
-  --red:         #991b1b;
-  --red-bg:      #fff1f1;
+  --blue:
+  --blue-dim:
+  --white:
+  --bg:
+  --ink:
+  --sub:
+  --muted:
+  --border:
+  --border-mid:
+  --green:
+  --red:
+  --red-bg:
   --header-h:    64px;
   --tabs-h:      48px;
   --footer-h:    52px;
@@ -75,7 +71,7 @@ html, body,
 }
 
 /* MASQUER les éléments natifs Streamlit non souhaités */
-#MainMenu, footer, header,
+
 [data-testid="stToolbar"],
 [data-testid="stDecoration"] { display: none !important; }
 
@@ -202,7 +198,7 @@ div[data-testid="stTabs"] [data-baseweb="tab-panel"] { padding: 0 !important; }
 /* PREVIEW WRAP — cadre autour de l'aperçu vidéo/image */
 .preview-wrap {
   border: 1px solid var(--border); border-radius: 10px;
-  overflow: hidden; background: #f0f0f0;
+  overflow: hidden; background:
   display: flex; flex-direction: column;
 }
 .preview-bar {
@@ -232,7 +228,7 @@ div.stButton > button {
   box-shadow: 0 1px 2px rgba(0,104,177,0.15), 0 2px 6px rgba(0,104,177,0.1) !important;
   cursor: pointer !important;
 }
-div.stButton > button:hover { background: #005fa8 !important; transform: translateY(-1px) !important; }
+div.stButton > button:hover { background:
 div.stButton > button:active { transform: translateY(0) !important; }
 div.stButton > button:disabled {
   background: var(--border) !important; color: var(--muted) !important;
@@ -242,8 +238,8 @@ div.stButton > button:disabled {
 /* BOUTONS DE TELECHARGEMENT — vert uniforme pour tous */
 div.stDownloadButton > button,
 div[data-testid="stDownloadButton"] > button {
-  width: 100% !important; background: #16a34a !important; border: none !important;
-  color: #fff !important; font-family: 'Roboto', sans-serif !important;
+  width: 100% !important; background:
+  color:
   font-size: 0.85rem !important; font-weight: 500 !important;
   padding: 0 1.4rem !important; height: 38px !important; border-radius: 999px !important;
   transition: background 0.15s, transform 0.1s !important;
@@ -251,7 +247,7 @@ div[data-testid="stDownloadButton"] > button {
 }
 div.stDownloadButton > button:hover,
 div[data-testid="stDownloadButton"] > button:hover {
-  background: #15803d !important; transform: translateY(-1px) !important;
+  background:
 }
 div.stDownloadButton > button:active,
 div[data-testid="stDownloadButton"] > button:active { transform: translateY(0) !important; }
@@ -412,7 +408,7 @@ div[data-testid="stSpinner"] p {
 /* LECTEUR VIDEO APERÇU — player natif stylisé DA */
 .video-preview-wrap {
   border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
-  background: #0a0a0a; margin-top: 0.2rem;
+  background:
 }
 .video-preview-wrap video {
   width: 100%; display: block; max-height: 420px; object-fit: contain;
@@ -463,8 +459,6 @@ div[data-testid="stSpinner"] p {
 </style>
 """, unsafe_allow_html=True)
 
-
-# HEADER — logo encodé en base64 pour éviter les dépendances de chemin
 import base64 as _b64h
 with open(LOGO_FILE, "rb") as _f:
     _logo_b64 = _b64h.b64encode(_f.read()).decode()
@@ -475,13 +469,11 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-
-# DIMENSIONS MAX DE L'APERÇU — ajuster si la colonne droite change de taille
 PREVIEW_MAX_W = 680
 PREVIEW_MAX_H = 500
 
 def cap_image_for_preview(img: Image.Image) -> Image.Image:
-    # REDIMENSIONNE pour tenir dans la colonne droite sans déborder
+
     w, h = img.size
     if w > PREVIEW_MAX_W:
         ratio = PREVIEW_MAX_W / w
@@ -495,12 +487,9 @@ def cap_image_for_preview(img: Image.Image) -> Image.Image:
         return img
     return img.resize((w, h), Image.LANCZOS)
 
-
 def get_default_logo() -> str:
     return DEFAULT_WM_FILE
 
-
-# POSITIONS DISPONIBLES — ordre affiché dans le selectbox
 POSITIONS = [
     "Haut gauche", "Haut centre", "Haut droite",
     "Milieu gauche", "Centre", "Milieu droite",
@@ -512,8 +501,7 @@ DEFAULT_POSITION = "Haut droite"
 def compute_xy(position: str, W: int, H: int, logo_w: int, logo_h: int,
                custom_x: int = 0, custom_y: int = 0,
                margin_pct: float = 0.05) -> tuple[int, int]:
-    # CALCULE LES COORDONNÉES x,y du watermark selon la position choisie
-    # margin_pct = marge en % des dimensions de la vidéo/image
+
     mx = int(W * margin_pct)
     my = int(H * margin_pct)
     if position == "Haut gauche":    return mx, my
@@ -527,15 +515,13 @@ def compute_xy(position: str, W: int, H: int, logo_w: int, logo_h: int,
     if position == "Bas droite":     return W - logo_w - mx, H - logo_h - my
     return custom_x, custom_y
 
-
 def composite_logo(
     base: Image.Image, logo_path: str,
     position: str = DEFAULT_POSITION,
     custom_x: int = 0, custom_y: int = 0,
     force_w: int = None, force_h: int = None,
 ) -> Image.Image:
-    # COLLE LE WATERMARK sur l'image via alpha composite Pillow
-    # La taille du logo est calculée à 13% de la diagonale
+
     W = force_w if force_w else base.size[0]
     H = force_h if force_h else base.size[1]
     logo_w = int(math.sqrt(W**2 + H**2) * 0.1307)
@@ -550,9 +536,8 @@ def composite_logo(
     out = Image.alpha_composite(out, layer)
     return out
 
-
 def get_video_info(path: str) -> dict:
-    # LIT LES MÉTADONNÉES VIDÉO via ffprobe (dimensions, durée, fps, rotation)
+
     import json as _json
     cmd = [
         "ffprobe", "-v", "error",
@@ -585,24 +570,21 @@ def get_video_info(path: str) -> dict:
         w, h = h, w
     return {"width": w, "height": h, "duration": dur, "fps": fps, "rotate": rotate}
 
-
 def fmt_time(secs: float) -> str:
     m, s = divmod(int(secs), 60)
     return f"{m}:{s:02d}"
 
-
 def extract_frame(video_path: str, timecode: float) -> Image.Image:
-    # EXTRAIT UNE IMAGE à un timecode donné (en secondes)
+
     result = subprocess.run([
         "ffmpeg", "-y", "-ss", str(timecode), "-i", video_path,
         "-vframes", "1", "-f", "image2pipe", "-vcodec", "png", "pipe:1"
     ], capture_output=True)
     return Image.open(io.BytesIO(result.stdout)).convert("RGB")
 
-
 def make_thumbnail(video_path: str, logo_path: str, info: dict,
                    position: str = DEFAULT_POSITION, custom_x: int = 0, custom_y: int = 0) -> Image.Image:
-    # GÉNÈRE LA MINIATURE D'APERÇU depuis la première frame de la vidéo
+
     result = subprocess.run([
         "ffmpeg", "-y", "-i", video_path,
         "-vframes", "1", "-f", "image2pipe", "-vcodec", "png", "pipe:1"
@@ -614,8 +596,6 @@ def make_thumbnail(video_path: str, logo_path: str, info: dict,
         force_w=info["width"], force_h=info["height"]
     ).convert("RGB")
 
-
-# PRESETS DE QUALITÉ EXPORT VIDÉO — clé = label affiché, valeur = params ffmpeg
 QUALITY_PRESETS = {
     "Standard (CRF 18 — recommandé)": {"crf": "18", "preset": "fast"},
     "Haute qualité (CRF 12)":         {"crf": "12", "preset": "slow"},
@@ -628,9 +608,7 @@ def render_video(
     quality_key: str = "Standard (CRF 18 — recommandé)",
     progress_cb=None
 ):
-    # ENCODE LA VIDÉO FINALE avec ffmpeg
-    # Le watermark est pré-scalé par Pillow (LANCZOS) avant d'être passé à ffmpeg
-    # pour éviter toute dégradation de qualité lors du redimensionnement
+
     W, H = info["width"], info["height"]
     logo_w = int(math.sqrt(W**2 + H**2) * 0.1307)
     logo_orig = Image.open(logo_path).convert("RGBA")
@@ -669,9 +647,8 @@ def render_video(
     if process.returncode != 0:
         raise RuntimeError(process.stderr.read())
 
-
 def trim_video(video_path: str, output_path: str, t_start: float, t_end: float):
-    # COUPE LA VIDÉO entre t_start et t_end (en secondes), sans ré-encodage
+
     cmd = [
         "ffmpeg", "-y",
         "-ss", str(t_start), "-to", str(t_end),
@@ -683,10 +660,8 @@ def trim_video(video_path: str, output_path: str, t_start: float, t_end: float):
     if result.returncode != 0:
         raise RuntimeError(result.stderr.decode())
 
-
 def watermark_options_ui(key_prefix: str) -> dict:
-    # UI PARTAGÉE POSITION WATERMARK — utilisée dans les onglets vidéo et photo
-    # key_prefix évite les conflits de clés Streamlit entre onglets
+
     st.markdown('<p class="section-label-mt">Watermark</p>', unsafe_allow_html=True)
     position = st.selectbox(
         "Position", POSITIONS,
@@ -702,10 +677,8 @@ def watermark_options_ui(key_prefix: str) -> dict:
             custom_y = st.number_input("Y (px depuis haut)", min_value=0, value=0, step=1, key=f"{key_prefix}_cy")
     return {"position": position, "custom_x": int(custom_x), "custom_y": int(custom_y)}
 
-
 def merge_videos(video_paths: list, output_path: str):
-    # FUSIONNE plusieurs vidéos sans coupure via ffmpeg concat demuxer
-    # Re-encode en libx264 pour uniformiser les streams et éviter les sauts
+
     tmp_list = tempfile.mktemp(suffix=".txt")
     with open(tmp_list, "w") as f:
         for p in video_paths:
@@ -724,9 +697,8 @@ def merge_videos(video_paths: list, output_path: str):
     if result.returncode != 0:
         raise RuntimeError(result.stderr.decode())
 
-
 def remove_audio(video_path: str, output_path: str):
-    # SUPPRIME la piste audio de la vidéo (stream copy vidéo uniquement)
+
     cmd = [
         "ffmpeg", "-y", "-i", video_path,
         "-c:v", "copy", "-an",
@@ -736,9 +708,8 @@ def remove_audio(video_path: str, output_path: str):
     if result.returncode != 0:
         raise RuntimeError(result.stderr.decode())
 
-
 def replace_audio(video_path: str, audio_path: str, output_path: str, loop_audio: bool = True):
-    # REMPLACE l'audio par un fichier externe — loop si l'audio est plus court que la vidéo
+
     loop_flag = ["-stream_loop", "-1"] if loop_audio else []
     cmd = [
         "ffmpeg", "-y",
@@ -746,7 +717,7 @@ def replace_audio(video_path: str, audio_path: str, output_path: str, loop_audio
         *loop_flag, "-i", audio_path,
         "-c:v", "copy",
         "-c:a", "aac", "-b:a", "192k",
-        "-shortest",          # stoppe quand la vidéo se termine
+        "-shortest",
         "-map", "0:v:0", "-map", "1:a:0",
         "-movflags", "+faststart", output_path
     ]
@@ -754,8 +725,6 @@ def replace_audio(video_path: str, audio_path: str, output_path: str, loop_audio
     if result.returncode != 0:
         raise RuntimeError(result.stderr.decode())
 
-
-# PRESETS DE RECADRAGE — (label, ratio_w, ratio_h, description réseau)
 CROP_PRESETS = [
     ("9:16",  9, 16, "Stories"),
     ("1:1",   1,  1, "Carré"),
@@ -768,24 +737,23 @@ CROP_PRESETS = [
 def crop_video(video_path: str, output_path: str,
                ratio_w: int, ratio_h: int,
                position: str = "Centre"):
-    # RECADRE la vidéo au ratio choisi sans ré-encoder l'audio
-    # La zone recadrée est centrée (ou ajustée selon position)
+
     info = get_video_info(video_path)
     W, H = info["width"], info["height"]
     target_ratio = ratio_w / ratio_h
     src_ratio = W / H
     if src_ratio > target_ratio:
-        # Trop large → rogner sur la largeur
+
         new_w = int(H * target_ratio)
         new_h = H
     else:
-        # Trop haut → rogner sur la hauteur
+
         new_w = W
         new_h = int(W / target_ratio)
-    # S'assurer que les dimensions sont paires (exigence libx264)
+
     new_w = new_w - (new_w % 2)
     new_h = new_h - (new_h % 2)
-    # Position du crop
+
     if position == "Haut":
         x_off, y_off = (W - new_w) // 2, 0
     elif position == "Bas":
@@ -794,7 +762,7 @@ def crop_video(video_path: str, output_path: str,
         x_off, y_off = 0, (H - new_h) // 2
     elif position == "Droite":
         x_off, y_off = W - new_w, (H - new_h) // 2
-    else:  # Centre (défaut)
+    else:
         x_off, y_off = (W - new_w) // 2, (H - new_h) // 2
     vf = f"crop={new_w}:{new_h}:{x_off}:{y_off}"
     cmd = [
@@ -808,8 +776,6 @@ def crop_video(video_path: str, output_path: str,
     if result.returncode != 0:
         raise RuntimeError(result.stderr.decode())
 
-
-# SESSION STATE — initialisation des variables persistantes entre reruns
 for k in ["thumbnail", "rendered_bytes", "_last_video_name",
           "cut_bytes", "_last_cut_name", "merge_bytes",
           "audio_bytes", "_last_audio_name",
@@ -821,11 +787,6 @@ tab_v, tab_p, tab_s, tab_cut, tab_merge, tab_audio, tab_crop, tab_canva = st.tab
     "Watermark vidéo", "Watermark photo", "Capture d'écran",
     "Couper", "Fusionner", "Son", "Recadrer", "Template RS"
 ])
-
-
-# ═══════════════════════════════════════════════════════════════════
-# WATERMARK VIDÉO
-# ═══════════════════════════════════════════════════════════════════
 
 with tab_v:
     col_ctrl, col_prev = st.columns([4, 6], gap="large")
@@ -839,7 +800,7 @@ with tab_v:
         )
 
     if video_file:
-        # RESET si l'utilisateur change de fichier
+
         if st.session_state._last_video_name != video_file.name:
             st.session_state.thumbnail = None
             st.session_state.rendered_bytes = None
@@ -868,7 +829,6 @@ with tab_v:
                 key="v_quality", label_visibility="collapsed",
             )
 
-            # INVALIDE L'APERÇU si les options de watermark changent
             opts_sig = (wm_opts["position"], wm_opts["custom_x"], wm_opts["custom_y"])
             if st.session_state.get("_v_opts_sig") != opts_sig:
                 st.session_state.thumbnail = None
@@ -914,11 +874,6 @@ with tab_v:
               <span>L'aperçu apparaîtra ici</span>
             </div>""", unsafe_allow_html=True)
 
-
-# ═══════════════════════════════════════════════════════════════════
-# WATERMARK PHOTO
-# ═══════════════════════════════════════════════════════════════════
-
 with tab_p:
     col_ctrl_p, col_prev_p = st.columns([4, 6], gap="large")
 
@@ -936,7 +891,7 @@ with tab_p:
         lp2 = get_default_logo()
 
         with col_ctrl_p:
-            # LISTE DES FICHIERS IMPORTÉS avec dimensions
+
             st.markdown('<p class="section-label-mt">Fichiers importés</p>', unsafe_allow_html=True)
             for pf in photo_files:
                 img_tmp = Image.open(pf)
@@ -953,7 +908,7 @@ with tab_p:
             wm_opts_p = watermark_options_ui("p")
 
         def build_photo_output(pf, opts):
-            # GÉNÈRE LE FICHIER FINAL watermarké pour une image donnée
+
             pf.seek(0)
             base = Image.open(pf)
             result = composite_logo(base, lp2, **opts)
@@ -966,7 +921,6 @@ with tab_p:
                 result.convert("RGB").save(buf, format="JPEG", quality=100, subsampling=0)
                 return buf.getvalue(), pf.name.rsplit(".", 1)[0] + "_wm.jpg", "image/jpeg"
 
-        # GRILLE D'APERÇU — 2 colonnes, toutes les photos uploadées
         with col_prev_p:
             st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
             grid_cols = st.columns(2)
@@ -987,7 +941,6 @@ with tab_p:
             else:
                 st.markdown('<p class="section-label-mt">Téléchargement</p>', unsafe_allow_html=True)
 
-                # BOUTONS INDIVIDUELS — 2 par ligne avec gap
                 for i in range(0, len(photo_files), 2):
                     row_files = photo_files[i:i+2]
                     btn_cols = st.columns(len(row_files), gap="small")
@@ -1000,7 +953,6 @@ with tab_p:
                                 key=f"pdl_{i+j}",
                             )
 
-                # BOUTON ZIP — télécharge tout en une archive
                 zip_buf = io.BytesIO()
                 with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_STORED) as zf:
                     for pf in photo_files:
@@ -1026,11 +978,6 @@ with tab_p:
               </svg>
               <span>L'aperçu apparaîtra ici</span>
             </div>""", unsafe_allow_html=True)
-
-
-# ═══════════════════════════════════════════════════════════════════
-# CAPTURE D'ÉCRAN
-# ═══════════════════════════════════════════════════════════════════
 
 with tab_s:
     col_ctrl_s, col_prev_s = st.columns([4, 6], gap="large")
@@ -1090,12 +1037,6 @@ with tab_s:
               <span>L'aperçu apparaîtra ici</span>
             </div>""", unsafe_allow_html=True)
 
-
-
-# ═══════════════════════════════════════════════════════════════════
-# COUPER
-# ═══════════════════════════════════════════════════════════════════
-
 with tab_cut:
     col_ctrl_c, col_prev_c = st.columns([4, 6], gap="large")
 
@@ -1140,7 +1081,6 @@ with tab_cut:
                 key="cut_end", label_visibility="collapsed"
             )
 
-            # Validation
             if t_end <= t_start:
                 st.markdown('<div class="status status-err">⚠ La fin doit être après le début.</div>', unsafe_allow_html=True)
                 t_end = min(t_start + 0.1, dur_c)
@@ -1155,7 +1095,6 @@ with tab_cut:
 
             st.markdown("<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True)
 
-            # Raffraîchir si les paramètres changent
             cut_sig = (t_start, t_end, cut_file.name)
             if st.session_state.get("_cut_sig") != cut_sig:
                 st.session_state.cut_bytes = None
@@ -1185,8 +1124,7 @@ with tab_cut:
 
         with col_prev_c:
             st.markdown('<p class="section-label">Aperçu du segment sélectionné</p>', unsafe_allow_html=True)
-            # Encoder la vidéo source en base64 pour lecteur HTML natif
-            # Le player démarre à t_start et s'arrête à t_end automatiquement
+
             with open(cp, "rb") as _vf:
                 _vb64 = _b64.b64encode(_vf.read()).decode()
             _ext = os.path.splitext(cut_file.name)[1].lower().lstrip(".")
@@ -1224,11 +1162,6 @@ with tab_cut:
               <span>L'aperçu apparaîtra ici</span>
             </div>""", unsafe_allow_html=True)
 
-
-# ═══════════════════════════════════════════════════════════════════
-# FUSIONNER
-# ═══════════════════════════════════════════════════════════════════
-
 with tab_merge:
     col_ctrl_m, col_prev_m = st.columns([4, 6], gap="large")
 
@@ -1242,7 +1175,7 @@ with tab_merge:
         )
 
     if merge_files and len(merge_files) >= 2:
-        # Sauvegarder les fichiers temporairement
+
         tmp_m = tempfile.mkdtemp()
         merge_paths = []
         total_dur = 0.0
@@ -1276,7 +1209,6 @@ with tab_merge:
 
             st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
 
-            # Reset si la liste de fichiers change
             merge_sig = tuple(mf.name for mf in merge_files)
             if st.session_state.get("_merge_sig") != merge_sig:
                 st.session_state.merge_bytes = None
@@ -1325,14 +1257,6 @@ with tab_merge:
               </svg>
               <span>L'aperçu apparaîtra ici</span>
             </div>""", unsafe_allow_html=True)
-
-
-
-
-
-# ═══════════════════════════════════════════════════════════════════
-# SON
-# ═══════════════════════════════════════════════════════════════════
 
 with tab_audio:
     col_ctrl_a, col_prev_a = st.columns([4, 6], gap="large")
@@ -1433,7 +1357,7 @@ with tab_audio:
             _amime = "video/mp4" if _aext in ("mp4", "m4v") else f"video/{_aext}"
 
             if "Supprimer" in audio_action:
-                # Aperçu sans son : attribut muted sur la balise video
+
                 components.html(f"""
 <div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
   <video controls muted style="width:100%;display:block;max-height:380px;object-fit:contain;"
@@ -1444,7 +1368,7 @@ with tab_audio:
 </p>""", height=440)
 
             elif "Remplacer" in audio_action and audio_replace_file:
-                # Aperçu avec remplacement audio : la vidéo est mutée, un <audio> joue en parallèle
+
                 _aud_bytes = audio_replace_file.read()
                 _aud_b64 = _b64.b64encode(_aud_bytes).decode()
                 _aud_ext = os.path.splitext(audio_replace_file.name)[1].lower().lstrip(".")
@@ -1470,7 +1394,7 @@ with tab_audio:
 </script>""", height=450)
 
             else:
-                # Aucun fichier audio sélectionné encore (mode Remplacer sans fichier) : aperçu normal
+
                 components.html(f"""
 <div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
   <video controls style="width:100%;display:block;max-height:380px;object-fit:contain;"
@@ -1489,11 +1413,6 @@ with tab_audio:
               </svg>
               <span>L'aperçu apparaîtra ici</span>
             </div>""", unsafe_allow_html=True)
-
-
-# ═══════════════════════════════════════════════════════════════════
-# RECADRER
-# ═══════════════════════════════════════════════════════════════════
 
 with tab_crop:
     col_ctrl_r, col_prev_r = st.columns([4, 6], gap="large")
@@ -1630,11 +1549,6 @@ with tab_crop:
               <span>L'aperçu apparaîtra ici</span>
             </div>""", unsafe_allow_html=True)
 
-
-# ═══════════════════════════════════════════════════════════════════
-# GÉNÉRATEUR DE VISUELS (CANVA)
-# ═══════════════════════════════════════════════════════════════════
-
 with tab_canva:
     try:
         with open(DEFAULT_WM_FILE, "rb") as _wm_f:
@@ -1646,7 +1560,6 @@ with tab_canva:
 
     col_ctrl_cv, col_prev_cv = st.columns([4, 6], gap="large")
 
-    # CSS compact spécifique à cet onglet (labels inline + sliders resserrés)
     st.markdown("""
     <style>
     /* Réduit l'espace autour des sliders dans l'onglet Canva */
@@ -1659,23 +1572,21 @@ with tab_canva:
     .cv-reset > button {
       height: 26px !important; min-height: 26px !important;
       font-size: 0.7rem !important; padding: 0 0.7rem !important;
-      background: var(--bg, #fafafa) !important;
-      border: 1px solid var(--border, #e4e4e4) !important;
-      color: var(--muted, #999) !important;
+      background: var(--bg,
+      border: 1px solid var(--border,
+      color: var(--muted,
       box-shadow: none !important;
       border-radius: 999px !important;
     }
-    .cv-reset > button:hover { border-color: var(--blue, #0068B1) !important; color: var(--blue, #0068B1) !important; background: var(--blue-dim, #e8f2fb) !important; }
+    .cv-reset > button:hover { border-color: var(--blue,
     </style>
     """, unsafe_allow_html=True)
 
-    # Valeurs par défaut des sliders (pour reset)
     _CV_DEFAULTS = {"canva_y": 72, "canva_imgzoom": 115}
     for _k, _v in _CV_DEFAULTS.items():
         if _k not in st.session_state:
             st.session_state[_k] = _v
 
-    # Boutons reset → modifient le session_state avant de re-render
     if st.session_state.get("_cv_reset_y"):
         st.session_state["canva_y"] = _CV_DEFAULTS["canva_y"]
         st.session_state["_cv_reset_y"] = False
@@ -1685,7 +1596,6 @@ with tab_canva:
 
     with col_ctrl_cv:
 
-        # ── Source + Format sur 2 colonnes ──────────────────────────
         _cr1, _cr2 = st.columns(2)
         with _cr1:
             st.markdown('<p class="section-label">Arrière-plan</p>', unsafe_allow_html=True)
@@ -1711,7 +1621,6 @@ with tab_canva:
         }
         canva_w, canva_h = _fmt_map[canva_format]
 
-        # ── Textes ──────────────────────────────────────────────────
         st.markdown('<p class="section-label">Surtitre</p>', unsafe_allow_html=True)
         canva_sur = st.text_input("Surtitre", value="Modifier le surtitre", key="canva_sur", label_visibility="collapsed")
 
@@ -1721,13 +1630,11 @@ with tab_canva:
             key="canva_title", label_visibility="collapsed", height=80
         )
 
-        # Couleurs fixes
         canva_block_color = "#0068B1"
         canva_text_color  = "#ffffff"
         canva_sur_bg      = "#ffffff"
-        canva_sur_color   = "#0068B1" 
+        canva_sur_color   = "#0068B1"
 
-        # ── Sliders position + zoom (label + reset inline) ──────────
         st.markdown('<p class="section-label" style="margin-top:10px;">Position du texte</p>', unsafe_allow_html=True)
 
         canva_y = st.slider("Position Y", min_value=5, max_value=95, key="canva_y", label_visibility="collapsed")
@@ -1738,12 +1645,10 @@ with tab_canva:
         else:
             canva_img_zoom = 100
 
-        # ── Watermark ────────────────────────────────────────────────
         wm_opts_cv = watermark_options_ui("cv")
         canva_wm_size = 13
         canva_wm_opac = 100
 
-        # --- Génération du visuel final (Python/Pillow) pour téléchargement ---
         st.markdown("<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True)
 
         def _hex_to_rgb(h):
@@ -1786,7 +1691,6 @@ with tab_canva:
 
             draw = ImageDraw.Draw(img, "RGBA")
 
-            # Font sizes
             fs    = int(W * 0.05)
             fs_sur = int(W * 0.03)
             pad   = int(W * 0.017)
@@ -1801,7 +1705,6 @@ with tab_canva:
                 font_title = ImageFont.load_default()
                 font_sur   = ImageFont.load_default()
 
-            # Word wrap
             words = canva_title.split(' ')
             lines, cur = [], ''
             for w in words:
@@ -1817,7 +1720,6 @@ with tab_canva:
             total_h = lh * len(lines)
             block_top = int((canva_y / 100) * H - total_h / 2)
 
-            # Measure line widths
             def measure(text, font):
                 bb = font.getbbox(text)
                 return bb[2] - bb[0]
@@ -1839,27 +1741,23 @@ with tab_canva:
                 d.ellipse([x, y+h-2*r, x+2*r, y+h], fill=fill)
                 d.ellipse([x+w-2*r, y+h-2*r, x+w, y+h], fill=fill)
 
-            # Surtitre
             sur_x = cx - sur_w // 2
             sur_y = block_top - sur_h - int(W * -0.000)
             draw_rounded_rect(draw, sur_x, sur_y, sur_w, sur_h, radius, sbg)
             draw.text((sur_x + pad, sur_y + sur_h // 2 - fs_sur // 2), canva_sur, font=font_sur, fill=sc)
 
-            # Titre lines (goo approximé : overlap + même couleur)
             for i, line in enumerate(lines):
                 lw = line_widths[i]
                 lx = cx - lw // 2
                 ly = block_top + i * lh - (overlap if i > 0 else 0)
                 draw_rounded_rect(draw, lx, ly, lw, lh + overlap, radius, bc)
 
-            # Titre text
             for i, line in enumerate(lines):
                 lw = line_widths[i]
                 lx = cx - lw // 2
                 ly = block_top + i * lh - (overlap if i > 0 else 0)
                 draw.text((lx + pad, ly + lh // 2 - fs // 2), line, font=font_title, fill=tc)
 
-            # Watermark
             result = composite_logo(
                 img.convert("RGB"), DEFAULT_WM_FILE,
                 position=wm_opts_cv["position"],
@@ -1868,8 +1766,6 @@ with tab_canva:
                 force_w=W, force_h=H
             )
 
-            # Apply opacity to watermark — already baked in composite_logo at full opac
-            # (opacity slider here affects the Pillow composite if we want — for now full)
             return result
 
         _canvas_export = st.text_area(
@@ -1892,15 +1788,7 @@ with tab_canva:
                 st.session_state["canva_dl_bytes"] = png_bytes
                 st.rerun()
             else:
-                with st.spinner("Génération…"):
-                    try:
-                        _canva_result = generate_canva_image()
-                        _canva_buf = io.BytesIO()
-                        _canva_result.save(_canva_buf, format="PNG")
-                        st.session_state["canva_dl_bytes"] = _canva_buf.getvalue()
-                        st.rerun()
-                    except Exception as e:
-                        st.markdown(f'<div class="status status-err">Erreur : {e}</div>', unsafe_allow_html=True)
+                st.markdown('<div class="status status-err">Le visuel n\'est pas encore prêt. Attendez que l\'aperçu soit affiché, puis cliquez à nouveau sur « Générer le visuel ».</div>', unsafe_allow_html=True)
 
         if st.session_state.get("canva_dl_bytes"):
             st.download_button(
@@ -1911,7 +1799,6 @@ with tab_canva:
                 key="canva_dl"
             )
 
-    # ── Aperçu canvas (JavaScript) ──────────────────────────────────
     with col_prev_cv:
         st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
 
@@ -1931,7 +1818,6 @@ with tab_canva:
             _ext = canva_bg_file.name.rsplit(".", 1)[-1].lower()
             _canva_bg_mime = "image/png" if _ext == "png" else ("image/webp" if _ext == "webp" else "image/jpeg")
 
-            # Escape values for JS
             import json as _json
             _js_title = _json.dumps(canva_title)
             _js_sur   = _json.dumps(canva_sur)
@@ -1940,10 +1826,10 @@ with tab_canva:
 <html>
 <head><meta charset="UTF-8">
 <style>
-  html,body{{margin:0;padding:0;background:#eef1f5;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:8px;box-sizing:border-box;height:100%;}}
-  #canvasWrap{{box-shadow:0 4px 24px rgba(0,0,0,0.18);display:inline-block;}}
+  html,body{{margin:0;padding:0;background:
+
   canvas{{display:block;}}
-  #hint{{font-family:'Roboto',sans-serif;font-size:0.68rem;color:#999;margin-top:6px;font-style:italic;text-align:center;display:{"block" if canva_bg_file else "none"};}}
+
 </style>
 </head>
 <body>
@@ -2123,11 +2009,29 @@ function hexToRgb(hex) {{
   return [r,g,b];
 }}
 
-// Load images then render
+function exportCanvas() {{
+  try {{
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width  = CANVAS_W;
+    exportCanvas.height = CANVAS_H;
+    const exportCtx = exportCanvas.getContext('2d');
+    exportCtx.drawImage(canvas, 0, 0, CANVAS_W, CANVAS_H);
+    const dataUrl = exportCanvas.toDataURL('image/png');
+    const allTA = window.parent.document.querySelectorAll('textarea');
+    allTA.forEach(ta => {{
+      if(ta.value === '' || ta.value.startsWith('data:image')) {{
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype, 'value').set;
+        nativeInputValueSetter.call(ta, dataUrl);
+        ta.dispatchEvent(new Event('input', {{bubbles: true}}));
+      }}
+    }});
+  }} catch(e) {{}}
+}}
+
 let loaded = 0;
 const toLoad = (BG_B64?1:0) + (WM_B64?1:0);
-function onLoad() {{ loaded++; if(loaded>=toLoad||toLoad===0) {{ render(); setTimeout(exportCanvas, 100); }} }}
-if(!toLoad) render();
+function onLoad() {{ loaded++; if(loaded>=toLoad||toLoad===0) {{ render(); setTimeout(exportCanvas, 200); }} }}
+if(!toLoad) {{ render(); setTimeout(exportCanvas, 200); }}
 
 if(BG_B64){{
   bgImg = new Image();
@@ -2140,7 +2044,6 @@ if(WM_B64){{
   wmImg.src = 'data:'+WM_MIME+';base64,'+WM_B64;
 }}
 
-// Drag to reposition photo
 canvas.addEventListener('mousedown', e=>{{
   if(!bgImg) return;
   isDragging=true; dragSX=e.clientX; dragSY=e.clientY; dragBX=bgOffX; dragBY=bgOffY;
@@ -2159,27 +2062,10 @@ window.addEventListener('mouseup',()=>{{
   exportCanvas();
 }});
 if(bgImg) canvas.style.cursor='grab';
-
-function exportCanvas() {{
-  try {{
-    const dataUrl = canvas.toDataURL('image/png');
-    const allTA = window.parent.document.querySelectorAll('textarea');
-    allTA.forEach(ta => {{
-      if(ta.value === '' || ta.value.startsWith('data:image')) {{
-        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype, 'value').set;
-        nativeInputValueSetter.call(ta, dataUrl);
-        ta.dispatchEvent(new Event('input', {{bubbles: true}}));
-      }}
-    }});
-  }} catch(e) {{}}
-}}
 </script>
 </body>
 </html>""", height=int(560 * canva_h / canva_w) + 40, scrolling=False)
 
-
-
-# FOOTER
 st.markdown("""
 <div class="site-footer">
   <span class="footer-name">Dernière màj le <i>26/04/2026</i></span>
