@@ -1840,7 +1840,7 @@ with tab_canva :
 
         st .markdown ("""
 <div style="margin-top:1.2rem; padding:0.75rem 1rem; background:#e8f2fb; border:1px solid #b3d4f0; border-radius:8px; font-size:0.82rem; color:#0068B1; line-height:1.6;">
-  💾 Pour télécharger le visuel, <b>faites un clic droit sur l'aperçu</b> puis sélectionnez <b>« Enregistrer l'image sous… »</b>
+  Pour télécharger le visuel, <b>faites un clic droit sur l'aperçu</b> puis sélectionnez <code>Enregistrer l'image sous…</code>
 </div>""",unsafe_allow_html =True )
 
             
