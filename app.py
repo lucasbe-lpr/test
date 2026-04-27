@@ -1966,7 +1966,7 @@ function render() {{
   const words = TITLE.split(' ');
   let lines=[], cur='';
   words.forEach(w => {{
-    if ((cur+w).length < 42) cur += (cur?' ':'')+w;
+    if ((cur+w).length < 38) cur += (cur?' ':'')+w;
     else {{ lines.push(cur); cur=w; }}
   }});
   if(cur) lines.push(cur);
