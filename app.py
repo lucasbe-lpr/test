@@ -1624,7 +1624,7 @@ with tab_canva :
     """,unsafe_allow_html =True )
 
     
-    _CV_DEFAULTS ={"canva_y":72 ,"canva_imgzoom":115 }
+    _CV_DEFAULTS ={"canva_y":72 ,"canva_imgzoom":100 }
     for _k ,_v in _CV_DEFAULTS .items ():
         if _k not in st .session_state :
             st .session_state [_k ]=_v 
@@ -1702,7 +1702,7 @@ with tab_canva :
 
         if canva_bg_file :
             st .markdown ('<p class="section-label" style="margin-top:6px;">Zoom photo</p>',unsafe_allow_html =True )
-            canva_img_zoom =st .slider ("Zoom photo",min_value =115 ,max_value =300 ,key ="canva_imgzoom",label_visibility ="collapsed")
+            canva_img_zoom =st .slider ("Zoom photo",min_value =100 ,max_value =300 ,key ="canva_imgzoom",label_visibility ="collapsed")
         else :
             canva_img_zoom =100 
 
