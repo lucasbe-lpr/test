@@ -1598,7 +1598,7 @@ with tab_canva :
         _wm_b64_canva =""
         _wm_mime_canva ="image/png"
 
-    col_ctrl_cv ,col_prev_cv =st .columns ([4 ,6 ],gap ="large")
+    col_ctrl_cv ,col_prev_cv =st .columns ([5 ,5 ],gap ="large")
 
     
     st .markdown ("""
