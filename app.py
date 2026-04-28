@@ -916,19 +916,49 @@ with tab_p :
 
             wm_opts_p =watermark_options_ui ("p")
 
+            st .markdown ('<p class="section-label-mt">Format d\'export</p>',unsafe_allow_html =True )
+            export_format_p =st .selectbox (
+            "Format d'export",
+            ["Automatique (selon original)","JPEG","PNG","WebP"],
+            key ="p_export_format",label_visibility ="collapsed",
+            )
+            if export_format_p !="Automatique (selon original)":
+                st .markdown ('<p class="section-label-mt">Qualité JPEG / WebP</p>',unsafe_allow_html =True )
+                export_quality_p =st .slider (
+                "Qualité",min_value =60 ,max_value =100 ,value =95 ,step =1 ,
+                key ="p_export_quality",label_visibility ="collapsed",
+                )
+            else :
+                export_quality_p =95
+
         def build_photo_output (pf ,opts ):
         
             pf .seek (0 )
             base =Image .open (pf )
             result =composite_logo (base ,lp2 ,**opts )
             buf =io .BytesIO ()
-            ext =pf .name .rsplit (".",1 )[-1 ].lower ()
-            if ext =="png":
+            stem =pf .name .rsplit (".",1 )[0 ]
+            orig_ext =pf .name .rsplit (".",1 )[-1 ].lower ()
+
+            fmt_choice =export_format_p if "export_format_p"in dir ()else "Automatique (selon original)"
+            quality =export_quality_p if "export_quality_p"in dir ()else 95
+
+            if fmt_choice =="PNG":
                 result .save (buf ,format ="PNG")
-                return buf .getvalue (),pf .name .rsplit (".",1 )[0 ]+"_wm.png","image/png"
+                return buf .getvalue (),stem +"_wm.png","image/png"
+            elif fmt_choice =="WebP":
+                result .convert ("RGBA").save (buf ,format ="WEBP",quality =quality )
+                return buf .getvalue (),stem +"_wm.webp","image/webp"
+            elif fmt_choice =="JPEG":
+                result .convert ("RGB").save (buf ,format ="JPEG",quality =quality ,subsampling =0 )
+                return buf .getvalue (),stem +"_wm.jpg","image/jpeg"
             else :
-                result .convert ("RGB").save (buf ,format ="JPEG",quality =100 ,subsampling =0 )
-                return buf .getvalue (),pf .name .rsplit (".",1 )[0 ]+"_wm.jpg","image/jpeg"
+                if orig_ext =="png":
+                    result .save (buf ,format ="PNG")
+                    return buf .getvalue (),stem +"_wm.png","image/png"
+                else :
+                    result .convert ("RGB").save (buf ,format ="JPEG",quality =100 ,subsampling =0 )
+                    return buf .getvalue (),stem +"_wm.jpg","image/jpeg"
 
                 
         with col_prev_p :
@@ -1117,7 +1147,26 @@ with tab_cut :
             st .markdown ("<div style='margin-top:1.2rem;'></div>",unsafe_allow_html =True )
 
             
-            cut_sig =(t_start ,t_end ,cut_file .name )
+            st .markdown ('<p class="section-label-mt">Watermark</p>',unsafe_allow_html =True )
+            cut_wm_enabled =st .toggle ("Ajouter un watermark sur le segment",value =False ,key ="cut_wm_toggle")
+            if cut_wm_enabled :
+                cut_wm_opts =watermark_options_ui ("cut")
+                cut_quality_key =st .selectbox (
+                "Qualité",list (QUALITY_PRESETS .keys ()),
+                key ="cut_quality",label_visibility ="collapsed",
+                )
+            else :
+                cut_wm_opts =None 
+                cut_quality_key ="Standard (CRF 18 — recommandé)"
+
+            st .markdown ("<div style='margin-top:1rem;'></div>",unsafe_allow_html =True )
+
+            
+            cut_sig =(t_start ,t_end ,cut_file .name ,cut_wm_enabled ,
+            cut_wm_opts ["position"]if cut_wm_opts else None ,
+            cut_wm_opts .get ("custom_x",0 )if cut_wm_opts else 0 ,
+            cut_wm_opts .get ("custom_y",0 )if cut_wm_opts else 0 ,
+            )
             if st .session_state .get ("_cut_sig")!=cut_sig :
                 st .session_state .cut_bytes =None 
                 st .session_state ["_cut_sig"]=cut_sig 
@@ -1128,7 +1177,15 @@ with tab_cut :
                     ph_c =st .empty ()
                     ph_c .markdown ('<div class="encoding-wrap"><div class="encoding-ring"></div><span class="encoding-text">Découpage en cours…</span></div><div class="fake-progress-wrap"><div class="fake-progress-track"><div class="fake-progress-bar"></div></div></div>',unsafe_allow_html =True )
                     try :
-                        trim_video (cp ,out_c ,t_start ,t_end )
+                        if cut_wm_enabled and cut_wm_opts :
+                            tmp_trim =os .path .join (tmp_c ,"trim_only.mp4")
+                            trim_video (cp ,tmp_trim ,t_start ,t_end )
+                            nfo_cut =get_video_info (tmp_trim )
+                            lp_cut =get_default_logo ()
+                            render_video (tmp_trim ,lp_cut ,out_c ,nfo_cut ,
+                            quality_key =cut_quality_key ,**cut_wm_opts )
+                        else :
+                            trim_video (cp ,out_c ,t_start ,t_end )
                         ph_c .empty ()
                         with open (out_c ,"rb")as f :
                             st .session_state .cut_bytes =f .read ()
@@ -1265,11 +1322,13 @@ with tab_merge :
                 st .markdown ('<div class="status status-ok">Fusion terminée.</div>',unsafe_allow_html =True )
 
         with col_prev_m :
-            st .markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
-            for i ,(mp ,mf )in enumerate (zip (merge_paths ,merge_files )):
-                frame_m =extract_frame (mp ,0.0 )
-                st .image (cap_image_for_preview (frame_m ),
-                caption =f"{i +1 }. {mf .name }",use_container_width =True )
+            st .markdown ("""
+            <div class="preview-placeholder">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
+                <path d="M22 12H2M17 7l5 5-5 5M7 7l-5 5 5 5"/>
+              </svg>
+              <span>L'aperçu apparaîtra ici</span>
+            </div>""",unsafe_allow_html =True )
 
     elif merge_files and len (merge_files )==1 :
         with col_ctrl_m :
@@ -1687,9 +1746,10 @@ with tab_canva :
         canva_sur =st .text_input ("Surtitre",value ="Modifier le surtitre",key ="canva_sur",label_visibility ="collapsed")
 
         st .markdown ('<p class="section-label">Titre principal</p>',unsafe_allow_html =True )
+        st .markdown ('<p style="font-size:0.72rem;color:var(--muted,#999);margin-bottom:4px;margin-top:-4px;">Utilisez <kbd>Entrée</kbd> pour forcer un retour à la ligne.</p>',unsafe_allow_html =True )
         canva_title =st .text_area (
         "Titre",value ="Modifier le titre",
-        key ="canva_title",label_visibility ="collapsed",height =80 
+        key ="canva_title",label_visibility ="collapsed",height =100 
         )
 
         canva_block_color ="#0068B1"
@@ -1768,16 +1828,19 @@ with tab_canva :
                 font_sur =ImageFont .load_default ()
 
                 
-            words =canva_title .split (' ')
+            # Honour explicit \n newlines first, then auto-wrap long words
             lines ,cur =[],''
-            for w in words :
-                if len (cur +w )<28 :
-                    cur +=(' 'if cur else '')+w 
-                else :
-                    lines .append (cur )
-                    cur =w 
-            if cur :
-                lines .append (cur )
+            for raw_line in canva_title .split ('\n'):
+                ws =raw_line .split (' ')
+                seg =''
+                for w in ws :
+                    if len (seg +w )<28 :
+                        seg +=(' 'if seg else '')+w 
+                    else :
+                        if seg :lines .append (seg )
+                        seg =w 
+                lines .append (seg )
+            lines =[l for l in lines if l ]
 
             cx =int ((50 /100 )*W )
             total_h =lh *len (lines )
@@ -1965,11 +2028,19 @@ function render() {{
 
   const words = TITLE.split(' ');
   let lines=[], cur='';
-  words.forEach(w => {{
-    if ((cur+w).length < 34) cur += (cur?' ':'')+w;
-    else {{ lines.push(cur); cur=w; }}
+  // Honour explicit newlines first, then auto-wrap long segments
+  const rawLines = TITLE.split('\n');
+  rawLines.forEach(rawLine => {{
+    const ws = rawLine.split(' ');
+    let seg = '';
+    ws.forEach(w => {{
+      if ((seg+w).length < 34) seg += (seg?' ':'')+w;
+      else {{ if(seg) lines.push(seg); seg=w; }}
+    }});
+    lines.push(seg);
   }});
-  if(cur) lines.push(cur);
+  // Remove any accidental empty entries
+  lines = lines.filter(l => l.length > 0);
 
   ctx.font = `bold ${{fs}}px 'Roboto Condensed','Roboto',sans-serif`;
   const lineWidths = lines.map(l => ctx.measureText(l).width + pad*2);
