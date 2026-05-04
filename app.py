@@ -1768,16 +1768,20 @@ with tab_canva :
                 font_sur =ImageFont .load_default ()
 
                 
-            words =canva_title .split (' ')
-            lines ,cur =[],''
-            for w in words :
-                if len (cur +w )<28 :
-                    cur +=(' 'if cur else '')+w 
-                else :
-                    lines .append (cur )
-                    cur =w 
-            if cur :
-                lines .append (cur )
+            def _wrap_segment (text ,max_chars =28 ):
+                words =text .split (' ')
+                segs ,cur =[],''
+                for w in words :
+                    if len (cur +w )<max_chars :
+                        cur +=(' 'if cur else '')+w 
+                    else :
+                        if cur :segs .append (cur )
+                        cur =w 
+                if cur :segs .append (cur )
+                return segs if segs else ['']
+            lines =[]
+            for segment in canva_title .split ('\n'):
+                lines .extend (_wrap_segment (segment ))
 
             cx =int ((50 /100 )*W )
             total_h =lh *len (lines )
@@ -1963,13 +1967,17 @@ function render() {{
   const overlap= Math.round(CANVAS_W * 0.003);
   const cx     = X_PCT * CANVAS_W;
 
-  const words = TITLE.split(' ');
-  let lines=[], cur='';
-  words.forEach(w => {{
-    if ((cur+w).length < 34) cur += (cur?' ':'')+w;
-    else {{ lines.push(cur); cur=w; }}
-  }});
-  if(cur) lines.push(cur);
+  function wrapSegment(text, maxLen) {{
+    const words = text.split(' ');
+    const segs = []; let cur = '';
+    words.forEach(w => {{
+      if ((cur+w).length < maxLen) cur += (cur?' ':'')+w;
+      else {{ if(cur) segs.push(cur); cur=w; }}
+    }});
+    if(cur) segs.push(cur);
+    return segs.length ? segs : [''];
+  }}
+  const lines = TITLE.split('\n').flatMap(seg => wrapSegment(seg, 34));
 
   ctx.font = `bold ${{fs}}px 'Roboto Condensed','Roboto',sans-serif`;
   const lineWidths = lines.map(l => ctx.measureText(l).width + pad*2);
