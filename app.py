@@ -465,7 +465,7 @@ with open (LOGO_FILE ,"rb")as _f :
 st .markdown (f"""
 <div class="site-header">
   <img src="data:image/png;base64,{_logo_b64 }" alt="Luluflix" />
-  <span class="site-header-right">version <code>1.0</code></span>
+  <span class="site-header-right">version <code>1.1</code></span>
 </div>
 """,unsafe_allow_html =True )
 
@@ -1688,7 +1688,7 @@ with tab_canva :
 
         st .markdown ('<p class="section-label">Titre principal</p>',unsafe_allow_html =True )
         canva_title =st .text_area (
-        "Titre",value ="Modifier le titre (🔴 il maintenant possible de faire des retours à ligne grâce à la touche Entrée)",
+        "Titre",value ="Modifier le titre (➡️ il maintenant possible de faire des retours à la ligne grâce à la touche Entrée)",
         key ="canva_title",label_visibility ="collapsed",height =80 
         )
 
@@ -1753,8 +1753,8 @@ with tab_canva :
             draw =ImageDraw .Draw (img ,"RGBA")
 
             
-            fs =int (W *0.05 )
-            fs_sur =int (W *0.03 )
+            fs =int (W *0.06 )
+            fs_sur =int (W *0.04 )
             pad =int (W *0.017 )
             radius =int (W *0.019 )
             lh =int (fs *1.25 )
@@ -2130,7 +2130,7 @@ function exportCanvas() {{
             
 st .markdown ("""
 <div class="site-footer">
-  <span class="footer-name">Dernière màj le <i>27/04/2026</i></span>
+  <span class="footer-name">Dernière màj le <i>04/05/2026</i></span>
   <span>Envoyez-moi <a href="mailto:lucas.bessonnat@leprogres.fr">les messages d'erreur par mail</a>.<br>
   Après plusieurs utilisations, appuyez sur la touche <code>F5</code> pour faire du bien au cache de l'app.</br>
   <b>Aucune donnée n'est envoyée sur un serveur</b> <i>(tout tourne localement dans votre navigateur).</i>
