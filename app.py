@@ -1970,14 +1970,18 @@ function render() {{
   function wrapSegment(text, maxLen) {{
     const words = text.split(' ');
     const segs = []; let cur = '';
-    words.forEach(w => {{
-      if ((cur+w).length < maxLen) cur += (cur?' ':'')+w;
+    words.forEach(function(w) {{
+      if ((cur+w).length < maxLen) {{ cur += (cur?' ':'')+w; }}
       else {{ if(cur) segs.push(cur); cur=w; }}
     }});
     if(cur) segs.push(cur);
     return segs.length ? segs : [''];
   }}
-  const lines = TITLE.split('\n').flatMap(seg => wrapSegment(seg, 34));
+  const lines = [];
+  TITLE.split('\\n').forEach(function(seg) {{
+    var wrapped = wrapSegment(seg, 34);
+    for(var _i=0;_i<wrapped.length;_i++) lines.push(wrapped[_i]);
+  }});
 
   ctx.font = `bold ${{fs}}px 'Roboto Condensed','Roboto',sans-serif`;
   const lineWidths = lines.map(l => ctx.measureText(l).width + pad*2);
