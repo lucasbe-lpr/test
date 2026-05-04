@@ -1753,8 +1753,8 @@ with tab_canva :
             draw =ImageDraw .Draw (img ,"RGBA")
 
             
-            fs =int (W *0.06 )
-            fs_sur =int (W *0.04 )
+            fs =int (W *0.05 )
+            fs_sur =int (W *0.03 )
             pad =int (W *0.017 )
             radius =int (W *0.019 )
             lh =int (fs *1.25 )
@@ -1959,8 +1959,8 @@ function render() {{
     ctx.drawImage(bgImg, dx, dy, dw, dh);
   }}
 
-  const fs     = Math.round(CANVAS_W * 0.056);
-  const fsSur  = Math.round(CANVAS_W * 0.04);
+  const fs     = Math.round(CANVAS_W * 0.06);
+  const fsSur  = Math.round(CANVAS_W * 0.05);
   const pad    = Math.round(CANVAS_W * 0.017);
   const radius = Math.round(CANVAS_W * 0.019);
   const lh     = Math.round(fs * 1.25);
