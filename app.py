@@ -1688,7 +1688,7 @@ with tab_canva :
 
         st .markdown ('<p class="section-label">Titre principal</p>',unsafe_allow_html =True )
         canva_title =st .text_area (
-        "Titre",value ="Modifier le titre",
+        "Titre",value ="Modifier le titre (il mtn possible de faire des tournes grâce à la touche "Entrée"",
         key ="canva_title",label_visibility ="collapsed",height =80 
         )
 
