@@ -1600,23 +1600,47 @@ with tab_canva :
 
     col_ctrl_cv ,col_prev_cv =st .columns ([4 ,6 ],gap ="large")
 
-    # CSS pour réduire l'espace des sliders
+    
     st .markdown ("""
     <style>
+    /* Réduit l'espace autour des sliders dans l'onglet Canva */
     [data-testid="stSlider"] { margin-bottom: 0 !important; padding-bottom: 0 !important; }
     [data-testid="stSlider"] > div { padding-bottom: 0 !important; }
+    /* Réduit la hauteur des color pickers */
     [data-testid="stColorPicker"] { margin-bottom: 0 !important; }
     [data-testid="stColorPicker"] label { font-size: 0.72rem !important; margin-bottom: 2px !important; }
+    /* Bouton reset : petit, discret, pill */
+    .cv-reset > button {
+      height: 26px !important; min-height: 26px !important;
+      font-size: 0.7rem !important; padding: 0 0.7rem !important;
+      background: var(--bg, #fafafa) !important;
+      border: 1px solid var(--border, #e4e4e4) !important;
+      color: var(--muted, #999) !important;
+      box-shadow: none !important;
+      border-radius: 999px !important;
+    }
+    .cv-reset > button:hover { border-color: var(--blue, #0068B1) !important; color: var(--blue, #0068B1) !important; background: var(--blue-dim, #e8f2fb) !important; }
     </style>
     """,unsafe_allow_html =True )
 
-    # Valeurs par défaut
-    _CV_DEFAULTS ={"canva_y":72 ,"canva_imgzoom":100 ,"canva_off_x":0 ,"canva_off_y":0}
+    
+    _CV_DEFAULTS ={"canva_y":72 ,"canva_imgzoom":100 ,"canva_offset_bridge":"0,0"}
     for _k ,_v in _CV_DEFAULTS .items ():
         if _k not in st .session_state :
             st .session_state [_k ]=_v 
 
+            
+    if st .session_state .get ("_cv_reset_y"):
+        st .session_state ["canva_y"]=_CV_DEFAULTS ["canva_y"]
+        st .session_state ["_cv_reset_y"]=False 
+    if st .session_state .get ("_cv_reset_zoom"):
+        st .session_state ["canva_imgzoom"]=_CV_DEFAULTS ["canva_imgzoom"]
+        st .session_state ["_cv_reset_zoom"]=False 
+        st .session_state ["canva_offset_bridge"]=_CV_DEFAULTS ["canva_offset_bridge"]
+
     with col_ctrl_cv :
+
+    
         _cr1 ,_cr2 ,_cr3 =st .columns (3 )
         with _cr1 :
             st .markdown ('<p class="section-label">Arrière-plan</p>',unsafe_allow_html =True )
@@ -1660,12 +1684,25 @@ with tab_canva :
         }
         canva_w ,canva_h =_fmt_map [canva_format ]
 
+        _canva_img_sig =(canva_bg_file .name if canva_bg_file else None ,canva_bg_file .size if canva_bg_file else None ,canva_format )
+        if st .session_state .get ("_canva_img_sig")!=_canva_img_sig :
+            st .session_state ["canva_offset_bridge"]="0,0"
+            st .session_state ["_canva_img_sig"]=_canva_img_sig 
+
+        try :
+            _ox_str ,_oy_str =st .session_state ["canva_offset_bridge"].split (",")
+            canva_off_x =float (_ox_str )
+            canva_off_y =float (_oy_str )
+        except Exception :
+            canva_off_x =0.0 
+            canva_off_y =0.0 
+
         st .markdown ('<p class="section-label">Surtitre</p>',unsafe_allow_html =True )
         canva_sur =st .text_input ("Surtitre",value ="Modifier le surtitre",key ="canva_sur",label_visibility ="collapsed")
 
         st .markdown ('<p class="section-label">Titre principal</p>',unsafe_allow_html =True )
         canva_title =st .text_area (
-        "Titre",value ="Modifier le titre (➡️ retour à la ligne possible)",
+        "Titre",value ="Modifier le titre (➡️ il maintenant possible de faire des retours à la ligne grâce à la touche Entrée)",
         key ="canva_title",label_visibility ="collapsed",height =80 
         )
 
@@ -1679,70 +1716,73 @@ with tab_canva :
 
         if canva_bg_file :
             st .markdown ('<p class="section-label" style="margin-top:6px;">Zoom photo</p>',unsafe_allow_html =True )
-            canva_imgzoom =st .slider ("Zoom photo",min_value =100 ,max_value =300 ,key ="canva_imgzoom",label_visibility ="collapsed")
+            canva_img_zoom =st .slider ("Zoom photo",min_value =100 ,max_value =300 ,key ="canva_imgzoom",label_visibility ="collapsed")
         else :
-            canva_imgzoom =100
+            canva_img_zoom =100 
 
-        # --- SLIDERS DE DÉCALAGE (PERSISTANTS) ---
-        st.markdown('<p class="section-label" style="margin-top:6px;">Décalage de la photo</p>', unsafe_allow_html=True)
-        col_off_x, col_off_y = st.columns(2)
-        with col_off_x:
-            canva_off_x = st.slider(
-                "Décalage horizontal (px)",
-                min_value=-500, max_value=500, value=st.session_state["canva_off_x"], step=1,
-                key="canva_off_x", label_visibility="collapsed"
-            )
-        with col_off_y:
-            canva_off_y = st.slider(
-                "Décalage vertical (px)",
-                min_value=-500, max_value=500, value=st.session_state["canva_off_y"], step=1,
-                key="canva_off_y", label_visibility="collapsed"
-            )
+        canva_wm_size =13 
+        canva_wm_opac =100 
 
+        
+        st .markdown ("""
+        <style>
+        div[data-testid="stTextInput"]:has(input[placeholder="__canva_offset_bridge__"]) {
+          position: absolute !important; width: 1px !important; height: 1px !important;
+          overflow: hidden !important; opacity: 0 !important; pointer-events: none !important;
+          margin: 0 !important; padding: 0 !important;
+        }
+        </style>
+        """,unsafe_allow_html =True )
+        st .text_input (
+        "canva_offset_bridge",
+        key ="canva_offset_bridge",label_visibility ="collapsed",
+        placeholder ="__canva_offset_bridge__"
+        )
+
+        
         st .markdown ("<div style='margin-top:1.2rem;'></div>",unsafe_allow_html =True )
 
-        # Fonction pour générer l'image (identique à l'originale, avec prise en compte du décalage)
         def _hex_to_rgb (h ):
             h =h .lstrip ('#')
             return tuple (int (h [i :i +2 ],16 )for i in (0 ,2 ,4 ))
 
         def generate_canva_image ():
             from PIL import ImageDraw ,ImageFont 
+            import math as _math 
+
             W ,H =canva_w ,canva_h 
             img =Image .new ("RGBA",(W ,H ),(34 ,34 ,34 ,255 ))
 
             if canva_bg_file :
                 canva_bg_file .seek (0 )
                 bg =Image .open (canva_bg_file ).convert ("RGBA")
-                z =canva_imgzoom /100.0 
+                z =canva_img_zoom /100.0 
                 scale_x =W /bg .width 
                 scale_y =H /bg .height 
                 base_scale =max (scale_x ,scale_y )*z 
                 new_w =int (bg .width *base_scale )
                 new_h =int (bg .height *base_scale )
                 bg =bg .resize ((new_w ,new_h ),Image .LANCZOS )
-                # Application du décalage (canva_off_x, canva_off_y)
-                dx = (W - new_w) // 2 + canva_off_x
-                dy = (H - new_h) // 2 + canva_off_y
+                dx =(W -new_w )//2 
+                dy =(H -new_h )//2 
                 bg_canvas =Image .new ("RGBA",(W ,H ),(34 ,34 ,34 ,0 ))
-                # Gestion des débordements
-                if dx >= 0 and dy >= 0 and dx + new_w <= W and dy + new_h <= H:
+                if dx >=0 and dy >=0 :
                     bg_canvas .paste (bg ,(dx ,dy ))
-                else:
-                    # Découpage si l'image dépasse
-                    src_x = max(0, -dx)
-                    src_y = max(0, -dy)
-                    dst_x = max(0, dx)
-                    dst_y = max(0, dy)
-                    crop_w = min(new_w - src_x, W - dst_x)
-                    crop_h = min(new_h - src_y, H - dst_y)
-                    if crop_w > 0 and crop_h > 0:
-                        cropped = bg.crop((src_x, src_y, src_x + crop_w, src_y + crop_h))
+                else :
+                    src_x =max (0 ,-dx )
+                    src_y =max (0 ,-dy )
+                    dst_x =max (0 ,dx )
+                    dst_y =max (0 ,dy )
+                    crop_w =min (new_w -src_x ,W -dst_x )
+                    crop_h =min (new_h -src_y ,H -dst_y )
+                    if crop_w >0 and crop_h >0 :
+                        cropped =bg .crop ((src_x ,src_y ,src_x +crop_w ,src_y +crop_h ))
                         bg_canvas .paste (cropped ,(dst_x ,dst_y ))
                 img =Image .alpha_composite (img ,bg_canvas )
 
             draw =ImageDraw .Draw (img ,"RGBA")
 
+            
             fs =int (W *0.05 )
             fs_sur =int (W *0.03 )
             pad =int (W *0.017 )
@@ -1757,6 +1797,7 @@ with tab_canva :
                 font_title =ImageFont .load_default ()
                 font_sur =ImageFont .load_default ()
 
+                
             def _wrap_segment (text ,max_chars =28 ):
                 words =text .split (' ')
                 segs ,cur =[],''
@@ -1776,6 +1817,7 @@ with tab_canva :
             total_h =lh *len (lines )
             block_top =int ((canva_y /100 )*H -total_h /2 )
 
+            
             def measure (text ,font ):
                 bb =font .getbbox (text )
                 return bb [2 ]-bb [0 ]
@@ -1797,23 +1839,27 @@ with tab_canva :
                 d .ellipse ([x ,y +h -2 *r ,x +2 *r ,y +h ],fill =fill )
                 d .ellipse ([x +w -2 *r ,y +h -2 *r ,x +w ,y +h ],fill =fill )
 
+                
             sur_x =cx -sur_w //2 
             sur_y =block_top -sur_h -int (W *-0.000 )
             draw_rounded_rect (draw ,sur_x ,sur_y ,sur_w ,sur_h ,radius ,sbg )
             draw .text ((sur_x +pad ,sur_y +sur_h //2 -fs_sur //2 ),canva_sur ,font =font_sur ,fill =sc )
 
+            
             for i ,line in enumerate (lines ):
                 lw =line_widths [i ]
                 lx =cx -lw //2 
                 ly =block_top +i *lh -(overlap if i >0 else 0 )
                 draw_rounded_rect (draw ,lx ,ly ,lw ,lh +overlap ,radius ,bc )
 
+                
             for i ,line in enumerate (lines ):
                 lw =line_widths [i ]
                 lx =cx -lw //2 
                 ly =block_top +i *lh -(overlap if i >0 else 0 )
                 draw .text ((lx +pad ,ly +lh //2 -fs //2 ),line ,font =font_title ,fill =tc )
 
+                
             result =composite_logo (
             img .convert ("RGB"),DEFAULT_WM_FILE ,
             position =wm_opts_cv ["position"],
@@ -1821,19 +1867,22 @@ with tab_canva :
             custom_y =wm_opts_cv ["custom_y"],
             force_w =W ,force_h =H 
             )
+
+            
+            
             return result 
 
-        # Bouton pour générer et télécharger (optionnel)
-        st.markdown ("""
-        <div style="margin-top:1.2rem; padding:0.75rem 1rem; background:#e8f2fb; border:1px solid #b3d4f0; border-radius:8px; font-size:0.82rem; color:#0068B1; line-height:1.6;">
-          Pour télécharger le visuel, <b>faites un clic droit sur l'aperçu</b> puis sélectionnez <code>Enregistrer l'image sous…</code>
-        </div>""", unsafe_allow_html=True)
+        st .markdown ("""
+<div style="margin-top:1.2rem; padding:0.75rem 1rem; background:#e8f2fb; border:1px solid #b3d4f0; border-radius:8px; font-size:0.82rem; color:#0068B1; line-height:1.6;">
+  Pour télécharger le visuel, <b>faites un clic droit sur l'aperçu</b> puis sélectionnez <code>Enregistrer l'image sous…</code>
+</div>""",unsafe_allow_html =True )
 
+            
     with col_prev_cv :
-        st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
+        st .markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
 
         if not canva_bg_file :
-            st.markdown("""
+            st .markdown ("""
             <div class="preview-placeholder">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
                 <rect x="3" y="3" width="18" height="18" rx="2"/>
@@ -1841,12 +1890,294 @@ with tab_canva :
                 <path d="M21 15l-5-5L5 21"/>
               </svg>
               <span>Glissez une image pour voir l'aperçu</span>
-            </div>""", unsafe_allow_html=True)
-        else:
-            # Génération de l'image via Python
-            img = generate_canva_image()
-            # Redimensionnement pour l'affichage : utilisation de cap_image_for_preview sans use_container_width
-            st.image(cap_image_for_preview(img))
+            </div>""",unsafe_allow_html =True )
+        else :
+            canva_bg_file .seek (0 )
+            _canva_bg_b64 =_b64h .b64encode (canva_bg_file .read ()).decode ()
+            _ext =canva_bg_file .name .rsplit (".",1 )[-1 ].lower ()
+            _canva_bg_mime ="image/png"if _ext =="png"else ("image/webp"if _ext =="webp"else "image/jpeg")
+
+            
+            import json as _json 
+            _js_title =_json .dumps (canva_title )
+            _js_sur =_json .dumps (canva_sur )
+
+            _preview_h =min (700 ,int (560 *canva_h /canva_w ))
+            components .html (f"""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8">
+<style>
+  html,body{{margin:0;padding:0;background:#eef1f5;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:8px;box-sizing:border-box;height:100%;overflow:hidden;}}
+  #canvasWrap{{box-shadow:0 4px 24px rgba(0,0,0,0.18);display:inline-block;}}
+  canvas{{display:block;}}
+</style>
+</head>
+<body>
+<div id="canvasWrap"><canvas id="c"></canvas></div>
+<script>
+const CANVAS_W = {canva_w };
+const CANVAS_H = {canva_h };
+const BG_B64   = "{_canva_bg_b64 }";
+const BG_MIME  = "{_canva_bg_mime }";
+const WM_B64   = "{_wm_b64_canva }";
+const WM_MIME  = "{_wm_mime_canva }";
+const TITLE    = {_js_title };
+const SURTITRE = {_js_sur };
+const Y_PCT    = {canva_y } / 100;
+const X_PCT    = 50 / 100;
+const IMG_ZOOM = {canva_img_zoom } / 100;
+const BLOCK_COLOR = "{canva_block_color }";
+const TEXT_COLOR  = "{canva_text_color }";
+const SUR_BG      = "{canva_sur_bg }";
+const SUR_COLOR   = "{canva_sur_color }";
+const WM_SIZE_PCT = 13 / 100;
+const WM_OPAC     = 1.0;
+const WM_POS      = "{wm_opts_cv ["position"]}";
+const WM_CX       = {wm_opts_cv ["custom_x"]};
+const WM_CY       = {wm_opts_cv ["custom_y"]};
+const MARGIN_R    = 0.04;
+const INIT_OFF_X  = {canva_off_x };
+const INIT_OFF_Y  = {canva_off_y };
+
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+
+const AVAIL_H   = {_preview_h } - 52;
+const PREVIEW_W = Math.min(Math.floor(AVAIL_H * CANVAS_W / CANVAS_H), window.innerWidth - 20);
+const UI_ZOOM   = PREVIEW_W / CANVAS_W;
+canvas.width  = CANVAS_W;
+canvas.height = CANVAS_H;
+canvas.style.width  = (CANVAS_W * UI_ZOOM) + 'px';
+canvas.style.height = (CANVAS_H * UI_ZOOM) + 'px';
+
+let bgImg = null, wmImg = null;
+let bgOffX = INIT_OFF_X, bgOffY = INIT_OFF_Y;
+let isDragging = false, dragSX, dragSY, dragBX, dragBY;
+
+function clampOffset() {{
+  if (!bgImg) return;
+  const scaleX = CANVAS_W / bgImg.naturalWidth;
+  const scaleY = CANVAS_H / bgImg.naturalHeight;
+  const base   = Math.max(scaleX, scaleY) * IMG_ZOOM;
+  const dw = bgImg.naturalWidth  * base;
+  const dh = bgImg.naturalHeight * base;
+  const maxOffX = dw / 2 - CANVAS_W / 2;
+  const maxOffY = dh / 2 - CANVAS_H / 2;
+  bgOffX = Math.max(-maxOffX, Math.min(maxOffX, bgOffX));
+  bgOffY = Math.max(-maxOffY, Math.min(maxOffY, bgOffY));
+}}
+
+function roundRect(c, x, y, w, h, r, fill) {{
+  c.beginPath();
+  c.moveTo(x+r,y); c.lineTo(x+w-r,y); c.arcTo(x+w,y,x+w,y+r,r);
+  c.lineTo(x+w,y+h-r); c.arcTo(x+w,y+h,x+w-r,y+h,r);
+  c.lineTo(x+r,y+h); c.arcTo(x,y+h,x,y+h-r,r);
+  c.lineTo(x,y+r); c.arcTo(x,y,x+r,y,r);
+  c.closePath(); c.fillStyle=fill; c.fill();
+}}
+
+function render() {{
+  ctx.clearRect(0,0,CANVAS_W,CANVAS_H);
+  ctx.fillStyle='#222'; ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+
+  if (bgImg) {{
+    const scaleX = CANVAS_W / bgImg.naturalWidth;
+    const scaleY = CANVAS_H / bgImg.naturalHeight;
+    const base   = Math.max(scaleX, scaleY) * IMG_ZOOM;
+    const dw = bgImg.naturalWidth  * base;
+    const dh = bgImg.naturalHeight * base;
+    const dx = (CANVAS_W - dw) / 2 + bgOffX;
+    const dy = (CANVAS_H - dh) / 2 + bgOffY;
+    ctx.drawImage(bgImg, dx, dy, dw, dh);
+  }}
+
+  const fs     = Math.round(CANVAS_W * 0.056);
+  const fsSur  = Math.round(CANVAS_W * 0.043);
+  const pad    = Math.round(CANVAS_W * 0.017);
+  const radius = Math.round(CANVAS_W * 0.019);
+  const lh     = Math.round(fs * 1.25);
+  const overlap= Math.round(CANVAS_W * 0.003);
+  const cx     = X_PCT * CANVAS_W;
+
+  function wrapSegment(text, maxLen) {{
+    const words = text.split(' ');
+    const segs = []; let cur = '';
+    words.forEach(function(w) {{
+      if ((cur+w).length < maxLen) {{ cur += (cur?' ':'')+w; }}
+      else {{ if(cur) segs.push(cur); cur=w; }}
+    }});
+    if(cur) segs.push(cur);
+    return segs.length ? segs : [''];
+  }}
+  const lines = [];
+  TITLE.split('\\n').forEach(function(seg) {{
+    var wrapped = wrapSegment(seg, 34);
+    for(var _i=0;_i<wrapped.length;_i++) lines.push(wrapped[_i]);
+  }});
+
+  ctx.font = `bold ${{fs}}px 'Roboto Condensed','Roboto',sans-serif`;
+  const lineWidths = lines.map(l => ctx.measureText(l).width + pad*2);
+
+  ctx.font = `bold ${{fsSur}}px 'Roboto',sans-serif`;
+  const surW = ctx.measureText(SURTITRE).width + pad*2;
+  const surH = fsSur + Math.round(pad*0.8);
+
+  const totalH  = lh * lines.length;
+  const blockTop = CANVAS_H * Y_PCT - totalH/2;
+
+  const off = document.createElement('canvas');
+  off.width = CANVAS_W; off.height = CANVAS_H;
+  const octx = off.getContext('2d');
+  octx.font = `bold ${{fs}}px 'Roboto Condensed','Roboto',sans-serif`;
+  lines.forEach((line,i) => {{
+    const lw = lineWidths[i];
+    const lx = cx - lw/2;
+    const ly = blockTop + i*lh - (i>0?overlap:0);
+    roundRect(octx, lx, ly, lw, lh+overlap, radius, BLOCK_COLOR);
+  }});
+
+  const off2 = document.createElement('canvas');
+  off2.width=CANVAS_W; off2.height=CANVAS_H;
+  const o2=off2.getContext('2d');
+  o2.filter='blur(10px)';
+  o2.drawImage(off,0,0);
+  o2.filter='none';
+  const id=o2.getImageData(0,0,CANVAS_W,CANVAS_H);
+  const px=id.data;
+  const [br,bg2,bb] = hexToRgb(BLOCK_COLOR);
+  for(let i=0;i<px.length;i+=4){{
+    if(px[i+3]>60){{ px[i]=br; px[i+1]=bg2; px[i+2]=bb; px[i+3]=255; }}
+    else px[i+3]=0;
+  }}
+  o2.putImageData(id,0,0);
+  ctx.drawImage(off2,0,0);
+
+  const surX = cx - surW/2;
+  const surY = blockTop - surH - Math.round(CANVAS_W*-0.000);
+  roundRect(ctx, surX, surY, surW, surH, radius, SUR_BG);
+  ctx.fillStyle = SUR_COLOR;
+  ctx.font = `bold ${{fsSur}}px 'Roboto',sans-serif`;
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillText(SURTITRE, surX+pad, surY+surH/2);
+
+  ctx.font = `bold ${{fs}}px 'Roboto Condensed','Roboto',sans-serif`;
+  ctx.fillStyle = TEXT_COLOR;
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  lines.forEach((line,i)=>{{
+    const lw=lineWidths[i];
+    const lx=cx-lw/2;
+    const ly=blockTop+i*lh-(i>0?overlap:0);
+    ctx.fillText(line, lx+pad, ly+lh/2);
+  }});
+
+  if(wmImg) {{
+    const diag = Math.sqrt(CANVAS_W**2+CANVAS_H**2);
+    const wmW  = diag * WM_SIZE_PCT;
+    const wmH  = (wmImg.naturalHeight/wmImg.naturalWidth)*wmW;
+    const mx   = CANVAS_W*MARGIN_R, my=CANVAS_H*MARGIN_R;
+    let wx,wy;
+    const posMap={{
+      'Haut gauche':   [mx, my],
+      'Haut centre':   [(CANVAS_W-wmW)/2, my],
+      'Haut droite':   [CANVAS_W-wmW-mx, my],
+      'Milieu gauche': [mx, (CANVAS_H-wmH)/2],
+      'Centre':        [(CANVAS_W-wmW)/2, (CANVAS_H-wmH)/2],
+      'Milieu droite': [CANVAS_W-wmW-mx, (CANVAS_H-wmH)/2],
+      'Bas gauche':    [mx, CANVAS_H-wmH-my],
+      'Bas centre':    [(CANVAS_W-wmW)/2, CANVAS_H-wmH-my],
+      'Bas droite':    [CANVAS_W-wmW-mx, CANVAS_H-wmH-my],
+      'Coordonnées personnalisées': [WM_CX, WM_CY],
+    }};
+    [wx,wy] = posMap[WM_POS] || [CANVAS_W-wmW-mx, CANVAS_H-wmH-my];
+    ctx.globalAlpha = WM_OPAC;
+    ctx.drawImage(wmImg, wx, wy, wmW, wmH);
+    ctx.globalAlpha = 1.0;
+  }}
+}}
+
+function hexToRgb(hex) {{
+  const r=parseInt(hex.slice(1,3),16);
+  const g=parseInt(hex.slice(3,5),16);
+  const b=parseInt(hex.slice(5,7),16);
+  return [r,g,b];
+}}
+
+let loaded = 0;
+const toLoad = (BG_B64?1:0) + (WM_B64?1:0);
+function onLoad() {{ loaded++; if(loaded>=toLoad||toLoad===0) {{ clampOffset(); render(); }} }}
+if(!toLoad) render();
+
+if(BG_B64){{
+  bgImg = new Image();
+  bgImg.onload = onLoad;
+  bgImg.src = 'data:'+BG_MIME+';base64,'+BG_B64;
+}}
+if(WM_B64){{
+  wmImg = new Image();
+  wmImg.onload = onLoad;
+  wmImg.src = 'data:'+WM_MIME+';base64,'+WM_B64;
+}}
+
+canvas.addEventListener('mousedown', e=>{{
+  if(!bgImg) return;
+  isDragging=true; dragSX=e.clientX; dragSY=e.clientY; dragBX=bgOffX; dragBY=bgOffY;
+  canvas.style.cursor='grabbing';
+}});
+window.addEventListener('mousemove', e=>{{
+  if(!isDragging) return;
+  const scale = 1/UI_ZOOM;
+  bgOffX = dragBX+(e.clientX-dragSX)*scale;
+  bgOffY = dragBY+(e.clientY-dragSY)*scale;
+  clampOffset();
+  render();
+}});
+window.addEventListener('mouseup',()=>{{
+  if(!isDragging) return;
+  isDragging=false;
+  canvas.style.cursor=bgImg?'grab':'default';
+  syncOffsetToPython();
+}});
+if(bgImg) canvas.style.cursor='grab';
+
+canvas.addEventListener('touchstart', e=>{{
+  if(!bgImg || e.touches.length!==1) return;
+  const t=e.touches[0];
+  isDragging=true; dragSX=t.clientX; dragSY=t.clientY; dragBX=bgOffX; dragBY=bgOffY;
+}}, {{passive:true}});
+canvas.addEventListener('touchmove', e=>{{
+  if(!isDragging || e.touches.length!==1) return;
+  const t=e.touches[0];
+  const scale = 1/UI_ZOOM;
+  bgOffX = dragBX+(t.clientX-dragSX)*scale;
+  bgOffY = dragBY+(t.clientY-dragSY)*scale;
+  clampOffset();
+  render();
+}}, {{passive:true}});
+canvas.addEventListener('touchend', ()=>{{
+  if(!isDragging) return;
+  isDragging=false;
+  syncOffsetToPython();
+}});
+
+// Fait remonter le décalage (bgOffX/bgOffY) vers Streamlit en écrivant dans le
+// champ caché dédié (identifié par son placeholder), pour qu'il persiste
+// entre deux reruns (ex: quand on tape dans le champ Titre juste après un
+// glisser-déposer de la photo).
+function syncOffsetToPython() {{
+  try {{
+    const bridge = window.parent.document.querySelector('input[placeholder="__canva_offset_bridge__"]');
+    if(!bridge) return;
+    const payload = (Math.round(bgOffX*100)/100) + ',' + (Math.round(bgOffY*100)/100);
+    if(bridge.value === payload) return;
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.parent.HTMLInputElement.prototype, 'value').set;
+    nativeInputValueSetter.call(bridge, payload);
+    bridge.dispatchEvent(new Event('input', {{bubbles: true}}));
+  }} catch(e) {{}}
+}}
+</script>
+</body>
+</html>""",height =_preview_h +52 ,scrolling =False )
+
             
 st .markdown ("""
 <div class="site-footer">
