@@ -1,5 +1,5 @@
 import streamlit as st 
-import streamlit.components.v1 as components 
+import streamlit .components .v1 as components 
 import subprocess 
 import tempfile 
 import base64 as _b64 
@@ -786,11 +786,6 @@ for k in ["thumbnail","rendered_bytes","_last_video_name",
 "crop_bytes","_last_crop_name"]:
     if k not in st .session_state :
         st .session_state [k ]=None 
-
-# Initialisation des variables de décalage pour le template RS
-for k in ["canva_off_x", "canva_off_y"]:
-    if k not in st.session_state:
-        st.session_state[k] = 0
 
 tab_v ,tab_p ,tab_s ,tab_cut ,tab_merge ,tab_audio ,tab_crop ,tab_canva =st .tabs ([
 "Watermark vidéo","Watermark photo","Capture d'écran",
@@ -1711,22 +1706,6 @@ with tab_canva :
         else :
             canva_img_zoom =100 
 
-        # --- AJOUT DES SLIDERS DE DÉCALAGE ---
-        st.markdown('<p class="section-label" style="margin-top:6px;">Décalage de la photo</p>', unsafe_allow_html=True)
-        col_off_x, col_off_y = st.columns(2)
-        with col_off_x:
-            canva_off_x = st.slider(
-                "Décalage horizontal (px)",
-                min_value=-500, max_value=500, value=0, step=1,
-                key="canva_off_x", label_visibility="collapsed"
-            )
-        with col_off_y:
-            canva_off_y = st.slider(
-                "Décalage vertical (px)",
-                min_value=-500, max_value=500, value=0, step=1,
-                key="canva_off_y", label_visibility="collapsed"
-            )
-
         canva_wm_size =13 
         canva_wm_opac =100 
 
@@ -1894,7 +1873,6 @@ with tab_canva :
             _js_sur =_json .dumps (canva_sur )
 
             _preview_h =min (700 ,int (560 *canva_h /canva_w ))
-            # --- INTÉGRATION DES VALEURS DE DÉCALAGE DANS LE COMPOSANT ---
             components .html (f"""<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8">
@@ -1918,8 +1896,6 @@ const SURTITRE = {_js_sur };
 const Y_PCT    = {canva_y } / 100;
 const X_PCT    = 50 / 100;
 const IMG_ZOOM = {canva_img_zoom } / 100;
-const OFFSET_X = {canva_off_x };
-const OFFSET_Y = {canva_off_y };
 const BLOCK_COLOR = "{canva_block_color }";
 const TEXT_COLOR  = "{canva_text_color }";
 const SUR_BG      = "{canva_sur_bg }";
@@ -1943,10 +1919,8 @@ canvas.style.width  = (CANVAS_W * UI_ZOOM) + 'px';
 canvas.style.height = (CANVAS_H * UI_ZOOM) + 'px';
 
 let bgImg = null, wmImg = null;
-// Initialisation du décalage avec les valeurs venant du session_state
-let bgOffX = OFFSET_X, bgOffY = OFFSET_Y;
-// Aucun mécanisme de drag & drop : les sliders pilotent le décalage
-// La fonction de rendu utilise bgOffX et bgOffY
+let bgOffX = 0, bgOffY = 0;
+let isDragging = false, dragSX, dragSY, dragBX, dragBY;
 
 function clampOffset() {{
   if (!bgImg) return;
@@ -2054,7 +2028,7 @@ function render() {{
   ctx.textAlign='left'; ctx.textBaseline='middle';
   ctx.fillText(SURTITRE, surX+pad, surY+surH/2);
 
-  ctx.font = `bold ${{fs}}px 'Roboto Condensed','Roboto',sans-serif';
+  ctx.font = `bold ${{fs}}px 'Roboto Condensed','Roboto',sans-serif`;
   ctx.fillStyle = TEXT_COLOR;
   ctx.textAlign='left'; ctx.textBaseline='middle';
   lines.forEach((line,i)=>{{
@@ -2112,8 +2086,25 @@ if(WM_B64){{
   wmImg.src = 'data:'+WM_MIME+';base64,'+WM_B64;
 }}
 
-// Suppression du drag & drop : on désactive les événements souris
-// Le décalage est uniquement contrôlé par les sliders
+canvas.addEventListener('mousedown', e=>{{
+  if(!bgImg) return;
+  isDragging=true; dragSX=e.clientX; dragSY=e.clientY; dragBX=bgOffX; dragBY=bgOffY;
+  canvas.style.cursor='grabbing';
+}});
+window.addEventListener('mousemove', e=>{{
+  if(!isDragging) return;
+  const scale = 1/UI_ZOOM;
+  bgOffX = dragBX+(e.clientX-dragSX)*scale;
+  bgOffY = dragBY+(e.clientY-dragSY)*scale;
+  clampOffset();
+  render();
+}});
+window.addEventListener('mouseup',()=>{{
+  isDragging=false;
+  canvas.style.cursor=bgImg?'grab':'default';
+  exportCanvas();
+}});
+if(bgImg) canvas.style.cursor='grab';
 
 function exportCanvas() {{
   try {{
@@ -2134,15 +2125,14 @@ function exportCanvas() {{
 }}
 </script>
 </body>
-</html>""", height =_preview_h +52 ,scrolling =False )
+</html>""",height =_preview_h +52 ,scrolling =False )
 
             
 st .markdown ("""
 <div class="site-footer">
-  <span class="footer-name">Dernière màj le <i>04/05/2026</i></span>
-  <span>Envoyez-moi <a href="mailto:lucas.bessonnat@leprogres.fr">les messages d'erreur par mail</a>.<br>
+<span></span>  
+<span>Envoyez-moi <a href="mailto:lucas.bessonnat@leprogres.fr">les messages d'erreur par mail</a>.<br>
   Après plusieurs utilisations, appuyez sur la touche <code>F5</code> pour faire du bien au cache de l'app.</br>
-  <b>Aucune donnée n'est envoyée sur un serveur</b> <i>(tout tourne localement dans votre navigateur).</i>
   </span>
 </div>
 """,unsafe_allow_html =True )
