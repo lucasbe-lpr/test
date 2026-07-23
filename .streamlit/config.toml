@@ -1,14 +1,23 @@
-# .streamlit/config.toml
 [theme]
+# Couleur primaire (remplace l'orange Streamlit)
 primaryColor = "#0068B1"
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#fafafa"
+
+# Couleur de fond de l'application (les zones principales)
+backgroundColor = "#FFFFFF"
+
+# Couleur de fond des éléments secondaires (sidebar, cartes, etc.)
+secondaryBackgroundColor = "#FAFAFA"
+
+# Couleur du texte principal
 textColor = "#111111"
+
+# Police par défaut
 font = "sans serif"
-base = "light"   # ou "dark" si vous souhaitez un thème sombre
 
 [server]
-maxUploadSize = 200   # en Mo, ajustez selon vos besoins
+# Évite le rechargement intempestif lors du développement (utile en local)
+runOnSave = false
 
 [browser]
+# Onglet du navigateur
 gatherUsageStats = false
