@@ -1845,8 +1845,8 @@ with tab_canva :
         else:
             # Génération de l'image via Python
             img = generate_canva_image()
-            # Redimensionnement pour l'affichage (conservation du ratio)
-            st.image(cap_image_for_preview(img), use_container_width=True)
+            # Redimensionnement pour l'affichage : utilisation de cap_image_for_preview sans use_container_width
+            st.image(cap_image_for_preview(img))
             
 st .markdown ("""
 <div class="site-footer">
