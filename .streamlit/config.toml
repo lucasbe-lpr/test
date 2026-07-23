@@ -1,15 +1,14 @@
+# .streamlit/config.toml
 [theme]
-# Couleur principale (remplace l'orange de Streamlit par votre bleu)
 primaryColor = "#0068B1"
-
-# Couleur de fond de l'application (blanc pur)
-backgroundColor = "#FFFFFF"
-
-# Couleur de fond des conteneurs secondaires (sidebar, zones de texte, etc.)
-secondaryBackgroundColor = "#F8F9FA"
-
-# Couleur du texte principal (noir)
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#fafafa"
 textColor = "#111111"
-
-# Police de caractères (vous utilisez déjà Roboto dans votre CSS)
 font = "sans serif"
+base = "light"   # ou "dark" si vous souhaitez un thème sombre
+
+[server]
+maxUploadSize = 200   # en Mo, ajustez selon vos besoins
+
+[browser]
+gatherUsageStats = false
