@@ -620,7 +620,6 @@ progress_cb =None
     logo_scaled =logo_orig.resize ((logo_w ,logo_h ),Image.LANCZOS )
     x ,y =compute_xy (position ,W ,H ,logo_w ,logo_h ,custom_x ,custom_y )
 
-    # On utilise un dossier temporaire pour le logo pré-redimensionné
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_logo_path =os.path.join (tmpdir ,"wm_prescaled.png")
         logo_scaled.save (tmp_logo_path ,format ="PNG")
@@ -750,17 +749,13 @@ position :str ="Centre"):
     target_ratio =ratio_w /ratio_h 
     src_ratio =W /H 
     if src_ratio >target_ratio :
-    
         new_w =int (H *target_ratio )
         new_h =H 
     else :
-    
         new_w =W 
         new_h =int (W /target_ratio )
-        
     new_w =new_w -(new_w %2 )
     new_h =new_h -(new_h %2 )
-    
     if position =="Haut":
         x_off ,y_off =(W -new_w )//2 ,0 
     elif position =="Bas":
@@ -791,12 +786,10 @@ for k in ["thumbnail","rendered_bytes","_last_video_name",
     if k not in st.session_state :
         st.session_state [k ]=None 
 
-# Initialisation des dossiers temporaires pour chaque onglet (seront supprimés proprement)
 for k in ["tmp_video","tmp_photo","tmp_capture","tmp_cut","tmp_merge","tmp_audio","tmp_crop"]:
     if k not in st.session_state:
         st.session_state[k] = None
 
-# Fonction utilitaire pour nettoyer un dossier temporaire stocké dans session_state
 def cleanup_temp_dir(key):
     if st.session_state.get(key):
         try:
@@ -824,7 +817,6 @@ with tab_v :
     if video_file :
     
         if st.session_state._last_video_name !=video_file.name :
-            # Nouveau fichier : on nettoie l'ancien dossier et on crée un nouveau
             cleanup_temp_dir("tmp_video")
             tmp = tempfile.mkdtemp()
             st.session_state.tmp_video = tmp
@@ -833,13 +825,12 @@ with tab_v :
             st.session_state._last_video_name = video_file.name
         else:
             tmp = st.session_state.tmp_video
-            if tmp is None:  # Sécurité
+            if tmp is None:
                 tmp = tempfile.mkdtemp()
                 st.session_state.tmp_video = tmp
 
         lp =get_default_logo ()
         vp =os.path.join (tmp ,"src"+os.path.splitext (video_file.name )[1 ])
-        # Écrire le fichier source seulement s'il n'existe pas déjà (évite de réécrire à chaque re-run)
         if not os.path.exists(vp):
             with open (vp ,"wb")as f :f.write (video_file.read ())
         nfo =get_video_info (vp )
@@ -861,7 +852,6 @@ with tab_v :
             key ="v_quality",label_visibility ="collapsed",
             )
 
-            
             opts_sig =(wm_opts ["position"],wm_opts ["custom_x"],wm_opts ["custom_y"])
             if st.session_state.get ("_v_opts_sig")!=opts_sig :
                 st.session_state.thumbnail =None 
@@ -883,7 +873,6 @@ with tab_v :
                         ph.empty ()
                         with open (out ,"rb")as f :
                             st.session_state.rendered_bytes =f.read ()
-                        # On nettoie le dossier temporaire après le rendu (on n'en a plus besoin)
                         cleanup_temp_dir("tmp_video")
                         st.rerun ()
                     except Exception as e :
@@ -898,7 +887,6 @@ with tab_v :
             st.markdown ('</div>',unsafe_allow_html =True )
 
     else :
-        # Nettoyer le dossier si plus de fichier
         cleanup_temp_dir("tmp_video")
         with col_ctrl :
             st.markdown ('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>',unsafe_allow_html =True )
@@ -910,10 +898,6 @@ with tab_v :
               </svg>
               <span>L'aperçu apparaîtra ici</span>
             </div>""",unsafe_allow_html =True )
-
-            
-            
-            
 
 with tab_p :
     col_ctrl_p ,col_prev_p =st.columns ([4 ,6 ],gap ="large")
@@ -930,8 +914,6 @@ with tab_p :
 
     if photo_files :
         lp2 =get_default_logo ()
-        # Pour les photos, on ne stocke pas de dossier persistant, on traite à la demande.
-        # Pas de nettoyage spécifique.
 
         with col_ctrl_p :
         
@@ -985,7 +967,6 @@ with tab_p :
             else :
                 st.markdown ('<p class="section-label-mt">Téléchargement</p>',unsafe_allow_html =True )
 
-                
                 for i in range (0 ,len (photo_files ),2 ):
                     row_files =photo_files [i :i +2 ]
                     btn_cols =st.columns (len (row_files ),gap ="small")
@@ -998,7 +979,6 @@ with tab_p :
                             key =f"pdl_{i +j }",
                             )
 
-                            
                 zip_buf =io.BytesIO ()
                 with zipfile.ZipFile (zip_buf ,"w",zipfile.ZIP_STORED )as zf :
                     for pf in photo_files :
@@ -1025,10 +1005,6 @@ with tab_p :
               <span>L'aperçu apparaîtra ici</span>
             </div>""",unsafe_allow_html =True )
 
-            
-            
-            
-
 with tab_s :
     col_ctrl_s ,col_prev_s =st.columns ([4 ,6 ],gap ="large")
 
@@ -1038,7 +1014,6 @@ with tab_s :
         key ="su",label_visibility ="collapsed")
 
     if scr_file :
-        # Nettoyer l'ancien dossier de capture
         cleanup_temp_dir("tmp_capture")
         tmp_s = tempfile.mkdtemp()
         st.session_state.tmp_capture = tmp_s
@@ -1072,7 +1047,6 @@ with tab_s :
             st.download_button ("↓  Télécharger la capture",data =buf_s.getvalue (),
             file_name =f"capture_{fmt_time (timecode ).replace (':','-')}.png",
             mime ="image/png",key ="sdl")
-            # On peut nettoyer le dossier après la capture (plus besoin du fichier source)
             cleanup_temp_dir("tmp_capture")
 
         with col_prev_s :
@@ -1092,10 +1066,6 @@ with tab_s :
               </svg>
               <span>L'aperçu apparaîtra ici</span>
             </div>""",unsafe_allow_html =True )
-
-            
-            
-            
 
 with tab_cut :
     col_ctrl_c ,col_prev_c =st.columns ([4 ,6 ],gap ="large")
@@ -1149,7 +1119,6 @@ with tab_cut :
             key ="cut_end",label_visibility ="collapsed"
             )
 
-            
             if t_end <=t_start :
                 st.markdown ('<div class="status status-err">⚠ La fin doit être après le début.</div>',unsafe_allow_html =True )
                 t_end =min (t_start +0.1 ,dur_c )
@@ -1164,7 +1133,6 @@ with tab_cut :
 
             st.markdown ("<div style='margin-top:1.2rem;'></div>",unsafe_allow_html =True )
 
-            
             cut_sig =(t_start ,t_end ,cut_file.name )
             if st.session_state.get ("_cut_sig")!=cut_sig :
                 st.session_state.cut_bytes =None 
@@ -1195,8 +1163,7 @@ with tab_cut :
 
         with col_prev_c :
             st.markdown ('<p class="section-label">Aperçu du segment sélectionné</p>',unsafe_allow_html =True )
-            
-            
+
             with open (cp ,"rb")as _vf :
                 _vb64 =_b64.b64encode (_vf.read ()).decode ()
             _ext =os.path.splitext (cut_file.name )[1 ].lower ().lstrip (".")
@@ -1235,10 +1202,6 @@ with tab_cut :
               <span>L'aperçu apparaîtra ici</span>
             </div>""",unsafe_allow_html =True )
 
-            
-            
-            
-
 with tab_merge :
     col_ctrl_m ,col_prev_m =st.columns ([4 ,6 ],gap ="large")
 
@@ -1253,7 +1216,6 @@ with tab_merge :
 
     if merge_files and len (merge_files )>=2 :
     
-        # Nettoyer l'ancien dossier de fusion
         cleanup_temp_dir("tmp_merge")
         tmp_m = tempfile.mkdtemp()
         st.session_state.tmp_merge = tmp_m
@@ -1289,7 +1251,6 @@ with tab_merge :
 
             st.markdown ("<div style='margin-top:1rem;'></div>",unsafe_allow_html =True )
 
-            
             merge_sig =tuple (mf.name for mf in merge_files )
             if st.session_state.get ("_merge_sig")!=merge_sig :
                 st.session_state.merge_bytes =None 
@@ -1341,10 +1302,6 @@ with tab_merge :
               </svg>
               <span>L'aperçu apparaîtra ici</span>
             </div>""",unsafe_allow_html =True )
-
-            
-            
-            
 
 with tab_audio :
     col_ctrl_a ,col_prev_a =st.columns ([4 ,6 ],gap ="large")
@@ -1512,10 +1469,6 @@ with tab_audio :
               <span>L'aperçu apparaîtra ici</span>
             </div>""",unsafe_allow_html =True )
 
-            
-            
-            
-
 with tab_crop :
     col_ctrl_r ,col_prev_r =st.columns ([4 ,6 ],gap ="large")
 
@@ -1661,10 +1614,7 @@ with tab_crop :
               <span>L'aperçu apparaîtra ici</span>
             </div>""",unsafe_allow_html =True )
 
-            
-            
-            
-
+# ==================== ONGLET TEMPLATE RS (CORRIGÉ) ====================
 with tab_canva :
     try :
         with open (DEFAULT_WM_FILE ,"rb")as _wm_f :
@@ -1676,7 +1626,6 @@ with tab_canva :
 
     col_ctrl_cv ,col_prev_cv =st.columns ([4 ,6 ],gap ="large")
 
-    
     st.markdown ("""
     <style>
     /* Réduit l'espace autour des sliders dans l'onglet Canva */
@@ -1699,13 +1648,11 @@ with tab_canva :
     </style>
     """,unsafe_allow_html =True )
 
-    
     _CV_DEFAULTS ={"canva_y":72 ,"canva_imgzoom":100 ,"cv_offset_x":0 ,"cv_offset_y":0}
     for _k ,_v in _CV_DEFAULTS.items ():
         if _k not in st.session_state :
             st.session_state [_k ]=_v 
 
-            
     if st.session_state.get ("_cv_reset_y"):
         st.session_state ["canva_y"]=_CV_DEFAULTS ["canva_y"]
         st.session_state ["_cv_reset_y"]=False 
@@ -1715,7 +1662,6 @@ with tab_canva :
 
     with col_ctrl_cv :
 
-    
         _cr1 ,_cr2 ,_cr3 =st.columns (3 )
         with _cr1 :
             st.markdown ('<p class="section-label">Arrière-plan</p>',unsafe_allow_html =True )
@@ -1782,7 +1728,7 @@ with tab_canva :
         else :
             canva_img_zoom =100
 
-        # --- NOUVEAUX CURSEURS DE DÉCALAGE ---
+        # --- CURSEURS DE DÉCALAGE ---
         st.markdown ('<p class="section-label" style="margin-top:6px;">Décalage de l’image</p>',unsafe_allow_html =True )
         col_offx, col_offy = st.columns(2)
         with col_offx:
@@ -1793,7 +1739,6 @@ with tab_canva :
         canva_wm_size =13 
         canva_wm_opac =100 
 
-        
         st.markdown ("<div style='margin-top:1.2rem;'></div>",unsafe_allow_html =True )
 
         def _hex_to_rgb (h ):
@@ -1836,7 +1781,6 @@ with tab_canva :
 
             draw =ImageDraw.Draw (img ,"RGBA")
 
-            
             fs =int (W *0.05 )
             fs_sur =int (W *0.03 )
             pad =int (W *0.017 )
@@ -1851,7 +1795,6 @@ with tab_canva :
                 font_title =ImageFont.load_default ()
                 font_sur =ImageFont.load_default ()
 
-                
             def _wrap_segment (text ,max_chars =28 ):
                 words =text.split (' ')
                 segs ,cur =[],''
@@ -1871,7 +1814,6 @@ with tab_canva :
             total_h =lh *len (lines )
             block_top =int ((canva_y /100 )*H -total_h /2 )
 
-            
             def measure (text ,font ):
                 bb =font.getbbox (text )
                 return bb [2 ]-bb [0 ]
@@ -1893,27 +1835,23 @@ with tab_canva :
                 d.ellipse ([x ,y +h -2 *r ,x +2 *r ,y +h ],fill =fill )
                 d.ellipse ([x +w -2 *r ,y +h -2 *r ,x +w ,y +h ],fill =fill )
 
-                
             sur_x =cx -sur_w //2 
             sur_y =block_top -sur_h -int (W *-0.000 )
             draw_rounded_rect (draw ,sur_x ,sur_y ,sur_w ,sur_h ,radius ,sbg )
             draw.text ((sur_x +pad ,sur_y +sur_h //2 -fs_sur //2 ),canva_sur ,font =font_sur ,fill =sc )
 
-            
             for i ,line in enumerate (lines ):
                 lw =line_widths [i ]
                 lx =cx -lw //2 
                 ly =block_top +i *lh -(overlap if i >0 else 0 )
                 draw_rounded_rect (draw ,lx ,ly ,lw ,lh +overlap ,radius ,bc )
 
-                
             for i ,line in enumerate (lines ):
                 lw =line_widths [i ]
                 lx =cx -lw //2 
                 ly =block_top +i *lh -(overlap if i >0 else 0 )
                 draw.text ((lx +pad ,ly +lh //2 -fs //2 ),line ,font =font_title ,fill =tc )
 
-                
             result =composite_logo (
             img.convert ("RGB"),DEFAULT_WM_FILE ,
             position =wm_opts_cv ["position"],
@@ -1921,9 +1859,6 @@ with tab_canva :
             custom_y =wm_opts_cv ["custom_y"],
             force_w =W ,force_h =H 
             )
-
-            
-            
             return result 
 
         st.markdown ("""
@@ -1931,7 +1866,6 @@ with tab_canva :
   Pour télécharger le visuel, <b>faites un clic droit sur l'aperçu</b> puis sélectionnez <code>Enregistrer l'image sous…</code>
 </div>""",unsafe_allow_html =True )
 
-            
     with col_prev_cv :
         st.markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
 
@@ -1951,13 +1885,12 @@ with tab_canva :
             _ext =canva_bg_file.name.rsplit (".",1 )[-1 ].lower ()
             _canva_bg_mime ="image/png"if _ext =="png"else ("image/webp"if _ext =="webp"else "image/jpeg")
 
-            
             import json as _json 
             _js_title =_json.dumps (canva_title )
             _js_sur =_json.dumps (canva_sur )
 
             _preview_h =min (700 ,int (560 *canva_h /canva_w ))
-            # On injecte les valeurs de décalage
+            # Composant HTML avec les offsets persistants (pas de synchronisation)
             components.html (f"""<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8">
@@ -2159,7 +2092,7 @@ function hexToRgb(hex) {{
 
 let loaded = 0;
 const toLoad = (BG_B64?1:0) + (WM_B64?1:0);
-function onLoad() {{ loaded++; if(loaded>=toLoad||toLoad===0) {{ render(); setTimeout(exportCanvas, 100); }} }}
+function onLoad() {{ loaded++; if(loaded>=toLoad||toLoad===0) {{ render(); }} }}
 if(!toLoad) render();
 
 if(BG_B64){{
@@ -2190,47 +2123,18 @@ window.addEventListener('mouseup',()=>{{
   if (isDragging) {{
     isDragging=false;
     canvas.style.cursor=bgImg?'grab':'default';
-    // Mettre à jour les inputs Streamlit pour persister les offsets
-    const parentDoc = window.parent.document;
-    const xInput = parentDoc.querySelector('[data-testid="stNumberInput"] input[aria-label="Décalage X"]');
-    const yInput = parentDoc.querySelector('[data-testid="stNumberInput"] input[aria-label="Décalage Y"]');
-    if (xInput) {{
-      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.parent.HTMLInputElement.prototype, 'value').set;
-      nativeInputValueSetter.call(xInput, Math.round(bgOffX));
-      xInput.dispatchEvent(new Event('input', {{bubbles: true}}));
-    }}
-    if (yInput) {{
-      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.parent.HTMLInputElement.prototype, 'value').set;
-      nativeInputValueSetter.call(yInput, Math.round(bgOffY));
-      yInput.dispatchEvent(new Event('input', {{bubbles: true}}));
-    }}
-    exportCanvas();
+    // On ne synchronise pas avec les inputs, mais on pourrait éventuellement le faire via un callback plus tard.
   }}
 }});
 if(bgImg) canvas.style.cursor='grab';
 
 function exportCanvas() {{
-  try {{
-    const nativeCanvas = document.createElement('canvas');
-    nativeCanvas.width  = CANVAS_W;
-    nativeCanvas.height = CANVAS_H;
-    nativeCanvas.getContext('2d').drawImage(canvas, 0, 0, CANVAS_W, CANVAS_H);
-    const dataUrl = nativeCanvas.toDataURL('image/png');
-    const allTA = window.parent.document.querySelectorAll('textarea');
-    allTA.forEach(ta => {{
-      if(ta.value === '' || ta.value.startsWith('data:image')) {{
-        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype, 'value').set;
-        nativeInputValueSetter.call(ta, dataUrl);
-        ta.dispatchEvent(new Event('input', {{bubbles: true}}));
-      }}
-    }});
-  }} catch(e) {{}}
+  // fonction vide mais conservée pour compatibilité
 }}
 </script>
 </body>
 </html>""",height =_preview_h +52 ,scrolling =False )
 
-            
 st.markdown ("""
 <div class="site-footer">
 <span></span>  
