@@ -457,7 +457,10 @@ div[data-testid="stSpinner"] p {
 .crop-preset-ratio { font-size: 0.58rem; color: var(--muted); }
 
 /* Masquer les champs cachés pour la synchronisation des offsets */
-.hidden-input { display: none !important; }
+div[data-testid="stTextInput"]:has(input[aria-label="offx"]),
+div[data-testid="stTextInput"]:has(input[aria-label="offy"]) {
+    display: none !important;
+}
 
 </style>
 """, unsafe_allow_html=True)
@@ -1587,8 +1590,6 @@ with tab_canva:
       border-radius: 999px !important;
     }
     .cv-reset > button:hover { border-color: var(--blue, #0068B1) !important; color: var(--blue, #0068B1) !important; background: var(--blue-dim, #e8f2fb) !important; }
-    /* Champs cachés pour les offsets */
-    .hidden-input { display: none !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -1604,8 +1605,9 @@ with tab_canva:
             st.session_state[_k] = _v
 
     # Champs cachés pour la synchronisation des offsets (ils seront masqués par CSS)
-    st.text_input("offx", value=st.session_state.canva_offx, key="canva_offx", label_visibility="collapsed")
-    st.text_input("offy", value=st.session_state.canva_offy, key="canva_offy", label_visibility="collapsed")
+    # On utilise key sans value, car la valeur est liée à session_state
+    st.text_input("offx", key="canva_offx", label_visibility="collapsed")
+    st.text_input("offy", key="canva_offy", label_visibility="collapsed")
 
     if st.session_state.get("_cv_reset_y"):
         st.session_state["canva_y"] = _CV_DEFAULTS["canva_y"]
