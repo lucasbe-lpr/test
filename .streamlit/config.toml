@@ -1,0 +1,15 @@
+[theme]
+# Couleur principale (remplace l'orange de Streamlit par votre bleu)
+primaryColor = "#0068B1"
+
+# Couleur de fond de l'application (blanc pur)
+backgroundColor = "#FFFFFF"
+
+# Couleur de fond des conteneurs secondaires (sidebar, zones de texte, etc.)
+secondaryBackgroundColor = "#F8F9FA"
+
+# Couleur du texte principal (noir)
+textColor = "#111111"
+
+# Police de caractères (vous utilisez déjà Roboto dans votre CSS)
+font = "sans serif"
