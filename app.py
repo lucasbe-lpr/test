@@ -1,5 +1,5 @@
 import streamlit as st 
-import streamlit.components.v1 as components 
+import streamlit .components .v1 as components 
 import subprocess 
 import tempfile 
 import base64 as _b64 
@@ -8,25 +8,24 @@ import math
 import io 
 import zipfile 
 from PIL import Image 
-import shutil
 
 LOGO_FILE ="luluflix.png"
 DEFAULT_WM_FILE ="lpr.png"
 FAVICON_FILE ="favicon.png"
 
 try :
-    _fav_img =Image.open (FAVICON_FILE )
+    _fav_img =Image .open (FAVICON_FILE )
 except Exception :
     _fav_img ="▶"
 
-st.set_page_config (
+st .set_page_config (
 page_title ="Luluflix",
 page_icon =_fav_img ,
 layout ="wide",
 initial_sidebar_state ="collapsed",
 )
 
-st.markdown ("""
+st .markdown ("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&family=Roboto+Condensed:wght@400;500;700&display=swap');
 
@@ -462,8 +461,8 @@ div[data-testid="stSpinner"] p {
 
 import base64 as _b64h 
 with open (LOGO_FILE ,"rb")as _f :
-    _logo_b64 =_b64h.b64encode (_f.read ()).decode ()
-st.markdown (f"""
+    _logo_b64 =_b64h .b64encode (_f .read ()).decode ()
+st .markdown (f"""
 <div class="site-header">
   <img src="data:image/png;base64,{_logo_b64 }" alt="Luluflix" />
   <span class="site-header-right">version <code>1.1</code></span>
@@ -473,9 +472,9 @@ st.markdown (f"""
 PREVIEW_MAX_W =680 
 PREVIEW_MAX_H =500 
 
-def cap_image_for_preview (img :Image.Image)->Image.Image :
+def cap_image_for_preview (img :Image .Image )->Image .Image :
 
-    w ,h =img.size 
+    w ,h =img .size 
     if w >PREVIEW_MAX_W :
         ratio =PREVIEW_MAX_W /w 
         w =PREVIEW_MAX_W 
@@ -484,9 +483,9 @@ def cap_image_for_preview (img :Image.Image)->Image.Image :
         ratio =PREVIEW_MAX_H /h 
         h =PREVIEW_MAX_H 
         w =int (w *ratio )
-    if (w ,h )==img.size :
+    if (w ,h )==img .size :
         return img 
-    return img.resize ((w ,h ),Image.LANCZOS )
+    return img .resize ((w ,h ),Image .LANCZOS )
 
 def get_default_logo ()->str :
     return DEFAULT_WM_FILE 
@@ -518,24 +517,24 @@ margin_pct :float =0.05 )->tuple [int ,int ]:
     return custom_x ,custom_y 
 
 def composite_logo (
-base :Image.Image ,logo_path :str ,
+base :Image .Image ,logo_path :str ,
 position :str =DEFAULT_POSITION ,
 custom_x :int =0 ,custom_y :int =0 ,
 force_w :int =None ,force_h :int =None ,
-)->Image.Image :
+)->Image .Image :
 
-    W =force_w if force_w else base.size [0 ]
-    H =force_h if force_h else base.size [1 ]
-    logo_w =int (math.sqrt (W **2 +H **2 )*0.1307 )
-    logo =Image.open (logo_path ).convert ("RGBA")
-    ratio =logo_w /logo.width 
-    logo_h =int (logo.height *ratio )
-    logo =logo.resize ((logo_w ,logo_h ),Image.LANCZOS )
+    W =force_w if force_w else base .size [0 ]
+    H =force_h if force_h else base .size [1 ]
+    logo_w =int (math .sqrt (W **2 +H **2 )*0.1307 )
+    logo =Image .open (logo_path ).convert ("RGBA")
+    ratio =logo_w /logo .width 
+    logo_h =int (logo .height *ratio )
+    logo =logo .resize ((logo_w ,logo_h ),Image .LANCZOS )
     x ,y =compute_xy (position ,W ,H ,logo_w ,logo_h ,custom_x ,custom_y )
-    out =base.convert ("RGBA")
-    layer =Image.new ("RGBA",out.size ,(0 ,0 ,0 ,0 ))
-    layer.paste (logo ,(x ,y ),logo )
-    out =Image.alpha_composite (out ,layer )
+    out =base .convert ("RGBA")
+    layer =Image .new ("RGBA",out .size ,(0 ,0 ,0 ,0 ))
+    layer .paste (logo ,(x ,y ),logo )
+    out =Image .alpha_composite (out ,layer )
     return out 
 
 def get_video_info (path :str )->dict :
@@ -549,25 +548,25 @@ def get_video_info (path :str )->dict :
     "-show_entries","format=duration",
     "-of","json",path 
     ]
-    result =subprocess.run (cmd ,capture_output =True ,text =True )
-    data =_json.loads (result.stdout )
-    stream =data.get ("streams",[{}])[0 ]
-    w =int (stream.get ("width",0 ))
-    h =int (stream.get ("height",0 ))
-    dur =float (data.get ("format",{}).get ("duration",0 ))
-    fps_raw =stream.get ("r_frame_rate","25/1")
+    result =subprocess .run (cmd ,capture_output =True ,text =True )
+    data =_json .loads (result .stdout )
+    stream =data .get ("streams",[{}])[0 ]
+    w =int (stream .get ("width",0 ))
+    h =int (stream .get ("height",0 ))
+    dur =float (data .get ("format",{}).get ("duration",0 ))
+    fps_raw =stream .get ("r_frame_rate","25/1")
     try :
-        num ,den =fps_raw.split ("/")
+        num ,den =fps_raw .split ("/")
         fps =round (float (num )/float (den ),2 )
     except Exception :
         fps =25.0 
     rotate =0 
-    for sd in stream.get ("side_data_list",[]):
+    for sd in stream .get ("side_data_list",[]):
         if "rotation"in sd :
             rotate =int (sd ["rotation"])
             break 
     if rotate ==0 :
-        rotate =int (stream.get ("tags",{}).get ("rotate",0 ))
+        rotate =int (stream .get ("tags",{}).get ("rotate",0 ))
     if abs (rotate )in (90 ,270 ):
         w ,h =h ,w 
     return {"width":w ,"height":h ,"duration":dur ,"fps":fps ,"rotate":rotate }
@@ -576,22 +575,22 @@ def fmt_time (secs :float )->str :
     m ,s =divmod (int (secs ),60 )
     return f"{m }:{s :02d}"
 
-def extract_frame (video_path :str ,timecode :float )->Image.Image :
+def extract_frame (video_path :str ,timecode :float )->Image .Image :
 
-    result =subprocess.run ([
+    result =subprocess .run ([
     "ffmpeg","-y","-ss",str (timecode ),"-i",video_path ,
     "-vframes","1","-f","image2pipe","-vcodec","png","pipe:1"
     ],capture_output =True )
-    return Image.open (io.BytesIO (result.stdout )).convert ("RGB")
+    return Image .open (io .BytesIO (result .stdout )).convert ("RGB")
 
 def make_thumbnail (video_path :str ,logo_path :str ,info :dict ,
-position :str =DEFAULT_POSITION ,custom_x :int =0 ,custom_y :int =0 )->Image.Image :
+position :str =DEFAULT_POSITION ,custom_x :int =0 ,custom_y :int =0 )->Image .Image :
 
-    result =subprocess.run ([
+    result =subprocess .run ([
     "ffmpeg","-y","-i",video_path ,
     "-vframes","1","-f","image2pipe","-vcodec","png","pipe:1"
     ],capture_output =True )
-    frame =Image.open (io.BytesIO (result.stdout )).convert ("RGBA")
+    frame =Image .open (io .BytesIO (result .stdout )).convert ("RGBA")
     return composite_logo (
     frame ,logo_path ,
     position =position ,custom_x =custom_x ,custom_y =custom_y ,
@@ -613,42 +612,42 @@ progress_cb =None
 ):
 
     W ,H =info ["width"],info ["height"]
-    logo_w =int (math.sqrt (W **2 +H **2 )*0.1307 )
-    logo_orig =Image.open (logo_path ).convert ("RGBA")
-    ratio =logo_w /logo_orig.width 
-    logo_h =int (logo_orig.height *ratio )
-    logo_scaled =logo_orig.resize ((logo_w ,logo_h ),Image.LANCZOS )
+    logo_w =int (math .sqrt (W **2 +H **2 )*0.1307 )
+    logo_orig =Image .open (logo_path ).convert ("RGBA")
+    ratio =logo_w /logo_orig .width 
+    logo_h =int (logo_orig .height *ratio )
+    logo_scaled =logo_orig .resize ((logo_w ,logo_h ),Image .LANCZOS )
     x ,y =compute_xy (position ,W ,H ,logo_w ,logo_h ,custom_x ,custom_y )
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp_logo_path =os.path.join (tmpdir ,"wm_prescaled.png")
-        logo_scaled.save (tmp_logo_path ,format ="PNG")
+    tmp_logo_dir =tempfile .mkdtemp ()
+    tmp_logo_path =os .path .join (tmp_logo_dir ,"wm_prescaled.png")
+    logo_scaled .save (tmp_logo_path ,format ="PNG")
 
-        filter_complex =f"[0:v][1:v]overlay={x }:{y }"
-        q =QUALITY_PRESETS.get (quality_key ,QUALITY_PRESETS ["Standard (CRF 18 — recommandé)"])
-        cmd =[
-        "ffmpeg","-y",
-        "-i",video_path ,"-i",tmp_logo_path ,
-        "-filter_complex",filter_complex ,
-        "-c:v","libx264","-crf",q ["crf"],"-preset",q ["preset"],
-        "-c:a","copy","-movflags","+faststart",
-        "-progress","pipe:1",output_path 
-        ]
-        process =subprocess.Popen (cmd ,stdout =subprocess.PIPE ,stderr =subprocess.PIPE ,text =True )
-        total =info ["duration"]
-        while True :
-            line =process.stdout.readline ()
-            if not line :break 
-            if line.strip ().startswith ("out_time_ms="):
-                try :
-                    ms =int (line.strip ().split ("=")[1 ])
-                    if total >0 and progress_cb :
-                        progress_cb (min (ms /1_000_000 /total ,1.0 ))
-                except Exception :
-                    pass 
-        process.wait ()
-        if process.returncode !=0 :
-            raise RuntimeError (process.stderr.read ())
+    filter_complex =f"[0:v][1:v]overlay={x }:{y }"
+    q =QUALITY_PRESETS .get (quality_key ,QUALITY_PRESETS ["Standard (CRF 18 — recommandé)"])
+    cmd =[
+    "ffmpeg","-y",
+    "-i",video_path ,"-i",tmp_logo_path ,
+    "-filter_complex",filter_complex ,
+    "-c:v","libx264","-crf",q ["crf"],"-preset",q ["preset"],
+    "-c:a","copy","-movflags","+faststart",
+    "-progress","pipe:1",output_path 
+    ]
+    process =subprocess .Popen (cmd ,stdout =subprocess .PIPE ,stderr =subprocess .PIPE ,text =True )
+    total =info ["duration"]
+    while True :
+        line =process .stdout .readline ()
+        if not line :break 
+        if line .strip ().startswith ("out_time_ms="):
+            try :
+                ms =int (line .strip ().split ("=")[1 ])
+                if total >0 and progress_cb :
+                    progress_cb (min (ms /1_000_000 /total ,1.0 ))
+            except Exception :
+                pass 
+    process .wait ()
+    if process .returncode !=0 :
+        raise RuntimeError (process .stderr .read ())
 
 def trim_video (video_path :str ,output_path :str ,t_start :float ,t_end :float ):
 
@@ -659,48 +658,46 @@ def trim_video (video_path :str ,output_path :str ,t_start :float ,t_end :float 
     "-c","copy","-movflags","+faststart",
     output_path 
     ]
-    result =subprocess.run (cmd ,capture_output =True )
-    if result.returncode !=0 :
-        raise RuntimeError (result.stderr.decode ())
+    result =subprocess .run (cmd ,capture_output =True )
+    if result .returncode !=0 :
+        raise RuntimeError (result .stderr .decode ())
 
 def watermark_options_ui (key_prefix :str )->dict :
 
-    st.markdown ('<p class="section-label-mt">Watermark</p>',unsafe_allow_html =True )
-    position =st.selectbox (
+    st .markdown ('<p class="section-label-mt">Watermark</p>',unsafe_allow_html =True )
+    position =st .selectbox (
     "Position",POSITIONS ,
-    index =POSITIONS.index (DEFAULT_POSITION ),
+    index =POSITIONS .index (DEFAULT_POSITION ),
     key =f"{key_prefix }_pos",
     )
     custom_x ,custom_y =0 ,0 
     if position =="Coordonnées personnalisées":
-        col_x ,col_y =st.columns (2 )
+        col_x ,col_y =st .columns (2 )
         with col_x :
-            custom_x =st.number_input ("X (px depuis gauche)",min_value =0 ,value =0 ,step =1 ,key =f"{key_prefix }_cx")
+            custom_x =st .number_input ("X (px depuis gauche)",min_value =0 ,value =0 ,step =1 ,key =f"{key_prefix }_cx")
         with col_y :
-            custom_y =st.number_input ("Y (px depuis haut)",min_value =0 ,value =0 ,step =1 ,key =f"{key_prefix }_cy")
+            custom_y =st .number_input ("Y (px depuis haut)",min_value =0 ,value =0 ,step =1 ,key =f"{key_prefix }_cy")
     return {"position":position ,"custom_x":int (custom_x ),"custom_y":int (custom_y )}
 
 def merge_videos (video_paths :list ,output_path :str ):
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
-        tmp_list = f.name
-        for p in video_paths:
-            f.write(f"file '{p}'\n")
-    try:
-        cmd =[
-        "ffmpeg","-y",
-        "-f","concat","-safe","0",
-        "-i",tmp_list ,
-        "-c:v","libx264","-crf","18","-preset","fast",
-        "-c:a","aac","-b:a","192k",
-        "-movflags","+faststart",
-        output_path 
-        ]
-        result =subprocess.run (cmd ,capture_output =True )
-        if result.returncode !=0 :
-            raise RuntimeError (result.stderr.decode ())
-    finally:
-        os.unlink(tmp_list)
+    tmp_list =tempfile .mktemp (suffix =".txt")
+    with open (tmp_list ,"w")as f :
+        for p in video_paths :
+            f .write (f"file '{p }'\n")
+    cmd =[
+    "ffmpeg","-y",
+    "-f","concat","-safe","0",
+    "-i",tmp_list ,
+    "-c:v","libx264","-crf","18","-preset","fast",
+    "-c:a","aac","-b:a","192k",
+    "-movflags","+faststart",
+    output_path 
+    ]
+    result =subprocess .run (cmd ,capture_output =True )
+    os .unlink (tmp_list )
+    if result .returncode !=0 :
+        raise RuntimeError (result .stderr .decode ())
 
 def remove_audio (video_path :str ,output_path :str ):
 
@@ -709,9 +706,9 @@ def remove_audio (video_path :str ,output_path :str ):
     "-c:v","copy","-an",
     "-movflags","+faststart",output_path 
     ]
-    result =subprocess.run (cmd ,capture_output =True )
-    if result.returncode !=0 :
-        raise RuntimeError (result.stderr.decode ())
+    result =subprocess .run (cmd ,capture_output =True )
+    if result .returncode !=0 :
+        raise RuntimeError (result .stderr .decode ())
 
 def replace_audio (video_path :str ,audio_path :str ,output_path :str ,loop_audio :bool =True ):
 
@@ -726,9 +723,9 @@ def replace_audio (video_path :str ,audio_path :str ,output_path :str ,loop_audi
     "-map","0:v:0","-map","1:a:0",
     "-movflags","+faststart",output_path 
     ]
-    result =subprocess.run (cmd ,capture_output =True )
-    if result.returncode !=0 :
-        raise RuntimeError (result.stderr.decode ())
+    result =subprocess .run (cmd ,capture_output =True )
+    if result .returncode !=0 :
+        raise RuntimeError (result .stderr .decode ())
 
         
 CROP_PRESETS =[
@@ -749,13 +746,17 @@ position :str ="Centre"):
     target_ratio =ratio_w /ratio_h 
     src_ratio =W /H 
     if src_ratio >target_ratio :
+    
         new_w =int (H *target_ratio )
         new_h =H 
     else :
+    
         new_w =W 
         new_h =int (W /target_ratio )
+        
     new_w =new_w -(new_w %2 )
     new_h =new_h -(new_h %2 )
+    
     if position =="Haut":
         x_off ,y_off =(W -new_w )//2 ,0 
     elif position =="Bas":
@@ -774,41 +775,29 @@ position :str ="Centre"):
     "-c:a","copy",
     "-movflags","+faststart",output_path 
     ]
-    result =subprocess.run (cmd ,capture_output =True )
-    if result.returncode !=0 :
-        raise RuntimeError (result.stderr.decode ())
+    result =subprocess .run (cmd ,capture_output =True )
+    if result .returncode !=0 :
+        raise RuntimeError (result .stderr .decode ())
 
         
 for k in ["thumbnail","rendered_bytes","_last_video_name",
 "cut_bytes","_last_cut_name","merge_bytes",
 "audio_bytes","_last_audio_name",
 "crop_bytes","_last_crop_name"]:
-    if k not in st.session_state :
-        st.session_state [k ]=None 
+    if k not in st .session_state :
+        st .session_state [k ]=None 
 
-for k in ["tmp_video","tmp_photo","tmp_capture","tmp_cut","tmp_merge","tmp_audio","tmp_crop"]:
-    if k not in st.session_state:
-        st.session_state[k] = None
-
-def cleanup_temp_dir(key):
-    if st.session_state.get(key):
-        try:
-            shutil.rmtree(st.session_state[key])
-        except Exception:
-            pass
-        st.session_state[key] = None
-
-tab_v ,tab_p ,tab_s ,tab_cut ,tab_merge ,tab_audio ,tab_crop ,tab_canva =st.tabs ([
+tab_v ,tab_p ,tab_s ,tab_cut ,tab_merge ,tab_audio ,tab_crop ,tab_canva =st .tabs ([
 "Watermark vidéo","Watermark photo","Capture d'écran",
 "Couper","Fusionner","Son","Recadrer","Template RS"
 ])
 
 with tab_v :
-    col_ctrl ,col_prev =st.columns ([4 ,6 ],gap ="large")
+    col_ctrl ,col_prev =st .columns ([4 ,6 ],gap ="large")
 
     with col_ctrl :
-        st.markdown ('<p class="section-label">Source</p>',unsafe_allow_html =True )
-        video_file =st.file_uploader (
+        st .markdown ('<p class="section-label">Source</p>',unsafe_allow_html =True )
+        video_file =st .file_uploader (
         "Déposez votre vidéo ici",
         type =["mp4","mov","avi","mkv","webm"],
         key ="vu",label_visibility ="collapsed"
@@ -816,27 +805,19 @@ with tab_v :
 
     if video_file :
     
-        if st.session_state._last_video_name !=video_file.name :
-            cleanup_temp_dir("tmp_video")
-            tmp = tempfile.mkdtemp()
-            st.session_state.tmp_video = tmp
-            st.session_state.thumbnail = None
-            st.session_state.rendered_bytes = None
-            st.session_state._last_video_name = video_file.name
-        else:
-            tmp = st.session_state.tmp_video
-            if tmp is None:
-                tmp = tempfile.mkdtemp()
-                st.session_state.tmp_video = tmp
+        if st .session_state ._last_video_name !=video_file .name :
+            st .session_state .thumbnail =None 
+            st .session_state .rendered_bytes =None 
+            st .session_state ._last_video_name =video_file .name 
 
         lp =get_default_logo ()
-        vp =os.path.join (tmp ,"src"+os.path.splitext (video_file.name )[1 ])
-        if not os.path.exists(vp):
-            with open (vp ,"wb")as f :f.write (video_file.read ())
+        tmp =tempfile .mkdtemp ()
+        vp =os .path .join (tmp ,"src"+os .path .splitext (video_file .name )[1 ])
+        with open (vp ,"wb")as f :f .write (video_file .read ())
         nfo =get_video_info (vp )
 
         with col_ctrl :
-            st.markdown (f"""
+            st .markdown (f"""
             <div class="specs-row">
               <div class="spec-cell"><span class="spec-k">Largeur</span><span class="spec-v">{nfo ['width']} px</span></div>
               <div class="spec-cell"><span class="spec-k">Hauteur</span><span class="spec-v">{nfo ['height']} px</span></div>
@@ -846,52 +827,51 @@ with tab_v :
 
             wm_opts =watermark_options_ui ("v")
 
-            st.markdown ('<p class="section-label-mt">Qualité d\'export</p>',unsafe_allow_html =True )
-            quality_key =st.selectbox (
-            "Qualité",list (QUALITY_PRESETS.keys ()),
+            st .markdown ('<p class="section-label-mt">Qualité d\'export</p>',unsafe_allow_html =True )
+            quality_key =st .selectbox (
+            "Qualité",list (QUALITY_PRESETS .keys ()),
             key ="v_quality",label_visibility ="collapsed",
             )
 
+            
             opts_sig =(wm_opts ["position"],wm_opts ["custom_x"],wm_opts ["custom_y"])
-            if st.session_state.get ("_v_opts_sig")!=opts_sig :
-                st.session_state.thumbnail =None 
-                st.session_state.rendered_bytes =None 
-                st.session_state ["_v_opts_sig"]=opts_sig 
+            if st .session_state .get ("_v_opts_sig")!=opts_sig :
+                st .session_state .thumbnail =None 
+                st .session_state .rendered_bytes =None 
+                st .session_state ["_v_opts_sig"]=opts_sig 
 
-            if st.session_state.thumbnail is None :
-                with st.spinner ("Génération de l'aperçu…"):
-                    st.session_state.thumbnail =make_thumbnail (vp ,lp ,nfo ,**wm_opts )
+            if st .session_state .thumbnail is None :
+                with st .spinner ("Génération de l'aperçu…"):
+                    st .session_state .thumbnail =make_thumbnail (vp ,lp ,nfo ,**wm_opts )
 
-            st.markdown ("<div style='margin-top:1.2rem;'></div>",unsafe_allow_html =True )
-            if not st.session_state.rendered_bytes :
-                if st.button ("Générer le rendu",key ="vbtn"):
-                    out =os.path.join (tmp ,"video_ready_to_post.mp4")
-                    ph =st.empty ()
-                    ph.markdown ('<div class="encoding-wrap"><div class="encoding-ring"></div><span class="encoding-text">Encodage en cours…</span></div><div class="fake-progress-wrap"><div class="fake-progress-track"><div class="fake-progress-bar"></div></div></div>',unsafe_allow_html =True )
+            st .markdown ("<div style='margin-top:1.2rem;'></div>",unsafe_allow_html =True )
+            if not st .session_state .rendered_bytes :
+                if st .button ("Générer le rendu",key ="vbtn"):
+                    out =os .path .join (tmp ,"video_ready_to_post.mp4")
+                    ph =st .empty ()
+                    ph .markdown ('<div class="encoding-wrap"><div class="encoding-ring"></div><span class="encoding-text">Encodage en cours…</span></div><div class="fake-progress-wrap"><div class="fake-progress-track"><div class="fake-progress-bar"></div></div></div>',unsafe_allow_html =True )
                     try :
                         render_video (vp ,lp ,out ,nfo ,quality_key =quality_key ,**wm_opts )
-                        ph.empty ()
+                        ph .empty ()
                         with open (out ,"rb")as f :
-                            st.session_state.rendered_bytes =f.read ()
-                        cleanup_temp_dir("tmp_video")
-                        st.rerun ()
+                            st .session_state .rendered_bytes =f .read ()
+                        st .rerun ()
                     except Exception as e :
-                        ph.markdown (f'<div class="status status-err">Erreur : {e }</div>',unsafe_allow_html =True )
+                        ph .markdown (f'<div class="status status-err">Erreur : {e }</div>',unsafe_allow_html =True )
             else :
-                st.download_button ("↓  Télécharger la vidéo",data =st.session_state.rendered_bytes ,
+                st .download_button ("↓  Télécharger la vidéo",data =st .session_state .rendered_bytes ,
                 file_name ="video_ready_to_post.mp4",mime ="video/mp4",key ="vdl")
 
         with col_prev :
-            st.markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
-            st.image (cap_image_for_preview (st.session_state.thumbnail ))
-            st.markdown ('</div>',unsafe_allow_html =True )
+            st .markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
+            st .image (cap_image_for_preview (st .session_state .thumbnail ))
+            st .markdown ('</div>',unsafe_allow_html =True )
 
     else :
-        cleanup_temp_dir("tmp_video")
         with col_ctrl :
-            st.markdown ('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>',unsafe_allow_html =True )
+            st .markdown ('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>',unsafe_allow_html =True )
         with col_prev :
-            st.markdown ("""
+            st .markdown ("""
             <div class="preview-placeholder">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
                 <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
@@ -899,12 +879,16 @@ with tab_v :
               <span>L'aperçu apparaîtra ici</span>
             </div>""",unsafe_allow_html =True )
 
+            
+            
+            
+
 with tab_p :
-    col_ctrl_p ,col_prev_p =st.columns ([4 ,6 ],gap ="large")
+    col_ctrl_p ,col_prev_p =st .columns ([4 ,6 ],gap ="large")
 
     with col_ctrl_p :
-        st.markdown ('<p class="section-label">Source</p>',unsafe_allow_html =True )
-        photo_files =st.file_uploader (
+        st .markdown ('<p class="section-label">Source</p>',unsafe_allow_html =True )
+        photo_files =st .file_uploader (
         "Déposez vos images ici",
         type =["png","jpg","jpeg"],
         key ="pu",
@@ -917,14 +901,14 @@ with tab_p :
 
         with col_ctrl_p :
         
-            st.markdown ('<p class="section-label-mt">Fichiers importés</p>',unsafe_allow_html =True )
+            st .markdown ('<p class="section-label-mt">Fichiers importés</p>',unsafe_allow_html =True )
             for pf in photo_files :
-                img_tmp =Image.open (pf )
-                W_tmp ,H_tmp =img_tmp.size 
-                pf.seek (0 )
-                st.markdown (
+                img_tmp =Image .open (pf )
+                W_tmp ,H_tmp =img_tmp .size 
+                pf .seek (0 )
+                st .markdown (
                 f'<div class="photo-batch-item">'
-                f'<span class="photo-batch-name">📷 {pf.name }</span>'
+                f'<span class="photo-batch-name">📷 {pf .name }</span>'
                 f'<span class="photo-batch-dim">{W_tmp } × {H_tmp } px</span>'
                 f'</div>',
                 unsafe_allow_html =True ,
@@ -934,59 +918,61 @@ with tab_p :
 
         def build_photo_output (pf ,opts ):
         
-            pf.seek (0 )
-            base =Image.open (pf )
+            pf .seek (0 )
+            base =Image .open (pf )
             result =composite_logo (base ,lp2 ,**opts )
-            buf =io.BytesIO ()
-            ext =pf.name.rsplit (".",1 )[-1 ].lower ()
+            buf =io .BytesIO ()
+            ext =pf .name .rsplit (".",1 )[-1 ].lower ()
             if ext =="png":
-                result.save (buf ,format ="PNG")
-                return buf.getvalue (),pf.name.rsplit (".",1 )[0 ]+"_wm.png","image/png"
+                result .save (buf ,format ="PNG")
+                return buf .getvalue (),pf .name .rsplit (".",1 )[0 ]+"_wm.png","image/png"
             else :
-                result.convert ("RGB").save (buf ,format ="JPEG",quality =100 ,subsampling =0 )
-                return buf.getvalue (),pf.name.rsplit (".",1 )[0 ]+"_wm.jpg","image/jpeg"
+                result .convert ("RGB").save (buf ,format ="JPEG",quality =100 ,subsampling =0 )
+                return buf .getvalue (),pf .name .rsplit (".",1 )[0 ]+"_wm.jpg","image/jpeg"
 
                 
         with col_prev_p :
-            st.markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
-            grid_cols =st.columns (2 )
+            st .markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
+            grid_cols =st .columns (2 )
             for idx ,pf in enumerate (photo_files ):
-                pf.seek (0 )
-                base_prev =Image.open (pf )
+                pf .seek (0 )
+                base_prev =Image .open (pf )
                 result_prev =composite_logo (base_prev ,lp2 ,**wm_opts_p )
                 with grid_cols [idx %2 ]:
-                    st.image (cap_image_for_preview (result_prev.convert ("RGB")),
-                    caption =pf.name ,use_container_width =True )
-            st.markdown ('</div>',unsafe_allow_html =True )
+                    st .image (cap_image_for_preview (result_prev .convert ("RGB")),
+                    caption =pf .name ,use_container_width =True )
+            st .markdown ('</div>',unsafe_allow_html =True )
 
         with col_ctrl_p :
             if len (photo_files )==1 :
                 data ,fname ,mime =build_photo_output (photo_files [0 ],wm_opts_p )
-                st.download_button ("↓  Télécharger la photo",data =data ,
+                st .download_button ("↓  Télécharger la photo",data =data ,
                 file_name =fname ,mime =mime ,key ="pdl_single")
             else :
-                st.markdown ('<p class="section-label-mt">Téléchargement</p>',unsafe_allow_html =True )
+                st .markdown ('<p class="section-label-mt">Téléchargement</p>',unsafe_allow_html =True )
 
+                
                 for i in range (0 ,len (photo_files ),2 ):
                     row_files =photo_files [i :i +2 ]
-                    btn_cols =st.columns (len (row_files ),gap ="small")
+                    btn_cols =st .columns (len (row_files ),gap ="small")
                     for j ,pf in enumerate (row_files ):
                         data ,fname ,mime =build_photo_output (pf ,wm_opts_p )
                         with btn_cols [j ]:
-                            st.download_button (
-                            f"↓  {pf.name }",
+                            st .download_button (
+                            f"↓  {pf .name }",
                             data =data ,file_name =fname ,mime =mime ,
                             key =f"pdl_{i +j }",
                             )
 
-                zip_buf =io.BytesIO ()
-                with zipfile.ZipFile (zip_buf ,"w",zipfile.ZIP_STORED )as zf :
+                            
+                zip_buf =io .BytesIO ()
+                with zipfile .ZipFile (zip_buf ,"w",zipfile .ZIP_STORED )as zf :
                     for pf in photo_files :
                         data ,fname ,_ =build_photo_output (pf ,wm_opts_p )
-                        zf.writestr (fname ,data )
-                st.download_button (
+                        zf .writestr (fname ,data )
+                st .download_button (
                 "↓  Tout télécharger (.zip)",
-                data =zip_buf.getvalue (),
+                data =zip_buf .getvalue (),
                 file_name ="photos_watermark.zip",
                 mime ="application/zip",
                 key ="pdl_zip",
@@ -994,9 +980,9 @@ with tab_p :
 
     else :
         with col_ctrl_p :
-            st.markdown ('<div class="status status-idle">Déposez une ou plusieurs images via <i>Upload</i>.</div>',unsafe_allow_html =True )
+            st .markdown ('<div class="status status-idle">Déposez une ou plusieurs images via <i>Upload</i>.</div>',unsafe_allow_html =True )
         with col_prev_p :
-            st.markdown ("""
+            st .markdown ("""
             <div class="preview-placeholder">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
                 <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
@@ -1005,61 +991,61 @@ with tab_p :
               <span>L'aperçu apparaîtra ici</span>
             </div>""",unsafe_allow_html =True )
 
+            
+            
+            
+
 with tab_s :
-    col_ctrl_s ,col_prev_s =st.columns ([4 ,6 ],gap ="large")
+    col_ctrl_s ,col_prev_s =st .columns ([4 ,6 ],gap ="large")
 
     with col_ctrl_s :
-        st.markdown ('<p class="section-label">Source</p>',unsafe_allow_html =True )
-        scr_file =st.file_uploader ("Déposez votre vidéo ici",type =["mp4","mov","avi","mkv","webm"],
+        st .markdown ('<p class="section-label">Source</p>',unsafe_allow_html =True )
+        scr_file =st .file_uploader ("Déposez votre vidéo ici",type =["mp4","mov","avi","mkv","webm"],
         key ="su",label_visibility ="collapsed")
 
     if scr_file :
-        cleanup_temp_dir("tmp_capture")
-        tmp_s = tempfile.mkdtemp()
-        st.session_state.tmp_capture = tmp_s
-        sp =os.path.join (tmp_s ,"src"+os.path.splitext (scr_file.name )[1 ])
-        with open (sp ,"wb")as f :f.write (scr_file.read ())
+        tmp_s =tempfile .mkdtemp ()
+        sp =os .path .join (tmp_s ,"src"+os .path .splitext (scr_file .name )[1 ])
+        with open (sp ,"wb")as f :f .write (scr_file .read ())
         nfo_s =get_video_info (sp )
         dur_s =nfo_s ["duration"]
 
         with col_ctrl_s :
-            st.markdown (f"""
+            st .markdown (f"""
             <div class="specs-row">
               <div class="spec-cell"><span class="spec-k">Largeur</span><span class="spec-v">{nfo_s ['width']} px</span></div>
               <div class="spec-cell"><span class="spec-k">Hauteur</span><span class="spec-v">{nfo_s ['height']} px</span></div>
               <div class="spec-cell"><span class="spec-k">Durée</span><span class="spec-v">{fmt_time (dur_s )}</span></div>
               <div class="spec-cell"><span class="spec-k">FPS</span><span class="spec-v">{nfo_s ['fps']}</span></div>
             </div>""",unsafe_allow_html =True )
-            st.markdown ('<p class="section-label">Timecode (secondes)</p>',unsafe_allow_html =True )
-            timecode =st.number_input (
+            st .markdown ('<p class="section-label">Timecode (secondes)</p>',unsafe_allow_html =True )
+            timecode =st .number_input (
             "tc",min_value =0.0 ,max_value =float (dur_s ),
-            value =float (st.session_state.get ("cap_tc_ni",0.0 )),
+            value =float (st .session_state .get ("cap_tc_ni",0.0 )),
             step =0.1 ,format ="%.2f",
             key ="cap_tc_ni",label_visibility ="collapsed")
 
-        with st.spinner (""):
+        with st .spinner (""):
             frame =extract_frame (sp ,timecode )
 
         with col_ctrl_s :
-            buf_s =io.BytesIO ()
-            frame.save (buf_s ,format ="PNG")
-            st.markdown ("<div style='margin-top:1.2rem;'></div>",unsafe_allow_html =True )
-            st.download_button ("↓  Télécharger la capture",data =buf_s.getvalue (),
+            buf_s =io .BytesIO ()
+            frame .save (buf_s ,format ="PNG")
+            st .markdown ("<div style='margin-top:1.2rem;'></div>",unsafe_allow_html =True )
+            st .download_button ("↓  Télécharger la capture",data =buf_s .getvalue (),
             file_name =f"capture_{fmt_time (timecode ).replace (':','-')}.png",
             mime ="image/png",key ="sdl")
-            cleanup_temp_dir("tmp_capture")
 
         with col_prev_s :
-            st.markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
-            st.image (cap_image_for_preview (frame ))
-            st.markdown ('</div>',unsafe_allow_html =True )
+            st .markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
+            st .image (cap_image_for_preview (frame ))
+            st .markdown ('</div>',unsafe_allow_html =True )
 
     else :
-        cleanup_temp_dir("tmp_capture")
         with col_ctrl_s :
-            st.markdown ('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>',unsafe_allow_html =True )
+            st .markdown ('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>',unsafe_allow_html =True )
         with col_prev_s :
-            st.markdown ("""
+            st .markdown ("""
             <div class="preview-placeholder">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
                 <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>
@@ -1067,38 +1053,34 @@ with tab_s :
               <span>L'aperçu apparaîtra ici</span>
             </div>""",unsafe_allow_html =True )
 
+            
+            
+            
+
 with tab_cut :
-    col_ctrl_c ,col_prev_c =st.columns ([4 ,6 ],gap ="large")
+    col_ctrl_c ,col_prev_c =st .columns ([4 ,6 ],gap ="large")
 
     with col_ctrl_c :
-        st.markdown ('<p class="section-label">Source</p>',unsafe_allow_html =True )
-        cut_file =st.file_uploader (
+        st .markdown ('<p class="section-label">Source</p>',unsafe_allow_html =True )
+        cut_file =st .file_uploader (
         "Déposez votre vidéo ici",
         type =["mp4","mov","avi","mkv","webm"],
         key ="cut_u",label_visibility ="collapsed"
         )
 
     if cut_file :
-        if st.session_state._last_cut_name !=cut_file.name :
-            cleanup_temp_dir("tmp_cut")
-            tmp_c = tempfile.mkdtemp()
-            st.session_state.tmp_cut = tmp_c
-            st.session_state.cut_bytes = None
-            st.session_state._last_cut_name = cut_file.name
-        else:
-            tmp_c = st.session_state.tmp_cut
-            if tmp_c is None:
-                tmp_c = tempfile.mkdtemp()
-                st.session_state.tmp_cut = tmp_c
+        if st .session_state ._last_cut_name !=cut_file .name :
+            st .session_state .cut_bytes =None 
+            st .session_state ._last_cut_name =cut_file .name 
 
-        cp =os.path.join (tmp_c ,"src"+os.path.splitext (cut_file.name )[1 ])
-        if not os.path.exists(cp):
-            with open (cp ,"wb")as f :f.write (cut_file.read ())
+        tmp_c =tempfile .mkdtemp ()
+        cp =os .path .join (tmp_c ,"src"+os .path .splitext (cut_file .name )[1 ])
+        with open (cp ,"wb")as f :f .write (cut_file .read ())
         nfo_c =get_video_info (cp )
         dur_c =nfo_c ["duration"]
 
         with col_ctrl_c :
-            st.markdown (f"""
+            st .markdown (f"""
             <div class="specs-row">
               <div class="spec-cell"><span class="spec-k">Largeur</span><span class="spec-v">{nfo_c ['width']} px</span></div>
               <div class="spec-cell"><span class="spec-k">Hauteur</span><span class="spec-v">{nfo_c ['height']} px</span></div>
@@ -1106,69 +1088,71 @@ with tab_cut :
               <div class="spec-cell"><span class="spec-k">FPS</span><span class="spec-v">{nfo_c ['fps']}</span></div>
             </div>""",unsafe_allow_html =True )
 
-            st.markdown ('<p class="section-label-mt">Début du segment</p>',unsafe_allow_html =True )
-            t_start =st.slider (
+            st .markdown ('<p class="section-label-mt">Début du segment</p>',unsafe_allow_html =True )
+            t_start =st .slider (
             "Début",min_value =0.0 ,max_value =float (dur_c ),
             value =0.0 ,step =0.1 ,format ="%.1f s",
             key ="cut_start",label_visibility ="collapsed"
             )
-            st.markdown ('<p class="section-label-mt">Fin du segment</p>',unsafe_allow_html =True )
-            t_end =st.slider (
+            st .markdown ('<p class="section-label-mt">Fin du segment</p>',unsafe_allow_html =True )
+            t_end =st .slider (
             "Fin",min_value =0.0 ,max_value =float (dur_c ),
             value =float (dur_c ),step =0.1 ,format ="%.1f s",
             key ="cut_end",label_visibility ="collapsed"
             )
 
+            
             if t_end <=t_start :
-                st.markdown ('<div class="status status-err">⚠ La fin doit être après le début.</div>',unsafe_allow_html =True )
+                st .markdown ('<div class="status status-err">⚠ La fin doit être après le début.</div>',unsafe_allow_html =True )
                 t_end =min (t_start +0.1 ,dur_c )
 
             seg_dur =t_end -t_start 
-            st.markdown (f"""
+            st .markdown (f"""
             <div class="cut-info-row">
               <div class="cut-info-cell"><span>Début</span>{fmt_time (t_start )} ({t_start :.1f} s)</div>
               <div class="cut-info-cell"><span>Fin</span>{fmt_time (t_end )} ({t_end :.1f} s)</div>
               <div class="cut-info-cell"><span>Durée</span>{fmt_time (seg_dur )} ({seg_dur :.1f} s)</div>
             </div>""",unsafe_allow_html =True )
 
-            st.markdown ("<div style='margin-top:1.2rem;'></div>",unsafe_allow_html =True )
+            st .markdown ("<div style='margin-top:1.2rem;'></div>",unsafe_allow_html =True )
 
-            cut_sig =(t_start ,t_end ,cut_file.name )
-            if st.session_state.get ("_cut_sig")!=cut_sig :
-                st.session_state.cut_bytes =None 
-                st.session_state ["_cut_sig"]=cut_sig 
+            
+            cut_sig =(t_start ,t_end ,cut_file .name )
+            if st .session_state .get ("_cut_sig")!=cut_sig :
+                st .session_state .cut_bytes =None 
+                st .session_state ["_cut_sig"]=cut_sig 
 
-            if not st.session_state.cut_bytes :
-                if st.button ("Générer le découpage",key ="cut_btn"):
-                    out_c =os.path.join (tmp_c ,"cut_output.mp4")
-                    ph_c =st.empty ()
-                    ph_c.markdown ('<div class="encoding-wrap"><div class="encoding-ring"></div><span class="encoding-text">Découpage en cours…</span></div><div class="fake-progress-wrap"><div class="fake-progress-track"><div class="fake-progress-bar"></div></div></div>',unsafe_allow_html =True )
+            if not st .session_state .cut_bytes :
+                if st .button ("Générer le découpage",key ="cut_btn"):
+                    out_c =os .path .join (tmp_c ,"cut_output.mp4")
+                    ph_c =st .empty ()
+                    ph_c .markdown ('<div class="encoding-wrap"><div class="encoding-ring"></div><span class="encoding-text">Découpage en cours…</span></div><div class="fake-progress-wrap"><div class="fake-progress-track"><div class="fake-progress-bar"></div></div></div>',unsafe_allow_html =True )
                     try :
                         trim_video (cp ,out_c ,t_start ,t_end )
-                        ph_c.empty ()
+                        ph_c .empty ()
                         with open (out_c ,"rb")as f :
-                            st.session_state.cut_bytes =f.read ()
-                        cleanup_temp_dir("tmp_cut")
-                        st.rerun ()
+                            st .session_state .cut_bytes =f .read ()
+                        st .rerun ()
                     except Exception as e :
-                        ph_c.markdown (f'<div class="status status-err">Erreur : {e }</div>',unsafe_allow_html =True )
+                        ph_c .markdown (f'<div class="status status-err">Erreur : {e }</div>',unsafe_allow_html =True )
             else :
-                st.download_button (
+                st .download_button (
                 "↓  Télécharger le segment",
-                data =st.session_state.cut_bytes ,
+                data =st .session_state .cut_bytes ,
                 file_name ="segment_coupe.mp4",
                 mime ="video/mp4",key ="cut_dl"
                 )
-                st.markdown ('<div class="status status-ok">Découpage terminé.</div>',unsafe_allow_html =True )
+                st .markdown ('<div class="status status-ok">Découpage terminé.</div>',unsafe_allow_html =True )
 
         with col_prev_c :
-            st.markdown ('<p class="section-label">Aperçu du segment sélectionné</p>',unsafe_allow_html =True )
-
+            st .markdown ('<p class="section-label">Aperçu du segment sélectionné</p>',unsafe_allow_html =True )
+            
+            
             with open (cp ,"rb")as _vf :
-                _vb64 =_b64.b64encode (_vf.read ()).decode ()
-            _ext =os.path.splitext (cut_file.name )[1 ].lower ().lstrip (".")
+                _vb64 =_b64 .b64encode (_vf .read ()).decode ()
+            _ext =os .path .splitext (cut_file .name )[1 ].lower ().lstrip (".")
             _mime ="video/mp4"if _ext in ("mp4","m4v")else f"video/{_ext }"
-            components.html (f"""
+            components .html (f"""
 <div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
 
   <video id="cutplayer" controls style="width:100%;display:block;max-height:380px;object-fit:contain;"
@@ -1189,11 +1173,10 @@ with tab_cut :
 </script>""",height =460 )
 
     else :
-        cleanup_temp_dir("tmp_cut")
         with col_ctrl_c :
-            st.markdown ('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>',unsafe_allow_html =True )
+            st .markdown ('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>',unsafe_allow_html =True )
         with col_prev_c :
-            st.markdown ("""
+            st .markdown ("""
             <div class="preview-placeholder">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
                 <line x1="8" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="16" y2="21"/>
@@ -1202,12 +1185,16 @@ with tab_cut :
               <span>L'aperçu apparaîtra ici</span>
             </div>""",unsafe_allow_html =True )
 
+            
+            
+            
+
 with tab_merge :
-    col_ctrl_m ,col_prev_m =st.columns ([4 ,6 ],gap ="large")
+    col_ctrl_m ,col_prev_m =st .columns ([4 ,6 ],gap ="large")
 
     with col_ctrl_m :
-        st.markdown ('<p class="section-label">Sources (dans l\'ordre de fusion)</p>',unsafe_allow_html =True )
-        merge_files =st.file_uploader (
+        st .markdown ('<p class="section-label">Sources (dans l\'ordre de fusion)</p>',unsafe_allow_html =True )
+        merge_files =st .file_uploader (
         "Déposez vos vidéos ici",
         type =["mp4","mov","avi","mkv","webm"],
         key ="merge_u",label_visibility ="collapsed",
@@ -1216,86 +1203,82 @@ with tab_merge :
 
     if merge_files and len (merge_files )>=2 :
     
-        cleanup_temp_dir("tmp_merge")
-        tmp_m = tempfile.mkdtemp()
-        st.session_state.tmp_merge = tmp_m
+        tmp_m =tempfile .mkdtemp ()
         merge_paths =[]
         total_dur =0.0 
         nfo_list =[]
         for i ,mf in enumerate (merge_files ):
-            mp =os.path.join (tmp_m ,f"src_{i }"+os.path.splitext (mf.name )[1 ])
-            with open (mp ,"wb")as f :f.write (mf.read ())
-            merge_paths.append (mp )
+            mp =os .path .join (tmp_m ,f"src_{i }"+os .path .splitext (mf .name )[1 ])
+            with open (mp ,"wb")as f :f .write (mf .read ())
+            merge_paths .append (mp )
             nfo_m =get_video_info (mp )
-            nfo_list.append (nfo_m )
+            nfo_list .append (nfo_m )
             total_dur +=nfo_m ["duration"]
 
         with col_ctrl_m :
-            st.markdown ('<p class="section-label-mt">Fichiers à fusionner</p>',unsafe_allow_html =True )
+            st .markdown ('<p class="section-label-mt">Fichiers à fusionner</p>',unsafe_allow_html =True )
             for i ,(mf ,nfo_m )in enumerate (zip (merge_files ,nfo_list )):
-                st.markdown (
+                st .markdown (
                 f'<div class="merge-item">'
                 f'<div class="merge-item-idx">{i +1 }</div>'
-                f'<span class="merge-item-name">🎬 {mf.name }</span>'
+                f'<span class="merge-item-name">🎬 {mf .name }</span>'
                 f'<span class="merge-item-dur">{fmt_time (nfo_m ["duration"])} — {nfo_m ["width"]}×{nfo_m ["height"]}</span>'
                 f'</div>',
                 unsafe_allow_html =True 
                 )
 
-            st.markdown (f"""
+            st .markdown (f"""
             <div class="specs-row" style="margin-top:0.8rem;">
               <div class="spec-cell"><span class="spec-k">Fichiers</span><span class="spec-v">{len (merge_files )}</span></div>
               <div class="spec-cell"><span class="spec-k">Durée totale</span><span class="spec-v">{fmt_time (total_dur )}</span></div>
               <div class="spec-cell"><span class="spec-k">Résolution</span><span class="spec-v">{nfo_list [0 ]['width']}×{nfo_list [0 ]['height']}</span></div>
             </div>""",unsafe_allow_html =True )
 
-            st.markdown ("<div style='margin-top:1rem;'></div>",unsafe_allow_html =True )
+            st .markdown ("<div style='margin-top:1rem;'></div>",unsafe_allow_html =True )
 
-            merge_sig =tuple (mf.name for mf in merge_files )
-            if st.session_state.get ("_merge_sig")!=merge_sig :
-                st.session_state.merge_bytes =None 
-                st.session_state ["_merge_sig"]=merge_sig 
+            
+            merge_sig =tuple (mf .name for mf in merge_files )
+            if st .session_state .get ("_merge_sig")!=merge_sig :
+                st .session_state .merge_bytes =None 
+                st .session_state ["_merge_sig"]=merge_sig 
 
-            if not st.session_state.merge_bytes :
-                if st.button ("Fusionner les vidéos",key ="merge_btn"):
-                    out_m =os.path.join (tmp_m ,"fusion_output.mp4")
-                    ph_m =st.empty ()
-                    ph_m.markdown ('<div class="encoding-wrap"><div class="encoding-ring"></div><span class="encoding-text">Fusion en cours…</span></div><div class="fake-progress-wrap"><div class="fake-progress-track"><div class="fake-progress-bar"></div></div></div>',unsafe_allow_html =True )
+            if not st .session_state .merge_bytes :
+                if st .button ("Fusionner les vidéos",key ="merge_btn"):
+                    out_m =os .path .join (tmp_m ,"fusion_output.mp4")
+                    ph_m =st .empty ()
+                    ph_m .markdown ('<div class="encoding-wrap"><div class="encoding-ring"></div><span class="encoding-text">Fusion en cours…</span></div><div class="fake-progress-wrap"><div class="fake-progress-track"><div class="fake-progress-bar"></div></div></div>',unsafe_allow_html =True )
                     try :
                         merge_videos (merge_paths ,out_m )
-                        ph_m.empty ()
+                        ph_m .empty ()
                         with open (out_m ,"rb")as f :
-                            st.session_state.merge_bytes =f.read ()
-                        cleanup_temp_dir("tmp_merge")
-                        st.rerun ()
+                            st .session_state .merge_bytes =f .read ()
+                        st .rerun ()
                     except Exception as e :
-                        ph_m.markdown (f'<div class="status status-err">Erreur : {e }</div>',unsafe_allow_html =True )
+                        ph_m .markdown (f'<div class="status status-err">Erreur : {e }</div>',unsafe_allow_html =True )
             else :
-                st.download_button (
+                st .download_button (
                 "↓  Télécharger la vidéo fusionnée",
-                data =st.session_state.merge_bytes ,
+                data =st .session_state .merge_bytes ,
                 file_name ="fusion.mp4",
                 mime ="video/mp4",key ="merge_dl"
                 )
-                st.markdown ('<div class="status status-ok">Fusion terminée.</div>',unsafe_allow_html =True )
+                st .markdown ('<div class="status status-ok">Fusion terminée.</div>',unsafe_allow_html =True )
 
         with col_prev_m :
-            st.markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
+            st .markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
             for i ,(mp ,mf )in enumerate (zip (merge_paths ,merge_files )):
                 frame_m =extract_frame (mp ,0.0 )
-                st.image (cap_image_for_preview (frame_m ),
-                caption =f"{i +1 }. {mf.name }",use_container_width =True )
+                st .image (cap_image_for_preview (frame_m ),
+                caption =f"{i +1 }. {mf .name }",use_container_width =True )
 
     elif merge_files and len (merge_files )==1 :
-        cleanup_temp_dir("tmp_merge")
         with col_ctrl_m :
-            st.markdown ('<div class="status status-idle">Ajoutez au moins une deuxième vidéo pour fusionner.</div>',unsafe_allow_html =True )
+            st .markdown ('<div class="status status-idle">Ajoutez au moins une deuxième vidéo pour fusionner.</div>',unsafe_allow_html =True )
     else :
-        cleanup_temp_dir("tmp_merge")
         with col_ctrl_m :
-            st.markdown ('<div class="status status-idle">Déposez au moins <b>deux</b> vidéos via <i>Upload</i>.</div>',unsafe_allow_html =True )
+            st .markdown ('<div class="status status-idle">Déposez au moins <b>deux</b> vidéos via <i>Upload</i>.</div>',unsafe_allow_html =True )
         with col_prev_m :
-            st.markdown ("""
+            st .markdown ("""
             <div class="preview-placeholder">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
                 <path d="M22 12H2M17 7l5 5-5 5M7 7l-5 5 5 5"/>
@@ -1303,37 +1286,33 @@ with tab_merge :
               <span>L'aperçu apparaîtra ici</span>
             </div>""",unsafe_allow_html =True )
 
+            
+            
+            
+
 with tab_audio :
-    col_ctrl_a ,col_prev_a =st.columns ([4 ,6 ],gap ="large")
+    col_ctrl_a ,col_prev_a =st .columns ([4 ,6 ],gap ="large")
 
     with col_ctrl_a :
-        st.markdown ('<p class="section-label">Source</p>',unsafe_allow_html =True )
-        audio_vid_file =st.file_uploader (
+        st .markdown ('<p class="section-label">Source</p>',unsafe_allow_html =True )
+        audio_vid_file =st .file_uploader (
         "Déposez votre vidéo ici",
         type =["mp4","mov","avi","mkv","webm"],
         key ="audio_vid_u",label_visibility ="collapsed"
         )
 
     if audio_vid_file :
-        if st.session_state._last_audio_name !=audio_vid_file.name :
-            cleanup_temp_dir("tmp_audio")
-            tmp_a = tempfile.mkdtemp()
-            st.session_state.tmp_audio = tmp_a
-            st.session_state.audio_bytes = None
-            st.session_state._last_audio_name = audio_vid_file.name
-        else:
-            tmp_a = st.session_state.tmp_audio
-            if tmp_a is None:
-                tmp_a = tempfile.mkdtemp()
-                st.session_state.tmp_audio = tmp_a
+        if st .session_state ._last_audio_name !=audio_vid_file .name :
+            st .session_state .audio_bytes =None 
+            st .session_state ._last_audio_name =audio_vid_file .name 
 
-        avp =os.path.join (tmp_a ,"src"+os.path.splitext (audio_vid_file.name )[1 ])
-        if not os.path.exists(avp):
-            with open (avp ,"wb")as f :f.write (audio_vid_file.read ())
+        tmp_a =tempfile .mkdtemp ()
+        avp =os .path .join (tmp_a ,"src"+os .path .splitext (audio_vid_file .name )[1 ])
+        with open (avp ,"wb")as f :f .write (audio_vid_file .read ())
         nfo_a =get_video_info (avp )
 
         with col_ctrl_a :
-            st.markdown (f"""
+            st .markdown (f"""
             <div class="specs-row">
               <div class="spec-cell"><span class="spec-k">Largeur</span><span class="spec-v">{nfo_a ['width']} px</span></div>
               <div class="spec-cell"><span class="spec-k">Hauteur</span><span class="spec-v">{nfo_a ['height']} px</span></div>
@@ -1341,8 +1320,8 @@ with tab_audio :
               <div class="spec-cell"><span class="spec-k">FPS</span><span class="spec-v">{nfo_a ['fps']}</span></div>
             </div>""",unsafe_allow_html =True )
 
-            st.markdown ('<p class="section-label-mt">Action</p>',unsafe_allow_html =True )
-            audio_action =st.radio (
+            st .markdown ('<p class="section-label-mt">Action</p>',unsafe_allow_html =True )
+            audio_action =st .radio (
             "Action audio",
             ["Supprimer le son","Remplacer par..."],
             key ="audio_action",label_visibility ="collapsed"
@@ -1351,68 +1330,67 @@ with tab_audio :
             audio_replace_file =None 
             loop_audio =True 
             if "Remplacer"in audio_action :
-                st.markdown ('<p class="section-label-mt">Fichier audio de remplacement</p>',unsafe_allow_html =True )
-                audio_replace_file =st.file_uploader (
+                st .markdown ('<p class="section-label-mt">Fichier audio de remplacement</p>',unsafe_allow_html =True )
+                audio_replace_file =st .file_uploader (
                 "Déposez votre fichier audio",
                 type =["mp3","wav","aac","m4a","ogg"],
                 key ="audio_replace_u",label_visibility ="collapsed"
                 )
                 if audio_replace_file :
-                    st.markdown ('<p class="section-label-mt">Options</p>',unsafe_allow_html =True )
-                    loop_audio =st.checkbox ("Boucler l'audio si plus court que la vidéo",value =True ,key ="audio_loop")
+                    st .markdown ('<p class="section-label-mt">Options</p>',unsafe_allow_html =True )
+                    loop_audio =st .checkbox ("Boucler l'audio si plus court que la vidéo",value =True ,key ="audio_loop")
 
-            st.markdown ("<div style='margin-top:1.2rem;'></div>",unsafe_allow_html =True )
+            st .markdown ("<div style='margin-top:1.2rem;'></div>",unsafe_allow_html =True )
 
-            audio_sig =(audio_vid_file.name ,audio_action ,
-            audio_replace_file.name if audio_replace_file else None )
-            if st.session_state.get ("_audio_sig")!=audio_sig :
-                st.session_state.audio_bytes =None 
-                st.session_state ["_audio_sig"]=audio_sig 
+            audio_sig =(audio_vid_file .name ,audio_action ,
+            audio_replace_file .name if audio_replace_file else None )
+            if st .session_state .get ("_audio_sig")!=audio_sig :
+                st .session_state .audio_bytes =None 
+                st .session_state ["_audio_sig"]=audio_sig 
 
             can_go =("Supprimer"in audio_action )or ("Remplacer"in audio_action and audio_replace_file )
 
-            if not st.session_state.audio_bytes :
+            if not st .session_state .audio_bytes :
                 btn_lbl ="Supprimer le son"if "Supprimer"in audio_action else "Remplacer l'audio"
                 if can_go :
-                    if st.button (btn_lbl ,key ="audio_btn"):
-                        out_a =os.path.join (tmp_a ,"audio_output.mp4")
-                        ph_a =st.empty ()
-                        ph_a.markdown ('<div class="encoding-wrap"><div class="encoding-ring"></div><span class="encoding-text">Traitement audio en cours…</span></div><div class="fake-progress-wrap"><div class="fake-progress-track"><div class="fake-progress-bar"></div></div></div>',unsafe_allow_html =True )
+                    if st .button (btn_lbl ,key ="audio_btn"):
+                        out_a =os .path .join (tmp_a ,"audio_output.mp4")
+                        ph_a =st .empty ()
+                        ph_a .markdown ('<div class="encoding-wrap"><div class="encoding-ring"></div><span class="encoding-text">Traitement audio en cours…</span></div><div class="fake-progress-wrap"><div class="fake-progress-track"><div class="fake-progress-bar"></div></div></div>',unsafe_allow_html =True )
                         try :
                             if "Supprimer"in audio_action :
                                 remove_audio (avp ,out_a )
                             else :
-                                arp =os.path.join (tmp_a ,"audio_replace"+os.path.splitext (audio_replace_file.name )[1 ])
-                                with open (arp ,"wb")as f :f.write (audio_replace_file.read ())
+                                arp =os .path .join (tmp_a ,"audio_replace"+os .path .splitext (audio_replace_file .name )[1 ])
+                                with open (arp ,"wb")as f :f .write (audio_replace_file .read ())
                                 replace_audio (avp ,arp ,out_a ,loop_audio =loop_audio )
-                            ph_a.empty ()
+                            ph_a .empty ()
                             with open (out_a ,"rb")as f :
-                                st.session_state.audio_bytes =f.read ()
-                            cleanup_temp_dir("tmp_audio")
-                            st.rerun ()
+                                st .session_state .audio_bytes =f .read ()
+                            st .rerun ()
                         except Exception as e :
-                            ph_a.markdown (f'<div class="status status-err">Erreur : {e }</div>',unsafe_allow_html =True )
+                            ph_a .markdown (f'<div class="status status-err">Erreur : {e }</div>',unsafe_allow_html =True )
                 else :
-                    st.markdown ('<div class="status status-idle">Déposez un fichier audio pour continuer.</div>',unsafe_allow_html =True )
+                    st .markdown ('<div class="status status-idle">Déposez un fichier audio pour continuer.</div>',unsafe_allow_html =True )
             else :
-                st.download_button (
+                st .download_button (
                 "↓  Télécharger la vidéo",
-                data =st.session_state.audio_bytes ,
+                data =st .session_state .audio_bytes ,
                 file_name ="video_audio_modifie.mp4",
                 mime ="video/mp4",key ="audio_dl"
                 )
-                st.markdown ('<div class="status status-ok">Audio traité avec succès.</div>',unsafe_allow_html =True )
+                st .markdown ('<div class="status status-ok">Audio traité avec succès.</div>',unsafe_allow_html =True )
 
         with col_prev_a :
-            st.markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
+            st .markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
             with open (avp ,"rb")as _vf :
-                _ab64 =_b64.b64encode (_vf.read ()).decode ()
-            _aext =os.path.splitext (audio_vid_file.name )[1 ].lower ().lstrip (".")
+                _ab64 =_b64 .b64encode (_vf .read ()).decode ()
+            _aext =os .path .splitext (audio_vid_file .name )[1 ].lower ().lstrip (".")
             _amime ="video/mp4"if _aext in ("mp4","m4v")else f"video/{_aext }"
 
             if "Supprimer"in audio_action :
             
-                components.html (f"""
+                components .html (f"""
 <div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
   <video controls muted style="width:100%;display:block;max-height:380px;object-fit:contain;"
          src="data:{_amime };base64,{_ab64 }"></video>
@@ -1423,20 +1401,20 @@ with tab_audio :
 
             elif "Remplacer"in audio_action and audio_replace_file :
             
-                _aud_bytes =audio_replace_file.read ()
-                _aud_b64 =_b64.b64encode (_aud_bytes ).decode ()
-                _aud_ext =os.path.splitext (audio_replace_file.name )[1 ].lower ().lstrip (".")
+                _aud_bytes =audio_replace_file .read ()
+                _aud_b64 =_b64 .b64encode (_aud_bytes ).decode ()
+                _aud_ext =os .path .splitext (audio_replace_file .name )[1 ].lower ().lstrip (".")
                 _aud_mime_map ={"mp3":"audio/mpeg","wav":"audio/wav",
                 "aac":"audio/aac","m4a":"audio/mp4","ogg":"audio/ogg"}
-                _aud_mime =_aud_mime_map.get (_aud_ext ,"audio/mpeg")
-                components.html (f"""
+                _aud_mime =_aud_mime_map .get (_aud_ext ,"audio/mpeg")
+                components .html (f"""
 <div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
   <video id="prev_vid" controls muted style="width:100%;display:block;max-height:360px;object-fit:contain;"
          src="data:{_amime };base64,{_ab64 }"></video>
 </div>
 <audio id="prev_aud" src="data:{_aud_mime };base64,{_aud_b64 }" {"loop"if loop_audio else ""}></audio>
 <p style="font-family:sans-serif;font-size:0.72rem;color:#999;text-align:center;margin:6px 0 0;">
-  Avec le nouvel audio — <b>{audio_replace_file.name }</b>
+  Avec le nouvel audio — <b>{audio_replace_file .name }</b>
 </p>
 <script>
   const vid = document.getElementById('prev_vid');
@@ -1449,18 +1427,17 @@ with tab_audio :
 
             else :
             
-                components.html (f"""
+                components .html (f"""
 <div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
   <video controls style="width:100%;display:block;max-height:380px;object-fit:contain;"
          src="data:{_amime };base64,{_ab64 }"></video>
 </div>""",height =420 )
 
     else :
-        cleanup_temp_dir("tmp_audio")
         with col_ctrl_a :
-            st.markdown ('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>',unsafe_allow_html =True )
+            st .markdown ('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>',unsafe_allow_html =True )
         with col_prev_a :
-            st.markdown ("""
+            st .markdown ("""
             <div class="preview-placeholder">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
                 <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
@@ -1469,38 +1446,34 @@ with tab_audio :
               <span>L'aperçu apparaîtra ici</span>
             </div>""",unsafe_allow_html =True )
 
+            
+            
+            
+
 with tab_crop :
-    col_ctrl_r ,col_prev_r =st.columns ([4 ,6 ],gap ="large")
+    col_ctrl_r ,col_prev_r =st .columns ([4 ,6 ],gap ="large")
 
     with col_ctrl_r :
-        st.markdown ('<p class="section-label">Source</p>',unsafe_allow_html =True )
-        crop_file =st.file_uploader (
+        st .markdown ('<p class="section-label">Source</p>',unsafe_allow_html =True )
+        crop_file =st .file_uploader (
         "Déposez votre vidéo ici",
         type =["mp4","mov","avi","mkv","webm"],
         key ="crop_u",label_visibility ="collapsed"
         )
 
     if crop_file :
-        if st.session_state._last_crop_name !=crop_file.name :
-            cleanup_temp_dir("tmp_crop")
-            tmp_r = tempfile.mkdtemp()
-            st.session_state.tmp_crop = tmp_r
-            st.session_state.crop_bytes = None
-            st.session_state._last_crop_name = crop_file.name
-        else:
-            tmp_r = st.session_state.tmp_crop
-            if tmp_r is None:
-                tmp_r = tempfile.mkdtemp()
-                st.session_state.tmp_crop = tmp_r
+        if st .session_state ._last_crop_name !=crop_file .name :
+            st .session_state .crop_bytes =None 
+            st .session_state ._last_crop_name =crop_file .name 
 
-        crp =os.path.join (tmp_r ,"src"+os.path.splitext (crop_file.name )[1 ])
-        if not os.path.exists(crp):
-            with open (crp ,"wb")as f :f.write (crop_file.read ())
+        tmp_r =tempfile .mkdtemp ()
+        crp =os .path .join (tmp_r ,"src"+os .path .splitext (crop_file .name )[1 ])
+        with open (crp ,"wb")as f :f .write (crop_file .read ())
         nfo_r =get_video_info (crp )
         W_r ,H_r =nfo_r ["width"],nfo_r ["height"]
 
         with col_ctrl_r :
-            st.markdown (f"""
+            st .markdown (f"""
             <div class="specs-row">
               <div class="spec-cell"><span class="spec-k">Largeur</span><span class="spec-v">{W_r } px</span></div>
               <div class="spec-cell"><span class="spec-k">Hauteur</span><span class="spec-v">{H_r } px</span></div>
@@ -1508,8 +1481,8 @@ with tab_crop :
               <div class="spec-cell"><span class="spec-k">Ratio actuel</span><span class="spec-v">{W_r }:{H_r }</span></div>
             </div>""",unsafe_allow_html =True )
 
-            st.markdown ('<p class="section-label-mt">Ratio cible</p>',unsafe_allow_html =True )
-            preset_choice_idx =st.radio (
+            st .markdown ('<p class="section-label-mt">Ratio cible</p>',unsafe_allow_html =True )
+            preset_choice_idx =st .radio (
             "Ratio",
             options =list (range (len (CROP_PRESETS ))),
             format_func =lambda i :f"{CROP_PRESETS [i ][0 ]}  —  {CROP_PRESETS [i ][3 ]}",
@@ -1526,56 +1499,55 @@ with tab_crop :
                 out_w =W_r ;out_h =int (W_r /target_ratio )
             out_w -=out_w %2 ;out_h -=out_h %2 
 
-            st.markdown ('<p class="section-label-mt">Position du cadre</p>',unsafe_allow_html =True )
-            crop_pos =st.selectbox (
+            st .markdown ('<p class="section-label-mt">Position du cadre</p>',unsafe_allow_html =True )
+            crop_pos =st .selectbox (
             "Position",["Centre","Haut","Bas","Gauche","Droite"],
             key ="crop_pos",label_visibility ="collapsed"
             )
 
-            st.markdown (f"""
+            st .markdown (f"""
             <div class="cut-info-row">
               <div class="cut-info-cell"><span>Ratio</span>{chosen [0 ]}</div>
               <div class="cut-info-cell"><span>Résolution finale</span>{out_w } × {out_h } px</div>
               <div class="cut-info-cell"><span>Usage</span>{chosen [3 ]}</div>
             </div>""",unsafe_allow_html =True )
 
-            st.markdown ("<div style='margin-top:1.2rem;'></div>",unsafe_allow_html =True )
+            st .markdown ("<div style='margin-top:1.2rem;'></div>",unsafe_allow_html =True )
 
-            crop_sig =(crop_file.name ,preset_choice_idx ,crop_pos )
-            if st.session_state.get ("_crop_sig")!=crop_sig :
-                st.session_state.crop_bytes =None 
-                st.session_state ["_crop_sig"]=crop_sig 
+            crop_sig =(crop_file .name ,preset_choice_idx ,crop_pos )
+            if st .session_state .get ("_crop_sig")!=crop_sig :
+                st .session_state .crop_bytes =None 
+                st .session_state ["_crop_sig"]=crop_sig 
 
-            if not st.session_state.crop_bytes :
-                if st.button ("Recadrer la vidéo",key ="crop_btn"):
-                    out_r =os.path.join (tmp_r ,"crop_output.mp4")
-                    ph_r =st.empty ()
-                    ph_r.markdown ('<div class="encoding-wrap"><div class="encoding-ring"></div><span class="encoding-text">Recadrage en cours…</span></div><div class="fake-progress-wrap"><div class="fake-progress-track"><div class="fake-progress-bar"></div></div></div>',unsafe_allow_html =True )
+            if not st .session_state .crop_bytes :
+                if st .button ("Recadrer la vidéo",key ="crop_btn"):
+                    out_r =os .path .join (tmp_r ,"crop_output.mp4")
+                    ph_r =st .empty ()
+                    ph_r .markdown ('<div class="encoding-wrap"><div class="encoding-ring"></div><span class="encoding-text">Recadrage en cours…</span></div><div class="fake-progress-wrap"><div class="fake-progress-track"><div class="fake-progress-bar"></div></div></div>',unsafe_allow_html =True )
                     try :
                         crop_video (crp ,out_r ,rw ,rh ,position =crop_pos )
-                        ph_r.empty ()
+                        ph_r .empty ()
                         with open (out_r ,"rb")as f :
-                            st.session_state.crop_bytes =f.read ()
-                        cleanup_temp_dir("tmp_crop")
-                        st.rerun ()
+                            st .session_state .crop_bytes =f .read ()
+                        st .rerun ()
                     except Exception as e :
-                        ph_r.markdown (f'<div class="status status-err">Erreur : {e }</div>',unsafe_allow_html =True )
+                        ph_r .markdown (f'<div class="status status-err">Erreur : {e }</div>',unsafe_allow_html =True )
             else :
-                st.download_button (
+                st .download_button (
                 "↓  Télécharger la vidéo recadrée",
-                data =st.session_state.crop_bytes ,
+                data =st .session_state .crop_bytes ,
                 file_name =f"recadre_{chosen [0 ].replace (':','x')}.mp4",
                 mime ="video/mp4",key ="crop_dl"
                 )
-                st.markdown ('<div class="status status-ok">Recadrage terminé.</div>',unsafe_allow_html =True )
+                st .markdown ('<div class="status status-ok">Recadrage terminé.</div>',unsafe_allow_html =True )
 
         with col_prev_r :
-            st.markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
-            with st.spinner (""):
+            st .markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
+            with st .spinner (""):
                 frame_r =extract_frame (crp ,0.0 )
             from PIL import ImageDraw 
-            prev_r =frame_r.copy ()
-            pw ,ph_img =prev_r.size 
+            prev_r =frame_r .copy ()
+            pw ,ph_img =prev_r .size 
             tratio =rw /rh 
             sratio =pw /ph_img 
             if sratio >tratio :
@@ -1588,24 +1560,23 @@ with tab_crop :
             elif crop_pos =="Gauche":cx ,cy =0 ,(ph_img -ch )//2 
             elif crop_pos =="Droite":cx ,cy =pw -cw ,(ph_img -ch )//2 
             else :cx ,cy =(pw -cw )//2 ,(ph_img -ch )//2 
-            overlay =Image.new ("RGBA",prev_r.size ,(0 ,0 ,0 ,0 ))
-            draw_ov =ImageDraw.Draw (overlay )
-            draw_ov.rectangle ([0 ,0 ,pw ,ph_img ],fill =(0 ,0 ,0 ,110 ))
-            draw_ov.rectangle ([cx ,cy ,cx +cw ,cy +ch ],fill =(0 ,0 ,0 ,0 ))
-            prev_r =prev_r.convert ("RGBA")
-            prev_r =Image.alpha_composite (prev_r ,overlay ).convert ("RGB")
-            draw2 =ImageDraw.Draw (prev_r )
-            draw2.rectangle ([cx ,cy ,cx +cw -1 ,cy +ch -1 ],
+            overlay =Image .new ("RGBA",prev_r .size ,(0 ,0 ,0 ,0 ))
+            draw_ov =ImageDraw .Draw (overlay )
+            draw_ov .rectangle ([0 ,0 ,pw ,ph_img ],fill =(0 ,0 ,0 ,110 ))
+            draw_ov .rectangle ([cx ,cy ,cx +cw ,cy +ch ],fill =(0 ,0 ,0 ,0 ))
+            prev_r =prev_r .convert ("RGBA")
+            prev_r =Image .alpha_composite (prev_r ,overlay ).convert ("RGB")
+            draw2 =ImageDraw .Draw (prev_r )
+            draw2 .rectangle ([cx ,cy ,cx +cw -1 ,cy +ch -1 ],
             outline =(0 ,104 ,177 ),width =3 )
-            st.image (cap_image_for_preview (prev_r ),
+            st .image (cap_image_for_preview (prev_r ),
             caption =f"{chosen [0 ]} — {out_w }×{out_h } px — {crop_pos }")
 
     else :
-        cleanup_temp_dir("tmp_crop")
         with col_ctrl_r :
-            st.markdown ('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>',unsafe_allow_html =True )
+            st .markdown ('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>',unsafe_allow_html =True )
         with col_prev_r :
-            st.markdown ("""
+            st .markdown ("""
             <div class="preview-placeholder">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
                 <path d="M6 2H2v4M18 2h4v4M6 22H2v-4M18 22h4v-4"/>
@@ -1614,19 +1585,23 @@ with tab_crop :
               <span>L'aperçu apparaîtra ici</span>
             </div>""",unsafe_allow_html =True )
 
-# ==================== ONGLET TEMPLATE RS (CORRIGÉ) ====================
+            
+            
+            
+
 with tab_canva :
     try :
         with open (DEFAULT_WM_FILE ,"rb")as _wm_f :
-            _wm_b64_canva =_b64h.b64encode (_wm_f.read ()).decode ()
+            _wm_b64_canva =_b64h .b64encode (_wm_f .read ()).decode ()
         _wm_mime_canva ="image/png"
     except Exception :
         _wm_b64_canva =""
         _wm_mime_canva ="image/png"
 
-    col_ctrl_cv ,col_prev_cv =st.columns ([4 ,6 ],gap ="large")
+    col_ctrl_cv ,col_prev_cv =st .columns ([4 ,6 ],gap ="large")
 
-    st.markdown ("""
+    
+    st .markdown ("""
     <style>
     /* Réduit l'espace autour des sliders dans l'onglet Canva */
     [data-testid="stSlider"] { margin-bottom: 0 !important; padding-bottom: 0 !important; }
@@ -1648,31 +1623,34 @@ with tab_canva :
     </style>
     """,unsafe_allow_html =True )
 
-    _CV_DEFAULTS ={"canva_y":72 ,"canva_imgzoom":100 ,"cv_offset_x":0 ,"cv_offset_y":0}
-    for _k ,_v in _CV_DEFAULTS.items ():
-        if _k not in st.session_state :
-            st.session_state [_k ]=_v 
+    
+    _CV_DEFAULTS ={"canva_y":72 ,"canva_imgzoom":100 }
+    for _k ,_v in _CV_DEFAULTS .items ():
+        if _k not in st .session_state :
+            st .session_state [_k ]=_v 
 
-    if st.session_state.get ("_cv_reset_y"):
-        st.session_state ["canva_y"]=_CV_DEFAULTS ["canva_y"]
-        st.session_state ["_cv_reset_y"]=False 
-    if st.session_state.get ("_cv_reset_zoom"):
-        st.session_state ["canva_imgzoom"]=_CV_DEFAULTS ["canva_imgzoom"]
-        st.session_state ["_cv_reset_zoom"]=False 
+            
+    if st .session_state .get ("_cv_reset_y"):
+        st .session_state ["canva_y"]=_CV_DEFAULTS ["canva_y"]
+        st .session_state ["_cv_reset_y"]=False 
+    if st .session_state .get ("_cv_reset_zoom"):
+        st .session_state ["canva_imgzoom"]=_CV_DEFAULTS ["canva_imgzoom"]
+        st .session_state ["_cv_reset_zoom"]=False 
 
     with col_ctrl_cv :
 
-        _cr1 ,_cr2 ,_cr3 =st.columns (3 )
+    
+        _cr1 ,_cr2 ,_cr3 =st .columns (3 )
         with _cr1 :
-            st.markdown ('<p class="section-label">Arrière-plan</p>',unsafe_allow_html =True )
-            canva_bg_file =st.file_uploader (
+            st .markdown ('<p class="section-label">Arrière-plan</p>',unsafe_allow_html =True )
+            canva_bg_file =st .file_uploader (
             "Déposez votre image ici",
             type =["png","jpg","jpeg","webp"],
             key ="canva_bg",label_visibility ="collapsed"
             )
         with _cr2 :
-            st.markdown ('<p class="section-label">Format</p>',unsafe_allow_html =True )
-            canva_format =st.selectbox (
+            st .markdown ('<p class="section-label">Format</p>',unsafe_allow_html =True )
+            canva_format =st .selectbox (
             "Format",[
             "1080×1350 — Portrait",
             "1080×1080 — Carré",
@@ -1681,22 +1659,22 @@ with tab_canva :
             key ="canva_format",label_visibility ="collapsed"
             )
         with _cr3 :
-            st.markdown ('<p class="section-label">Watermark</p>',unsafe_allow_html =True )
+            st .markdown ('<p class="section-label">Watermark</p>',unsafe_allow_html =True )
             wm_opts_cv ={
-            "position":st.selectbox (
+            "position":st .selectbox (
             "Position watermark",POSITIONS ,
-            index =POSITIONS.index (DEFAULT_POSITION ),
+            index =POSITIONS .index (DEFAULT_POSITION ),
             key ="cv_pos",label_visibility ="collapsed"
             ),
             "custom_x":0 ,
             "custom_y":0 ,
             }
             if wm_opts_cv ["position"]=="Coordonnées personnalisées":
-                _wx ,_wy =st.columns (2 )
+                _wx ,_wy =st .columns (2 )
                 with _wx :
-                    wm_opts_cv ["custom_x"]=int (st.number_input ("X",min_value =0 ,value =0 ,step =1 ,key ="cv_cx"))
+                    wm_opts_cv ["custom_x"]=int (st .number_input ("X",min_value =0 ,value =0 ,step =1 ,key ="cv_cx"))
                 with _wy :
-                    wm_opts_cv ["custom_y"]=int (st.number_input ("Y",min_value =0 ,value =0 ,step =1 ,key ="cv_cy"))
+                    wm_opts_cv ["custom_y"]=int (st .number_input ("Y",min_value =0 ,value =0 ,step =1 ,key ="cv_cy"))
 
         _fmt_map ={
         "1080×1350 — Portrait":(1080 ,1350 ),
@@ -1705,11 +1683,11 @@ with tab_canva :
         }
         canva_w ,canva_h =_fmt_map [canva_format ]
 
-        st.markdown ('<p class="section-label">Surtitre</p>',unsafe_allow_html =True )
-        canva_sur =st.text_input ("Surtitre",value ="Modifier le surtitre",key ="canva_sur",label_visibility ="collapsed")
+        st .markdown ('<p class="section-label">Surtitre</p>',unsafe_allow_html =True )
+        canva_sur =st .text_input ("Surtitre",value ="Modifier le surtitre",key ="canva_sur",label_visibility ="collapsed")
 
-        st.markdown ('<p class="section-label">Titre principal</p>',unsafe_allow_html =True )
-        canva_title =st.text_area (
+        st .markdown ('<p class="section-label">Titre principal</p>',unsafe_allow_html =True )
+        canva_title =st .text_area (
         "Titre",value ="Modifier le titre (➡️ il maintenant possible de faire des retours à la ligne grâce à la touche Entrée)",
         key ="canva_title",label_visibility ="collapsed",height =80 
         )
@@ -1719,30 +1697,23 @@ with tab_canva :
         canva_sur_bg ="#ffffff"
         canva_sur_color ="#0068B1"
 
-        st.markdown ('<p class="section-label" style="margin-top:10px;">Position du texte</p>',unsafe_allow_html =True )
-        canva_y =st.slider ("Position Y",min_value =5 ,max_value =95 ,key ="canva_y",label_visibility ="collapsed")
+        st .markdown ('<p class="section-label" style="margin-top:10px;">Position du texte</p>',unsafe_allow_html =True )
+        canva_y =st .slider ("Position Y",min_value =5 ,max_value =95 ,key ="canva_y",label_visibility ="collapsed")
 
         if canva_bg_file :
-            st.markdown ('<p class="section-label" style="margin-top:6px;">Zoom photo</p>',unsafe_allow_html =True )
-            canva_img_zoom =st.slider ("Zoom photo",min_value =100 ,max_value =300 ,key ="canva_imgzoom",label_visibility ="collapsed")
+            st .markdown ('<p class="section-label" style="margin-top:6px;">Zoom photo</p>',unsafe_allow_html =True )
+            canva_img_zoom =st .slider ("Zoom photo",min_value =100 ,max_value =300 ,key ="canva_imgzoom",label_visibility ="collapsed")
         else :
-            canva_img_zoom =100
-
-        # --- CURSEURS DE DÉCALAGE ---
-        st.markdown ('<p class="section-label" style="margin-top:6px;">Décalage de l’image</p>',unsafe_allow_html =True )
-        col_offx, col_offy = st.columns(2)
-        with col_offx:
-            offset_x = st.number_input("Décalage X (px)", min_value=-500, max_value=500, value=st.session_state.cv_offset_x, step=1, key="cv_offset_x")
-        with col_offy:
-            offset_y = st.number_input("Décalage Y (px)", min_value=-500, max_value=500, value=st.session_state.cv_offset_y, step=1, key="cv_offset_y")
+            canva_img_zoom =100 
 
         canva_wm_size =13 
         canva_wm_opac =100 
 
-        st.markdown ("<div style='margin-top:1.2rem;'></div>",unsafe_allow_html =True )
+        
+        st .markdown ("<div style='margin-top:1.2rem;'></div>",unsafe_allow_html =True )
 
         def _hex_to_rgb (h ):
-            h =h.lstrip ('#')
+            h =h .lstrip ('#')
             return tuple (int (h [i :i +2 ],16 )for i in (0 ,2 ,4 ))
 
         def generate_canva_image ():
@@ -1750,23 +1721,23 @@ with tab_canva :
             import math as _math 
 
             W ,H =canva_w ,canva_h 
-            img =Image.new ("RGBA",(W ,H ),(34 ,34 ,34 ,255 ))
+            img =Image .new ("RGBA",(W ,H ),(34 ,34 ,34 ,255 ))
 
             if canva_bg_file :
-                canva_bg_file.seek (0 )
-                bg =Image.open (canva_bg_file ).convert ("RGBA")
+                canva_bg_file .seek (0 )
+                bg =Image .open (canva_bg_file ).convert ("RGBA")
                 z =canva_img_zoom /100.0 
-                scale_x =W /bg.width 
-                scale_y =H /bg.height 
+                scale_x =W /bg .width 
+                scale_y =H /bg .height 
                 base_scale =max (scale_x ,scale_y )*z 
-                new_w =int (bg.width *base_scale )
-                new_h =int (bg.height *base_scale )
-                bg =bg.resize ((new_w ,new_h ),Image.LANCZOS )
-                dx =(W -new_w )//2 + offset_x
-                dy =(H -new_h )//2 + offset_y
-                bg_canvas =Image.new ("RGBA",(W ,H ),(34 ,34 ,34 ,0 ))
+                new_w =int (bg .width *base_scale )
+                new_h =int (bg .height *base_scale )
+                bg =bg .resize ((new_w ,new_h ),Image .LANCZOS )
+                dx =(W -new_w )//2 
+                dy =(H -new_h )//2 
+                bg_canvas =Image .new ("RGBA",(W ,H ),(34 ,34 ,34 ,0 ))
                 if dx >=0 and dy >=0 :
-                    bg_canvas.paste (bg ,(dx ,dy ))
+                    bg_canvas .paste (bg ,(dx ,dy ))
                 else :
                     src_x =max (0 ,-dx )
                     src_y =max (0 ,-dy )
@@ -1775,12 +1746,13 @@ with tab_canva :
                     crop_w =min (new_w -src_x ,W -dst_x )
                     crop_h =min (new_h -src_y ,H -dst_y )
                     if crop_w >0 and crop_h >0 :
-                        cropped =bg.crop ((src_x ,src_y ,src_x +crop_w ,src_y +crop_h ))
-                        bg_canvas.paste (cropped ,(dst_x ,dst_y ))
-                img =Image.alpha_composite (img ,bg_canvas )
+                        cropped =bg .crop ((src_x ,src_y ,src_x +crop_w ,src_y +crop_h ))
+                        bg_canvas .paste (cropped ,(dst_x ,dst_y ))
+                img =Image .alpha_composite (img ,bg_canvas )
 
-            draw =ImageDraw.Draw (img ,"RGBA")
+            draw =ImageDraw .Draw (img ,"RGBA")
 
+            
             fs =int (W *0.05 )
             fs_sur =int (W *0.03 )
             pad =int (W *0.017 )
@@ -1789,33 +1761,35 @@ with tab_canva :
             overlap =int (W *0.003 )
 
             try :
-                font_title =ImageFont.truetype ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",fs )
-                font_sur =ImageFont.truetype ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",fs_sur )
+                font_title =ImageFont .truetype ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",fs )
+                font_sur =ImageFont .truetype ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",fs_sur )
             except Exception :
-                font_title =ImageFont.load_default ()
-                font_sur =ImageFont.load_default ()
+                font_title =ImageFont .load_default ()
+                font_sur =ImageFont .load_default ()
 
+                
             def _wrap_segment (text ,max_chars =28 ):
-                words =text.split (' ')
+                words =text .split (' ')
                 segs ,cur =[],''
                 for w in words :
                     if len (cur +w )<max_chars :
                         cur +=(' 'if cur else '')+w 
                     else :
-                        if cur :segs.append (cur )
+                        if cur :segs .append (cur )
                         cur =w 
-                if cur :segs.append (cur )
+                if cur :segs .append (cur )
                 return segs if segs else ['']
             lines =[]
-            for segment in canva_title.split ('\n'):
-                lines.extend (_wrap_segment (segment ))
+            for segment in canva_title .split ('\n'):
+                lines .extend (_wrap_segment (segment ))
 
             cx =int ((50 /100 )*W )
             total_h =lh *len (lines )
             block_top =int ((canva_y /100 )*H -total_h /2 )
 
+            
             def measure (text ,font ):
-                bb =font.getbbox (text )
+                bb =font .getbbox (text )
                 return bb [2 ]-bb [0 ]
 
             line_widths =[measure (l ,font_title )+pad *2 for l in lines ]
@@ -1828,49 +1802,57 @@ with tab_canva :
             sc =_hex_to_rgb (canva_sur_color )+(255 ,)
 
             def draw_rounded_rect (d ,x ,y ,w ,h ,r ,fill ):
-                d.rectangle ([x +r ,y ,x +w -r ,y +h ],fill =fill )
-                d.rectangle ([x ,y +r ,x +w ,y +h -r ],fill =fill )
-                d.ellipse ([x ,y ,x +2 *r ,y +2 *r ],fill =fill )
-                d.ellipse ([x +w -2 *r ,y ,x +w ,y +2 *r ],fill =fill )
-                d.ellipse ([x ,y +h -2 *r ,x +2 *r ,y +h ],fill =fill )
-                d.ellipse ([x +w -2 *r ,y +h -2 *r ,x +w ,y +h ],fill =fill )
+                d .rectangle ([x +r ,y ,x +w -r ,y +h ],fill =fill )
+                d .rectangle ([x ,y +r ,x +w ,y +h -r ],fill =fill )
+                d .ellipse ([x ,y ,x +2 *r ,y +2 *r ],fill =fill )
+                d .ellipse ([x +w -2 *r ,y ,x +w ,y +2 *r ],fill =fill )
+                d .ellipse ([x ,y +h -2 *r ,x +2 *r ,y +h ],fill =fill )
+                d .ellipse ([x +w -2 *r ,y +h -2 *r ,x +w ,y +h ],fill =fill )
 
+                
             sur_x =cx -sur_w //2 
             sur_y =block_top -sur_h -int (W *-0.000 )
             draw_rounded_rect (draw ,sur_x ,sur_y ,sur_w ,sur_h ,radius ,sbg )
-            draw.text ((sur_x +pad ,sur_y +sur_h //2 -fs_sur //2 ),canva_sur ,font =font_sur ,fill =sc )
+            draw .text ((sur_x +pad ,sur_y +sur_h //2 -fs_sur //2 ),canva_sur ,font =font_sur ,fill =sc )
 
+            
             for i ,line in enumerate (lines ):
                 lw =line_widths [i ]
                 lx =cx -lw //2 
                 ly =block_top +i *lh -(overlap if i >0 else 0 )
                 draw_rounded_rect (draw ,lx ,ly ,lw ,lh +overlap ,radius ,bc )
 
+                
             for i ,line in enumerate (lines ):
                 lw =line_widths [i ]
                 lx =cx -lw //2 
                 ly =block_top +i *lh -(overlap if i >0 else 0 )
-                draw.text ((lx +pad ,ly +lh //2 -fs //2 ),line ,font =font_title ,fill =tc )
+                draw .text ((lx +pad ,ly +lh //2 -fs //2 ),line ,font =font_title ,fill =tc )
 
+                
             result =composite_logo (
-            img.convert ("RGB"),DEFAULT_WM_FILE ,
+            img .convert ("RGB"),DEFAULT_WM_FILE ,
             position =wm_opts_cv ["position"],
             custom_x =wm_opts_cv ["custom_x"],
             custom_y =wm_opts_cv ["custom_y"],
             force_w =W ,force_h =H 
             )
+
+            
+            
             return result 
 
-        st.markdown ("""
+        st .markdown ("""
 <div style="margin-top:1.2rem; padding:0.75rem 1rem; background:#e8f2fb; border:1px solid #b3d4f0; border-radius:8px; font-size:0.82rem; color:#0068B1; line-height:1.6;">
   Pour télécharger le visuel, <b>faites un clic droit sur l'aperçu</b> puis sélectionnez <code>Enregistrer l'image sous…</code>
 </div>""",unsafe_allow_html =True )
 
+            
     with col_prev_cv :
-        st.markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
+        st .markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
 
         if not canva_bg_file :
-            st.markdown ("""
+            st .markdown ("""
             <div class="preview-placeholder">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
                 <rect x="3" y="3" width="18" height="18" rx="2"/>
@@ -1880,18 +1862,18 @@ with tab_canva :
               <span>Glissez une image pour voir l'aperçu</span>
             </div>""",unsafe_allow_html =True )
         else :
-            canva_bg_file.seek (0 )
-            _canva_bg_b64 =_b64h.b64encode (canva_bg_file.read ()).decode ()
-            _ext =canva_bg_file.name.rsplit (".",1 )[-1 ].lower ()
+            canva_bg_file .seek (0 )
+            _canva_bg_b64 =_b64h .b64encode (canva_bg_file .read ()).decode ()
+            _ext =canva_bg_file .name .rsplit (".",1 )[-1 ].lower ()
             _canva_bg_mime ="image/png"if _ext =="png"else ("image/webp"if _ext =="webp"else "image/jpeg")
 
+            
             import json as _json 
-            _js_title =_json.dumps (canva_title )
-            _js_sur =_json.dumps (canva_sur )
+            _js_title =_json .dumps (canva_title )
+            _js_sur =_json .dumps (canva_sur )
 
             _preview_h =min (700 ,int (560 *canva_h /canva_w ))
-            # Composant HTML avec les offsets persistants (pas de synchronisation)
-            components.html (f"""<!DOCTYPE html>
+            components .html (f"""<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8">
 <style>
@@ -1914,8 +1896,6 @@ const SURTITRE = {_js_sur };
 const Y_PCT    = {canva_y } / 100;
 const X_PCT    = 50 / 100;
 const IMG_ZOOM = {canva_img_zoom } / 100;
-const IMG_OFFSET_X = {offset_x };
-const IMG_OFFSET_Y = {offset_y };
 const BLOCK_COLOR = "{canva_block_color }";
 const TEXT_COLOR  = "{canva_text_color }";
 const SUR_BG      = "{canva_sur_bg }";
@@ -1939,7 +1919,7 @@ canvas.style.width  = (CANVAS_W * UI_ZOOM) + 'px';
 canvas.style.height = (CANVAS_H * UI_ZOOM) + 'px';
 
 let bgImg = null, wmImg = null;
-let bgOffX = IMG_OFFSET_X, bgOffY = IMG_OFFSET_Y;
+let bgOffX = 0, bgOffY = 0;
 let isDragging = false, dragSX, dragSY, dragBX, dragBY;
 
 function clampOffset() {{
@@ -2048,7 +2028,7 @@ function render() {{
   ctx.textAlign='left'; ctx.textBaseline='middle';
   ctx.fillText(SURTITRE, surX+pad, surY+surH/2);
 
-  ctx.font = `bold ${{fs}}px 'Roboto Condensed','Roboto',sans-serif';
+  ctx.font = `bold ${{fs}}px 'Roboto Condensed','Roboto',sans-serif`;
   ctx.fillStyle = TEXT_COLOR;
   ctx.textAlign='left'; ctx.textBaseline='middle';
   lines.forEach((line,i)=>{{
@@ -2092,7 +2072,7 @@ function hexToRgb(hex) {{
 
 let loaded = 0;
 const toLoad = (BG_B64?1:0) + (WM_B64?1:0);
-function onLoad() {{ loaded++; if(loaded>=toLoad||toLoad===0) {{ render(); }} }}
+function onLoad() {{ loaded++; if(loaded>=toLoad||toLoad===0) {{ render(); setTimeout(exportCanvas, 100); }} }}
 if(!toLoad) render();
 
 if(BG_B64){{
@@ -2120,22 +2100,35 @@ window.addEventListener('mousemove', e=>{{
   render();
 }});
 window.addEventListener('mouseup',()=>{{
-  if (isDragging) {{
-    isDragging=false;
-    canvas.style.cursor=bgImg?'grab':'default';
-    // On ne synchronise pas avec les inputs, mais on pourrait éventuellement le faire via un callback plus tard.
-  }}
+  isDragging=false;
+  canvas.style.cursor=bgImg?'grab':'default';
+  exportCanvas();
 }});
 if(bgImg) canvas.style.cursor='grab';
 
 function exportCanvas() {{
-  // fonction vide mais conservée pour compatibilité
+  try {{
+    const nativeCanvas = document.createElement('canvas');
+    nativeCanvas.width  = CANVAS_W;
+    nativeCanvas.height = CANVAS_H;
+    nativeCanvas.getContext('2d').drawImage(canvas, 0, 0, CANVAS_W, CANVAS_H);
+    const dataUrl = nativeCanvas.toDataURL('image/png');
+    const allTA = window.parent.document.querySelectorAll('textarea');
+    allTA.forEach(ta => {{
+      if(ta.value === '' || ta.value.startsWith('data:image')) {{
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype, 'value').set;
+        nativeInputValueSetter.call(ta, dataUrl);
+        ta.dispatchEvent(new Event('input', {{bubbles: true}}));
+      }}
+    }});
+  }} catch(e) {{}}
 }}
 </script>
 </body>
 </html>""",height =_preview_h +52 ,scrolling =False )
 
-st.markdown ("""
+            
+st .markdown ("""
 <div class="site-footer">
 <span></span>  
 <span>Envoyez-moi <a href="mailto:lucas.bessonnat@leprogres.fr">les messages d'erreur par mail</a>.<br>
