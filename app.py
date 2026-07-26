@@ -7,7 +7,13 @@ import os
 import math 
 import io 
 import zipfile 
-from PIL import Image 
+from PIL import Image
+
+# Déclaration du composant Template RS (doit être en dehors de tout contexte conditionnel)
+_template_component = components.declare_component(
+    name="template_rs",
+    path="templates"  # le dossier contenant template_rs.html
+)
 
 LOGO_FILE ="luluflix.png"
 DEFAULT_WM_FILE ="lpr.png"
@@ -1589,544 +1595,164 @@ with tab_crop :
             
             
 
-with tab_canva :
-    try :
-        with open (DEFAULT_WM_FILE ,"rb")as _wm_f :
-            _wm_b64_canva =_b64h .b64encode (_wm_f .read ()).decode ()
-        _wm_mime_canva ="image/png"
-    except Exception :
-        _wm_b64_canva =""
-        _wm_mime_canva ="image/png"
+with tab_canva:
+    # --- Initialisation des offsets dans session_state ---
+    if "template_offset_x" not in st.session_state:
+        st.session_state.template_offset_x = 0
+    if "template_offset_y" not in st.session_state:
+        st.session_state.template_offset_y = 0
 
-    col_ctrl_cv ,col_prev_cv =st .columns ([4 ,6 ],gap ="large")
+    # --- Définition du composant personnalisé ---
+    # On déclare le composant une fois pour toutes en dehors de tout contexte de rerun
+    # Pour éviter de le redéclarer à chaque fois, on le met dans une fonction lancée une fois
+    # Mais on peut aussi le déclarer directement dans la boucle, Streamlit le gère.
+    # Je le déclare en dehors du with, en haut du fichier, mais pour la clarté je le mets ici.
+    # En pratique, mets cette définition en dehors de tout avec, par exemple après les imports.
 
-    
-    st .markdown ("""
-    <style>
-    /* Réduit l'espace autour des sliders dans l'onglet Canva */
-    [data-testid="stSlider"] { margin-bottom: 0 !important; padding-bottom: 0 !important; }
-    [data-testid="stSlider"] > div { padding-bottom: 0 !important; }
-    /* Réduit la hauteur des color pickers */
-    [data-testid="stColorPicker"] { margin-bottom: 0 !important; }
-    [data-testid="stColorPicker"] label { font-size: 0.72rem !important; margin-bottom: 2px !important; }
-    /* Bouton reset : petit, discret, pill */
-    .cv-reset > button {
-      height: 26px !important; min-height: 26px !important;
-      font-size: 0.7rem !important; padding: 0 0.7rem !important;
-      background: var(--bg, #fafafa) !important;
-      border: 1px solid var(--border, #e4e4e4) !important;
-      color: var(--muted, #999) !important;
-      box-shadow: none !important;
-      border-radius: 999px !important;
-    }
-    .cv-reset > button:hover { border-color: var(--blue, #0068B1) !important; color: var(--blue, #0068B1) !important; background: var(--blue-dim, #e8f2fb) !important; }
-    </style>
-    """,unsafe_allow_html =True )
+    # Fonction utilitaire pour charger une image en base64
+    def _img_to_b64(img_file, mime="image/png"):
+        img_file.seek(0)
+        b64 = base64.b64encode(img_file.read()).decode()
+        return b64, mime
 
-    
-    _CV_DEFAULTS ={"canva_y":72 ,"canva_imgzoom":100 }
-    for _k ,_v in _CV_DEFAULTS .items ():
-        if _k not in st .session_state :
-            st .session_state [_k ]=_v 
+    col_ctrl_cv, col_prev_cv = st.columns([4, 6], gap="large")
 
-            
-    if st .session_state .get ("_cv_reset_y"):
-        st .session_state ["canva_y"]=_CV_DEFAULTS ["canva_y"]
-        st .session_state ["_cv_reset_y"]=False 
-    if st .session_state .get ("_cv_reset_zoom"):
-        st .session_state ["canva_imgzoom"]=_CV_DEFAULTS ["canva_imgzoom"]
-        st .session_state ["_cv_reset_zoom"]=False 
-
-    with col_ctrl_cv :
-
-    
-        _cr1 ,_cr2 ,_cr3 =st .columns (3 )
-        with _cr1 :
-            st .markdown ('<p class="section-label">Arrière-plan</p>',unsafe_allow_html =True )
-            canva_bg_file =st .file_uploader (
-            "Déposez votre image ici",
-            type =["png","jpg","jpeg","webp"],
-            key ="canva_bg",label_visibility ="collapsed"
+    with col_ctrl_cv:
+        _cr1, _cr2, _cr3 = st.columns(3)
+        with _cr1:
+            st.markdown('<p class="section-label">Arrière‑plan</p>', unsafe_allow_html=True)
+            canva_bg_file = st.file_uploader(
+                "Déposez votre image ici",
+                type=["png", "jpg", "jpeg", "webp"],
+                key="canva_bg",
+                label_visibility="collapsed"
             )
-        with _cr2 :
-            st .markdown ('<p class="section-label">Format</p>',unsafe_allow_html =True )
-            canva_format =st .selectbox (
-            "Format",[
-            "1080×1350 — Portrait",
-            "1080×1080 — Carré",
-            "1080×1920 — Stories",
-            ],
-            key ="canva_format",label_visibility ="collapsed"
+        with _cr2:
+            st.markdown('<p class="section-label">Format</p>', unsafe_allow_html=True)
+            canva_format = st.selectbox(
+                "Format", [
+                    "1080×1350 — Portrait",
+                    "1080×1080 — Carré",
+                    "1080×1920 — Stories",
+                ],
+                key="canva_format",
+                label_visibility="collapsed"
             )
-        with _cr3 :
-            st .markdown ('<p class="section-label">Watermark</p>',unsafe_allow_html =True )
-            wm_opts_cv ={
-            "position":st .selectbox (
-            "Position watermark",POSITIONS ,
-            index =POSITIONS .index (DEFAULT_POSITION ),
-            key ="cv_pos",label_visibility ="collapsed"
-            ),
-            "custom_x":0 ,
-            "custom_y":0 ,
+        with _cr3:
+            st.markdown('<p class="section-label">Watermark</p>', unsafe_allow_html=True)
+            wm_opts_cv = {
+                "position": st.selectbox(
+                    "Position watermark", POSITIONS,
+                    index=POSITIONS.index(DEFAULT_POSITION),
+                    key="cv_pos",
+                    label_visibility="collapsed"
+                ),
+                "custom_x": 0,
+                "custom_y": 0,
             }
-            if wm_opts_cv ["position"]=="Coordonnées personnalisées":
-                _wx ,_wy =st .columns (2 )
-                with _wx :
-                    wm_opts_cv ["custom_x"]=int (st .number_input ("X",min_value =0 ,value =0 ,step =1 ,key ="cv_cx"))
-                with _wy :
-                    wm_opts_cv ["custom_y"]=int (st .number_input ("Y",min_value =0 ,value =0 ,step =1 ,key ="cv_cy"))
+            if wm_opts_cv["position"] == "Coordonnées personnalisées":
+                _wx, _wy = st.columns(2)
+                with _wx:
+                    wm_opts_cv["custom_x"] = int(st.number_input("X", min_value=0, value=0, step=1, key="cv_cx"))
+                with _wy:
+                    wm_opts_cv["custom_y"] = int(st.number_input("Y", min_value=0, value=0, step=1, key="cv_cy"))
 
-        _fmt_map ={
-        "1080×1350 — Portrait":(1080 ,1350 ),
-        "1080×1080 — Carré":(1080 ,1080 ),
-        "1080×1920 — Stories":(1080 ,1920 ),
+        _fmt_map = {
+            "1080×1350 — Portrait": (1080, 1350),
+            "1080×1080 — Carré": (1080, 1080),
+            "1080×1920 — Stories": (1080, 1920),
         }
-        canva_w ,canva_h =_fmt_map [canva_format ]
+        canva_w, canva_h = _fmt_map[canva_format]
 
-        st .markdown ('<p class="section-label">Surtitre</p>',unsafe_allow_html =True )
-        canva_sur =st .text_input ("Surtitre",value ="Modifier le surtitre",key ="canva_sur",label_visibility ="collapsed")
+        st.markdown('<p class="section-label">Surtitre</p>', unsafe_allow_html=True)
+        canva_sur = st.text_input("Surtitre", value="Modifier le surtitre", key="canva_sur", label_visibility="collapsed")
 
-        st .markdown ('<p class="section-label">Titre principal</p>',unsafe_allow_html =True )
-        canva_title =st .text_area (
-        "Titre",value ="Modifier le titre (➡️ il maintenant possible de faire des retours à la ligne grâce à la touche Entrée)",
-        key ="canva_title",label_visibility ="collapsed",height =80 
+        st.markdown('<p class="section-label">Titre principal</p>', unsafe_allow_html=True)
+        canva_title = st.text_area(
+            "Titre", value="Modifier le titre (➡️ il est maintenant possible de faire des retours à la ligne grâce à la touche Entrée)",
+            key="canva_title", label_visibility="collapsed", height=80
         )
 
-        canva_block_color ="#0068B1"
-        canva_text_color ="#ffffff"
-        canva_sur_bg ="#ffffff"
-        canva_sur_color ="#0068B1"
+        canva_block_color = "#0068B1"
+        canva_text_color = "#ffffff"
+        canva_sur_bg = "#ffffff"
+        canva_sur_color = "#0068B1"
 
-        st .markdown ('<p class="section-label" style="margin-top:10px;">Position du texte</p>',unsafe_allow_html =True )
-        canva_y =st .slider ("Position Y",min_value =5 ,max_value =95 ,key ="canva_y",label_visibility ="collapsed")
+        st.markdown('<p class="section-label" style="margin-top:10px;">Position du texte</p>', unsafe_allow_html=True)
+        canva_y = st.slider("Position Y", min_value=5, max_value=95, key="canva_y", label_visibility="collapsed")
 
-        if canva_bg_file :
-            st .markdown ('<p class="section-label" style="margin-top:6px;">Zoom photo</p>',unsafe_allow_html =True )
-            canva_img_zoom =st .slider ("Zoom photo",min_value =100 ,max_value =300 ,key ="canva_imgzoom",label_visibility ="collapsed")
-        else :
-            canva_img_zoom =100 
+        if canva_bg_file:
+            st.markdown('<p class="section-label" style="margin-top:6px;">Zoom photo</p>', unsafe_allow_html=True)
+            canva_img_zoom = st.slider("Zoom photo", min_value=100, max_value=300, key="canva_imgzoom", label_visibility="collapsed")
+        else:
+            canva_img_zoom = 100
 
-        canva_wm_size =13 
-        canva_wm_opac =100 
+        st.markdown(
+            """
+            <div style="margin-top:1.2rem; padding:0.75rem 1rem; background:#e8f2fb; border:1px solid #b3d4f0; border-radius:8px; font-size:0.82rem; color:#0068B1; line-height:1.6;">
+              Pour télécharger le visuel, <b>faites un clic droit sur l'aperçu</b> puis sélectionnez <code>Enregistrer l'image sous…</code>
+            </div>""",
+            unsafe_allow_html=True
+        )
 
-        
-        st .markdown ("<div style='margin-top:1.2rem;'></div>",unsafe_allow_html =True )
+    # --- Préparation des données pour le composant ---
+    # Image de fond (si présente)
+    bg_b64 = ""
+    bg_mime = "image/png"
+    if canva_bg_file:
+        canva_bg_file.seek(0)
+        bg_b64, bg_mime = _img_to_b64(canva_bg_file)
 
-        def _hex_to_rgb (h ):
-            h =h .lstrip ('#')
-            return tuple (int (h [i :i +2 ],16 )for i in (0 ,2 ,4 ))
+    # Watermark (logo par défaut)
+    wm_b64 = ""
+    wm_mime = "image/png"
+    try:
+        with open(DEFAULT_WM_FILE, "rb") as f:
+            wm_b64 = base64.b64encode(f.read()).decode()
+            wm_mime = "image/png"
+    except:
+        pass
 
-        def generate_canva_image ():
-            from PIL import ImageDraw ,ImageFont 
-            import math as _math 
+    # Appel du composant avec les offsets depuis session_state
+    with col_prev_cv:
+        st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
 
-            W ,H =canva_w ,canva_h 
-            img =Image .new ("RGBA",(W ,H ),(34 ,34 ,34 ,255 ))
+        # On appelle le composant. La valeur retournée est un dict contenant offsetX et offsetY
+        # ou None si le composant n'a pas encore renvoyé de valeur.
+        result = _template_component(
+            width=canva_w,
+            height=canva_h,
+            bgImage=bg_b64,
+            bgMime=bg_mime,
+            wmImage=wm_b64,
+            wmMime=wm_mime,
+            title=canva_title,
+            subtitle=canva_sur,
+            yPct=canva_y,
+            imgZoom=canva_img_zoom,
+            blockColor=canva_block_color,
+            textColor=canva_text_color,
+            surBg=canva_sur_bg,
+            surColor=canva_sur_color,
+            wmPosition=wm_opts_cv["position"],
+            wmCustomX=wm_opts_cv["custom_x"],
+            wmCustomY=wm_opts_cv["custom_y"],
+            offsetX=st.session_state.template_offset_x,
+            offsetY=st.session_state.template_offset_y,
+            key="template_component"  # pour éviter les duplicatas
+        )
 
-            if canva_bg_file :
-                canva_bg_file .seek (0 )
-                bg =Image .open (canva_bg_file ).convert ("RGBA")
-                z =canva_img_zoom /100.0 
-                scale_x =W /bg .width 
-                scale_y =H /bg .height 
-                base_scale =max (scale_x ,scale_y )*z 
-                new_w =int (bg .width *base_scale )
-                new_h =int (bg .height *base_scale )
-                bg =bg .resize ((new_w ,new_h ),Image .LANCZOS )
-                dx =(W -new_w )//2 
-                dy =(H -new_h )//2 
-                bg_canvas =Image .new ("RGBA",(W ,H ),(34 ,34 ,34 ,0 ))
-                if dx >=0 and dy >=0 :
-                    bg_canvas .paste (bg ,(dx ,dy ))
-                else :
-                    src_x =max (0 ,-dx )
-                    src_y =max (0 ,-dy )
-                    dst_x =max (0 ,dx )
-                    dst_y =max (0 ,dy )
-                    crop_w =min (new_w -src_x ,W -dst_x )
-                    crop_h =min (new_h -src_y ,H -dst_y )
-                    if crop_w >0 and crop_h >0 :
-                        cropped =bg .crop ((src_x ,src_y ,src_x +crop_w ,src_y +crop_h ))
-                        bg_canvas .paste (cropped ,(dst_x ,dst_y ))
-                img =Image .alpha_composite (img ,bg_canvas )
-
-            draw =ImageDraw .Draw (img ,"RGBA")
-
-            
-            fs =int (W *0.05 )
-            fs_sur =int (W *0.03 )
-            pad =int (W *0.017 )
-            radius =int (W *0.019 )
-            lh =int (fs *1.25 )
-            overlap =int (W *0.003 )
-
-            try :
-                font_title =ImageFont .truetype ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",fs )
-                font_sur =ImageFont .truetype ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",fs_sur )
-            except Exception :
-                font_title =ImageFont .load_default ()
-                font_sur =ImageFont .load_default ()
-
-                
-            def _wrap_segment (text ,max_chars =28 ):
-                words =text .split (' ')
-                segs ,cur =[],''
-                for w in words :
-                    if len (cur +w )<max_chars :
-                        cur +=(' 'if cur else '')+w 
-                    else :
-                        if cur :segs .append (cur )
-                        cur =w 
-                if cur :segs .append (cur )
-                return segs if segs else ['']
-            lines =[]
-            for segment in canva_title .split ('\n'):
-                lines .extend (_wrap_segment (segment ))
-
-            cx =int ((50 /100 )*W )
-            total_h =lh *len (lines )
-            block_top =int ((canva_y /100 )*H -total_h /2 )
-
-            
-            def measure (text ,font ):
-                bb =font .getbbox (text )
-                return bb [2 ]-bb [0 ]
-
-            line_widths =[measure (l ,font_title )+pad *2 for l in lines ]
-            sur_w =measure (canva_sur ,font_sur )+pad *2 
-            sur_h =fs_sur +int (pad *0.8 )
-
-            bc =_hex_to_rgb (canva_block_color )+(255 ,)
-            tc =_hex_to_rgb (canva_text_color )+(255 ,)
-            sbg =_hex_to_rgb (canva_sur_bg )+(255 ,)
-            sc =_hex_to_rgb (canva_sur_color )+(255 ,)
-
-            def draw_rounded_rect (d ,x ,y ,w ,h ,r ,fill ):
-                d .rectangle ([x +r ,y ,x +w -r ,y +h ],fill =fill )
-                d .rectangle ([x ,y +r ,x +w ,y +h -r ],fill =fill )
-                d .ellipse ([x ,y ,x +2 *r ,y +2 *r ],fill =fill )
-                d .ellipse ([x +w -2 *r ,y ,x +w ,y +2 *r ],fill =fill )
-                d .ellipse ([x ,y +h -2 *r ,x +2 *r ,y +h ],fill =fill )
-                d .ellipse ([x +w -2 *r ,y +h -2 *r ,x +w ,y +h ],fill =fill )
-
-                
-            sur_x =cx -sur_w //2 
-            sur_y =block_top -sur_h -int (W *-0.000 )
-            draw_rounded_rect (draw ,sur_x ,sur_y ,sur_w ,sur_h ,radius ,sbg )
-            draw .text ((sur_x +pad ,sur_y +sur_h //2 -fs_sur //2 ),canva_sur ,font =font_sur ,fill =sc )
-
-            
-            for i ,line in enumerate (lines ):
-                lw =line_widths [i ]
-                lx =cx -lw //2 
-                ly =block_top +i *lh -(overlap if i >0 else 0 )
-                draw_rounded_rect (draw ,lx ,ly ,lw ,lh +overlap ,radius ,bc )
-
-                
-            for i ,line in enumerate (lines ):
-                lw =line_widths [i ]
-                lx =cx -lw //2 
-                ly =block_top +i *lh -(overlap if i >0 else 0 )
-                draw .text ((lx +pad ,ly +lh //2 -fs //2 ),line ,font =font_title ,fill =tc )
-
-                
-            result =composite_logo (
-            img .convert ("RGB"),DEFAULT_WM_FILE ,
-            position =wm_opts_cv ["position"],
-            custom_x =wm_opts_cv ["custom_x"],
-            custom_y =wm_opts_cv ["custom_y"],
-            force_w =W ,force_h =H 
-            )
-
-            
-            
-            return result 
-
-        st .markdown ("""
-<div style="margin-top:1.2rem; padding:0.75rem 1rem; background:#e8f2fb; border:1px solid #b3d4f0; border-radius:8px; font-size:0.82rem; color:#0068B1; line-height:1.6;">
-  Pour télécharger le visuel, <b>faites un clic droit sur l'aperçu</b> puis sélectionnez <code>Enregistrer l'image sous…</code>
-</div>""",unsafe_allow_html =True )
-
-            
-    with col_prev_cv :
-        st .markdown ('<p class="section-label">Aperçu</p>',unsafe_allow_html =True )
-
-        if not canva_bg_file :
-            st .markdown ("""
-            <div class="preview-placeholder">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
-                <rect x="3" y="3" width="18" height="18" rx="2"/>
-                <circle cx="8.5" cy="8.5" r="1.5"/>
-                <path d="M21 15l-5-5L5 21"/>
-              </svg>
-              <span>Glissez une image pour voir l'aperçu</span>
-            </div>""",unsafe_allow_html =True )
-        else :
-            canva_bg_file .seek (0 )
-            _canva_bg_b64 =_b64h .b64encode (canva_bg_file .read ()).decode ()
-            _ext =canva_bg_file .name .rsplit (".",1 )[-1 ].lower ()
-            _canva_bg_mime ="image/png"if _ext =="png"else ("image/webp"if _ext =="webp"else "image/jpeg")
-
-            
-            import json as _json 
-            _js_title =_json .dumps (canva_title )
-            _js_sur =_json .dumps (canva_sur )
-
-            _preview_h =min (700 ,int (560 *canva_h /canva_w ))
-            components .html (f"""<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8">
-<style>
-  html,body{{margin:0;padding:0;background:#eef1f5;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:8px;box-sizing:border-box;height:100%;overflow:hidden;}}
-  #canvasWrap{{box-shadow:0 4px 24px rgba(0,0,0,0.18);display:inline-block;}}
-  canvas{{display:block;}}
-</style>
-</head>
-<body>
-<div id="canvasWrap"><canvas id="c"></canvas></div>
-<script>
-const CANVAS_W = {canva_w };
-const CANVAS_H = {canva_h };
-const BG_B64   = "{_canva_bg_b64 }";
-const BG_MIME  = "{_canva_bg_mime }";
-const WM_B64   = "{_wm_b64_canva }";
-const WM_MIME  = "{_wm_mime_canva }";
-const TITLE    = {_js_title };
-const SURTITRE = {_js_sur };
-const Y_PCT    = {canva_y } / 100;
-const X_PCT    = 50 / 100;
-const IMG_ZOOM = {canva_img_zoom } / 100;
-const BLOCK_COLOR = "{canva_block_color }";
-const TEXT_COLOR  = "{canva_text_color }";
-const SUR_BG      = "{canva_sur_bg }";
-const SUR_COLOR   = "{canva_sur_color }";
-const WM_SIZE_PCT = 13 / 100;
-const WM_OPAC     = 1.0;
-const WM_POS      = "{wm_opts_cv ["position"]}";
-const WM_CX       = {wm_opts_cv ["custom_x"]};
-const WM_CY       = {wm_opts_cv ["custom_y"]};
-const MARGIN_R    = 0.04;
-
-const canvas = document.getElementById('c');
-const ctx    = canvas.getContext('2d');
-
-const AVAIL_H   = {_preview_h } - 52;
-const PREVIEW_W = Math.min(Math.floor(AVAIL_H * CANVAS_W / CANVAS_H), window.innerWidth - 20);
-const UI_ZOOM   = PREVIEW_W / CANVAS_W;
-canvas.width  = CANVAS_W;
-canvas.height = CANVAS_H;
-canvas.style.width  = (CANVAS_W * UI_ZOOM) + 'px';
-canvas.style.height = (CANVAS_H * UI_ZOOM) + 'px';
-
-let bgImg = null, wmImg = null;
-let bgOffX = 0, bgOffY = 0;
-let isDragging = false, dragSX, dragSY, dragBX, dragBY;
-
-function clampOffset() {{
-  if (!bgImg) return;
-  const scaleX = CANVAS_W / bgImg.naturalWidth;
-  const scaleY = CANVAS_H / bgImg.naturalHeight;
-  const base   = Math.max(scaleX, scaleY) * IMG_ZOOM;
-  const dw = bgImg.naturalWidth  * base;
-  const dh = bgImg.naturalHeight * base;
-  const maxOffX = dw / 2 - CANVAS_W / 2;
-  const maxOffY = dh / 2 - CANVAS_H / 2;
-  bgOffX = Math.max(-maxOffX, Math.min(maxOffX, bgOffX));
-  bgOffY = Math.max(-maxOffY, Math.min(maxOffY, bgOffY));
-}}
-
-function roundRect(c, x, y, w, h, r, fill) {{
-  c.beginPath();
-  c.moveTo(x+r,y); c.lineTo(x+w-r,y); c.arcTo(x+w,y,x+w,y+r,r);
-  c.lineTo(x+w,y+h-r); c.arcTo(x+w,y+h,x+w-r,y+h,r);
-  c.lineTo(x+r,y+h); c.arcTo(x,y+h,x,y+h-r,r);
-  c.lineTo(x,y+r); c.arcTo(x,y,x+r,y,r);
-  c.closePath(); c.fillStyle=fill; c.fill();
-}}
-
-function render() {{
-  ctx.clearRect(0,0,CANVAS_W,CANVAS_H);
-  ctx.fillStyle='#222'; ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
-
-  if (bgImg) {{
-    const scaleX = CANVAS_W / bgImg.naturalWidth;
-    const scaleY = CANVAS_H / bgImg.naturalHeight;
-    const base   = Math.max(scaleX, scaleY) * IMG_ZOOM;
-    const dw = bgImg.naturalWidth  * base;
-    const dh = bgImg.naturalHeight * base;
-    const dx = (CANVAS_W - dw) / 2 + bgOffX;
-    const dy = (CANVAS_H - dh) / 2 + bgOffY;
-    ctx.drawImage(bgImg, dx, dy, dw, dh);
-  }}
-
-  const fs     = Math.round(CANVAS_W * 0.056);
-  const fsSur  = Math.round(CANVAS_W * 0.043);
-  const pad    = Math.round(CANVAS_W * 0.017);
-  const radius = Math.round(CANVAS_W * 0.019);
-  const lh     = Math.round(fs * 1.25);
-  const overlap= Math.round(CANVAS_W * 0.003);
-  const cx     = X_PCT * CANVAS_W;
-
-  function wrapSegment(text, maxLen) {{
-    const words = text.split(' ');
-    const segs = []; let cur = '';
-    words.forEach(function(w) {{
-      if ((cur+w).length < maxLen) {{ cur += (cur?' ':'')+w; }}
-      else {{ if(cur) segs.push(cur); cur=w; }}
-    }});
-    if(cur) segs.push(cur);
-    return segs.length ? segs : [''];
-  }}
-  const lines = [];
-  TITLE.split('\\n').forEach(function(seg) {{
-    var wrapped = wrapSegment(seg, 34);
-    for(var _i=0;_i<wrapped.length;_i++) lines.push(wrapped[_i]);
-  }});
-
-  ctx.font = `bold ${{fs}}px 'Roboto Condensed','Roboto',sans-serif`;
-  const lineWidths = lines.map(l => ctx.measureText(l).width + pad*2);
-
-  ctx.font = `bold ${{fsSur}}px 'Roboto',sans-serif`;
-  const surW = ctx.measureText(SURTITRE).width + pad*2;
-  const surH = fsSur + Math.round(pad*0.8);
-
-  const totalH  = lh * lines.length;
-  const blockTop = CANVAS_H * Y_PCT - totalH/2;
-
-  const off = document.createElement('canvas');
-  off.width = CANVAS_W; off.height = CANVAS_H;
-  const octx = off.getContext('2d');
-  octx.font = `bold ${{fs}}px 'Roboto Condensed','Roboto',sans-serif`;
-  lines.forEach((line,i) => {{
-    const lw = lineWidths[i];
-    const lx = cx - lw/2;
-    const ly = blockTop + i*lh - (i>0?overlap:0);
-    roundRect(octx, lx, ly, lw, lh+overlap, radius, BLOCK_COLOR);
-  }});
-
-  const off2 = document.createElement('canvas');
-  off2.width=CANVAS_W; off2.height=CANVAS_H;
-  const o2=off2.getContext('2d');
-  o2.filter='blur(10px)';
-  o2.drawImage(off,0,0);
-  o2.filter='none';
-  const id=o2.getImageData(0,0,CANVAS_W,CANVAS_H);
-  const px=id.data;
-  const [br,bg2,bb] = hexToRgb(BLOCK_COLOR);
-  for(let i=0;i<px.length;i+=4){{
-    if(px[i+3]>60){{ px[i]=br; px[i+1]=bg2; px[i+2]=bb; px[i+3]=255; }}
-    else px[i+3]=0;
-  }}
-  o2.putImageData(id,0,0);
-  ctx.drawImage(off2,0,0);
-
-  const surX = cx - surW/2;
-  const surY = blockTop - surH - Math.round(CANVAS_W*-0.000);
-  roundRect(ctx, surX, surY, surW, surH, radius, SUR_BG);
-  ctx.fillStyle = SUR_COLOR;
-  ctx.font = `bold ${{fsSur}}px 'Roboto',sans-serif`;
-  ctx.textAlign='left'; ctx.textBaseline='middle';
-  ctx.fillText(SURTITRE, surX+pad, surY+surH/2);
-
-  ctx.font = `bold ${{fs}}px 'Roboto Condensed','Roboto',sans-serif`;
-  ctx.fillStyle = TEXT_COLOR;
-  ctx.textAlign='left'; ctx.textBaseline='middle';
-  lines.forEach((line,i)=>{{
-    const lw=lineWidths[i];
-    const lx=cx-lw/2;
-    const ly=blockTop+i*lh-(i>0?overlap:0);
-    ctx.fillText(line, lx+pad, ly+lh/2);
-  }});
-
-  if(wmImg) {{
-    const diag = Math.sqrt(CANVAS_W**2+CANVAS_H**2);
-    const wmW  = diag * WM_SIZE_PCT;
-    const wmH  = (wmImg.naturalHeight/wmImg.naturalWidth)*wmW;
-    const mx   = CANVAS_W*MARGIN_R, my=CANVAS_H*MARGIN_R;
-    let wx,wy;
-    const posMap={{
-      'Haut gauche':   [mx, my],
-      'Haut centre':   [(CANVAS_W-wmW)/2, my],
-      'Haut droite':   [CANVAS_W-wmW-mx, my],
-      'Milieu gauche': [mx, (CANVAS_H-wmH)/2],
-      'Centre':        [(CANVAS_W-wmW)/2, (CANVAS_H-wmH)/2],
-      'Milieu droite': [CANVAS_W-wmW-mx, (CANVAS_H-wmH)/2],
-      'Bas gauche':    [mx, CANVAS_H-wmH-my],
-      'Bas centre':    [(CANVAS_W-wmW)/2, CANVAS_H-wmH-my],
-      'Bas droite':    [CANVAS_W-wmW-mx, CANVAS_H-wmH-my],
-      'Coordonnées personnalisées': [WM_CX, WM_CY],
-    }};
-    [wx,wy] = posMap[WM_POS] || [CANVAS_W-wmW-mx, CANVAS_H-wmH-my];
-    ctx.globalAlpha = WM_OPAC;
-    ctx.drawImage(wmImg, wx, wy, wmW, wmH);
-    ctx.globalAlpha = 1.0;
-  }}
-}}
-
-function hexToRgb(hex) {{
-  const r=parseInt(hex.slice(1,3),16);
-  const g=parseInt(hex.slice(3,5),16);
-  const b=parseInt(hex.slice(5,7),16);
-  return [r,g,b];
-}}
-
-let loaded = 0;
-const toLoad = (BG_B64?1:0) + (WM_B64?1:0);
-function onLoad() {{ loaded++; if(loaded>=toLoad||toLoad===0) {{ render(); setTimeout(exportCanvas, 100); }} }}
-if(!toLoad) render();
-
-if(BG_B64){{
-  bgImg = new Image();
-  bgImg.onload = onLoad;
-  bgImg.src = 'data:'+BG_MIME+';base64,'+BG_B64;
-}}
-if(WM_B64){{
-  wmImg = new Image();
-  wmImg.onload = onLoad;
-  wmImg.src = 'data:'+WM_MIME+';base64,'+WM_B64;
-}}
-
-canvas.addEventListener('mousedown', e=>{{
-  if(!bgImg) return;
-  isDragging=true; dragSX=e.clientX; dragSY=e.clientY; dragBX=bgOffX; dragBY=bgOffY;
-  canvas.style.cursor='grabbing';
-}});
-window.addEventListener('mousemove', e=>{{
-  if(!isDragging) return;
-  const scale = 1/UI_ZOOM;
-  bgOffX = dragBX+(e.clientX-dragSX)*scale;
-  bgOffY = dragBY+(e.clientY-dragSY)*scale;
-  clampOffset();
-  render();
-}});
-window.addEventListener('mouseup',()=>{{
-  isDragging=false;
-  canvas.style.cursor=bgImg?'grab':'default';
-  exportCanvas();
-}});
-if(bgImg) canvas.style.cursor='grab';
-
-function exportCanvas() {{
-  try {{
-    const nativeCanvas = document.createElement('canvas');
-    nativeCanvas.width  = CANVAS_W;
-    nativeCanvas.height = CANVAS_H;
-    nativeCanvas.getContext('2d').drawImage(canvas, 0, 0, CANVAS_W, CANVAS_H);
-    const dataUrl = nativeCanvas.toDataURL('image/png');
-    const allTA = window.parent.document.querySelectorAll('textarea');
-    allTA.forEach(ta => {{
-      if(ta.value === '' || ta.value.startsWith('data:image')) {{
-        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype, 'value').set;
-        nativeInputValueSetter.call(ta, dataUrl);
-        ta.dispatchEvent(new Event('input', {{bubbles: true}}));
-      }}
-    }});
-  }} catch(e) {{}}
-}}
-</script>
-</body>
-</html>""",height =_preview_h +52 ,scrolling =False )
-
+        # Si le composant renvoie de nouvelles valeurs, on les sauvegarde et on rerun
+        if result is not None and isinstance(result, dict):
+            new_x = result.get("offsetX")
+            new_y = result.get("offsetY")
+            if new_x is not None and new_y is not None:
+                # Mettre à jour seulement si différent pour éviter les boucles
+                if (new_x != st.session_state.template_offset_x or
+                    new_y != st.session_state.template_offset_y):
+                    st.session_state.template_offset_x = new_x
+                    st.session_state.template_offset_y = new_y
+                    st.rerun()
             
 st .markdown ("""
 <div class="site-footer">
