@@ -1624,7 +1624,7 @@ with tab_canva :
     """,unsafe_allow_html =True )
 
     
-    _CV_DEFAULTS ={"canva_y":72 ,"canva_imgzoom":100 ,"canva_offx":0 ,"canva_offy":0 }
+    _CV_DEFAULTS ={"canva_y":72 ,"canva_imgzoom":100 }
     for _k ,_v in _CV_DEFAULTS .items ():
         if _k not in st .session_state :
             st .session_state [_k ]=_v 
@@ -1635,8 +1635,6 @@ with tab_canva :
         st .session_state ["_cv_reset_y"]=False 
     if st .session_state .get ("_cv_reset_zoom"):
         st .session_state ["canva_imgzoom"]=_CV_DEFAULTS ["canva_imgzoom"]
-        st .session_state ["canva_offx"]=_CV_DEFAULTS ["canva_offx"]
-        st .session_state ["canva_offy"]=_CV_DEFAULTS ["canva_offy"]
         st .session_state ["_cv_reset_zoom"]=False 
 
     with col_ctrl_cv :
@@ -1705,16 +1703,8 @@ with tab_canva :
         if canva_bg_file :
             st .markdown ('<p class="section-label" style="margin-top:6px;">Zoom photo</p>',unsafe_allow_html =True )
             canva_img_zoom =st .slider ("Zoom photo",min_value =100 ,max_value =300 ,key ="canva_imgzoom",label_visibility ="collapsed")
-
-            st .markdown ('<p class="section-label" style="margin-top:6px;">Décalage horizontal</p>',unsafe_allow_html =True )
-            canva_offx =st .slider ("Décalage horizontal",min_value =-540 ,max_value =540 ,key ="canva_offx",label_visibility ="collapsed")
-
-            st .markdown ('<p class="section-label" style="margin-top:6px;">Décalage vertical</p>',unsafe_allow_html =True )
-            canva_offy =st .slider ("Décalage vertical",min_value =-960 ,max_value =960 ,key ="canva_offy",label_visibility ="collapsed")
         else :
             canva_img_zoom =100 
-            canva_offx =0 
-            canva_offy =0 
 
         canva_wm_size =13 
         canva_wm_opac =100 
@@ -1743,12 +1733,8 @@ with tab_canva :
                 new_w =int (bg .width *base_scale )
                 new_h =int (bg .height *base_scale )
                 bg =bg .resize ((new_w ,new_h ),Image .LANCZOS )
-                max_off_x =max (0 ,new_w /2 -W /2 )
-                max_off_y =max (0 ,new_h /2 -H /2 )
-                off_x =max (-max_off_x ,min (max_off_x ,canva_offx ))
-                off_y =max (-max_off_y ,min (max_off_y ,canva_offy ))
-                dx =(W -new_w )//2 +int (off_x )
-                dy =(H -new_h )//2 +int (off_y )
+                dx =(W -new_w )//2 
+                dy =(H -new_h )//2 
                 bg_canvas =Image .new ("RGBA",(W ,H ),(34 ,34 ,34 ,0 ))
                 if dx >=0 and dy >=0 :
                     bg_canvas .paste (bg ,(dx ,dy ))
@@ -1910,8 +1896,6 @@ const SURTITRE = {_js_sur };
 const Y_PCT    = {canva_y } / 100;
 const X_PCT    = 50 / 100;
 const IMG_ZOOM = {canva_img_zoom } / 100;
-const OFF_X    = {canva_offx };
-const OFF_Y    = {canva_offy };
 const BLOCK_COLOR = "{canva_block_color }";
 const TEXT_COLOR  = "{canva_text_color }";
 const SUR_BG      = "{canva_sur_bg }";
@@ -1935,7 +1919,8 @@ canvas.style.width  = (CANVAS_W * UI_ZOOM) + 'px';
 canvas.style.height = (CANVAS_H * UI_ZOOM) + 'px';
 
 let bgImg = null, wmImg = null;
-let bgOffX = OFF_X, bgOffY = OFF_Y;
+let bgOffX = 0, bgOffY = 0;
+let isDragging = false, dragSX, dragSY, dragBX, dragBY;
 
 function clampOffset() {{
   if (!bgImg) return;
@@ -2087,7 +2072,7 @@ function hexToRgb(hex) {{
 
 let loaded = 0;
 const toLoad = (BG_B64?1:0) + (WM_B64?1:0);
-function onLoad() {{ loaded++; if(loaded>=toLoad||toLoad===0) {{ clampOffset(); render(); }} }}
+function onLoad() {{ loaded++; if(loaded>=toLoad||toLoad===0) {{ render(); setTimeout(exportCanvas, 100); }} }}
 if(!toLoad) render();
 
 if(BG_B64){{
@@ -2101,6 +2086,43 @@ if(WM_B64){{
   wmImg.src = 'data:'+WM_MIME+';base64,'+WM_B64;
 }}
 
+canvas.addEventListener('mousedown', e=>{{
+  if(!bgImg) return;
+  isDragging=true; dragSX=e.clientX; dragSY=e.clientY; dragBX=bgOffX; dragBY=bgOffY;
+  canvas.style.cursor='grabbing';
+}});
+window.addEventListener('mousemove', e=>{{
+  if(!isDragging) return;
+  const scale = 1/UI_ZOOM;
+  bgOffX = dragBX+(e.clientX-dragSX)*scale;
+  bgOffY = dragBY+(e.clientY-dragSY)*scale;
+  clampOffset();
+  render();
+}});
+window.addEventListener('mouseup',()=>{{
+  isDragging=false;
+  canvas.style.cursor=bgImg?'grab':'default';
+  exportCanvas();
+}});
+if(bgImg) canvas.style.cursor='grab';
+
+function exportCanvas() {{
+  try {{
+    const nativeCanvas = document.createElement('canvas');
+    nativeCanvas.width  = CANVAS_W;
+    nativeCanvas.height = CANVAS_H;
+    nativeCanvas.getContext('2d').drawImage(canvas, 0, 0, CANVAS_W, CANVAS_H);
+    const dataUrl = nativeCanvas.toDataURL('image/png');
+    const allTA = window.parent.document.querySelectorAll('textarea');
+    allTA.forEach(ta => {{
+      if(ta.value === '' || ta.value.startsWith('data:image')) {{
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.parent.HTMLTextAreaElement.prototype, 'value').set;
+        nativeInputValueSetter.call(ta, dataUrl);
+        ta.dispatchEvent(new Event('input', {{bubbles: true}}));
+      }}
+    }});
+  }} catch(e) {{}}
+}}
 </script>
 </body>
 </html>""",height =_preview_h +52 ,scrolling =False )
