@@ -18,12 +18,6 @@ try :
 except Exception :
     _fav_img ="▶"
 
-# Déclaration du composant Template RS (doit être en dehors de tout contexte conditionnel)
-_template_component = components.declare_component(
-    name="template_rs",
-    path="templates"  # le dossier contenant template_rs.html
-)
-
 st .set_page_config (
 page_title ="Luluflix",
 page_icon =_fav_img ,
@@ -1707,43 +1701,69 @@ with tab_canva:
     except Exception:
         pass
 
-    with col_prev_cv:
-        st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
+with col_prev_cv:
+    st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
 
-        # Appel du composant (déclaré en haut du fichier)
-        result = _template_component(
-            width=canva_w,
-            height=canva_h,
-            bgImage=bg_b64,
-            bgMime=bg_mime,
-            wmImage=wm_b64,
-            wmMime=wm_mime,
-            title=canva_title,
-            subtitle=canva_sur,
-            yPct=canva_y,
-            imgZoom=canva_img_zoom,
-            blockColor=canva_block_color,
-            textColor=canva_text_color,
-            surBg=canva_sur_bg,
-            surColor=canva_sur_color,
-            wmPosition=wm_opts_cv["position"],
-            wmCustomX=wm_opts_cv["custom_x"],
-            wmCustomY=wm_opts_cv["custom_y"],
-            offsetX=st.session_state.template_offset_x,
-            offsetY=st.session_state.template_offset_y,
-            key="template_component"
-        )
+    # --- Lire le contenu du fichier HTML ---
+    # Assurez-vous que le chemin est correct
+    html_path = os.path.join(os.path.dirname(__file__), "templates", "template_rs.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+    except FileNotFoundError:
+        st.error(f"Fichier HTML non trouvé : {html_path}")
+        # Vous pouvez aussi mettre le HTML directement en dur ici si besoin
+        html_content = ""
 
-        # Si le composant renvoie de nouvelles valeurs, on les sauvegarde
-        if result is not None and isinstance(result, dict):
-            new_x = result.get("offsetX")
-            new_y = result.get("offsetY")
-            if new_x is not None and new_y is not None:
-                if (new_x != st.session_state.template_offset_x or
-                    new_y != st.session_state.template_offset_y):
-                    st.session_state.template_offset_x = new_x
-                    st.session_state.template_offset_y = new_y
-                    st.rerun()
+    # --- Préparer les props sous forme de JSON ---
+    import json
+    props = {
+        "width": canva_w,
+        "height": canva_h,
+        "bgImage": bg_b64,
+        "bgMime": bg_mime,
+        "wmImage": wm_b64,
+        "wmMime": wm_mime,
+        "title": canva_title,
+        "subtitle": canva_sur,
+        "yPct": canva_y,
+        "imgZoom": canva_img_zoom,
+        "blockColor": canva_block_color,
+        "textColor": canva_text_color,
+        "surBg": canva_sur_bg,
+        "surColor": canva_sur_color,
+        "wmPosition": wm_opts_cv["position"],
+        "wmCustomX": wm_opts_cv["custom_x"],
+        "wmCustomY": wm_opts_cv["custom_y"],
+        "offsetX": st.session_state.template_offset_x,
+        "offsetY": st.session_state.template_offset_y
+    }
+    props_json = json.dumps(props)
+
+    # --- Injecter les props dans le HTML ---
+    # On remplace le placeholder {PROPS_JSON} par les vraies props
+    # Si votre HTML utilise déjà un autre système (data-props), vous pouvez adapter
+    # Ici on injecte via un script avec id="__props"
+    final_html = html_content.replace('{PROPS_JSON}', props_json)
+
+    # --- Afficher le composant ---
+    # ⚠️ ATTENTION : si votre HTML ne contient pas le placeholder {PROPS_JSON},
+    # vous devez adapter la méthode d'injection. La version que je vous ai fournie
+    # utilise document.getElementById('__props').textContent.
+    # Si vous utilisez une autre méthode, commentez la ligne ci-dessus et
+    # utilisez celle juste en dessous.
+
+    # Méthode 1 : si votre HTML utilise <script id="__props">{PROPS_JSON}</script>
+    # (c'est la méthode recommandée avec le fichier que je vous ai donné)
+    components.html(final_html, height=700, scrolling=False)
+
+    # Méthode 2 : si votre HTML utilise data-props sur l'élément script
+    # components.html(
+    #     f"""
+    #     <script data-props='{props_json}' src="data:text/javascript;base64,{_b64h.b64encode(html_content.encode()).decode()}"></script>
+    #     """,
+    #     height=700, scrolling=False
+    # )
             
 st .markdown ("""
 <div class="site-footer">
