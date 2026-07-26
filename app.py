@@ -1707,8 +1707,13 @@ with tab_canva:
         pass
 
     # Appel du composant avec les offsets depuis session_state
-    with col_prev_cv:
-        st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
+with col_prev_cv:
+    st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
+    result = _template_component(
+        width=1080,
+        height=1080,
+        key="test"
+    )
 
         # Le composant est déjà déclaré en haut du fichier sous le nom _template_component
         result = _template_component(
