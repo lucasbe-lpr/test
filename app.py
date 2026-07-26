@@ -1602,7 +1602,7 @@ with tab_canva:
     if "template_offset_y" not in st.session_state:
         st.session_state.template_offset_y = 0
 
-    # Fonction utilitaire pour charger une image en base64 (corrigée)
+    # Fonction utilitaire pour charger une image en base64
     def _img_to_b64(img_file, mime="image/png"):
         img_file.seek(0)
         b64 = _b64h.b64encode(img_file.read()).decode()
@@ -1662,11 +1662,14 @@ with tab_canva:
 
         st.markdown('<p class="section-label">Titre principal</p>', unsafe_allow_html=True)
         canva_title = st.text_area(
-            "Titre", value="Modifier le titre (➡️ il est maintenant possible de faire des retours à la ligne grâce à la touche Entrée)",
-            key="canva_title", label_visibility="collapsed", height=80
+            "Titre",
+            value="Modifier le titre (➡️ il est maintenant possible de faire des retours à la ligne grâce à la touche Entrée)",
+            key="canva_title",
+            label_visibility="collapsed",
+            height=80
         )
 
-        # Couleurs (tu peux les rendre modifiables si tu veux, ici je les mets en dur)
+        # Couleurs (tu peux les rendre modifiables si besoin)
         canva_block_color = "#0068B1"
         canva_text_color = "#ffffff"
         canva_sur_bg = "#ffffff"
@@ -1690,32 +1693,24 @@ with tab_canva:
         )
 
     # --- Préparation des données pour le composant ---
-    # Image de fond
     bg_b64 = ""
     bg_mime = "image/png"
     if canva_bg_file:
         bg_b64, bg_mime = _img_to_b64(canva_bg_file)
 
-    # Watermark (logo par défaut)
     wm_b64 = ""
     wm_mime = "image/png"
     try:
         with open(DEFAULT_WM_FILE, "rb") as f:
             wm_b64 = _b64h.b64encode(f.read()).decode()
             wm_mime = "image/png"
-    except:
+    except Exception:
         pass
 
-    # Appel du composant avec les offsets depuis session_state
-with col_prev_cv:
-    st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
-    result = _template_component(
-        width=1080,
-        height=1080,
-        key="test"
-    )
+    with col_prev_cv:
+        st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
 
-        # Le composant est déjà déclaré en haut du fichier sous le nom _template_component
+        # Appel du composant (déclaré en haut du fichier)
         result = _template_component(
             width=canva_w,
             height=canva_h,
