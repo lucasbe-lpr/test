@@ -16,21 +16,22 @@
 </div>
 <div id="info">Déplacez l’image en la faisant glisser · La position est sauvegardée</div>
 
+<script id="__props">{PROPS_JSON}</script>
 <script>
   (function() {
     // Récupération des props
-    let props = {};
     const propsElement = document.getElementById('__props');
+    let props = {};
     if (propsElement) {
-      try { props = JSON.parse(propsElement.textContent); } catch(e) { console.error(e); }
-    } else {
-      const scripts = document.getElementsByTagName('script');
-      const currentScript = scripts[scripts.length - 1];
-      if (currentScript && currentScript.hasAttribute('data-props')) {
-        try { props = JSON.parse(currentScript.getAttribute('data-props')); } catch(e) { console.error(e); }
+      try {
+        props = JSON.parse(propsElement.textContent);
+      } catch(e) {
+        console.error('Erreur parsing props', e);
       }
     }
-    console.log('Props reçues:', props);
+    // ... le reste de votre code
+  })();
+</script>
 
     // Valeurs par défaut
     const defaultProps = {
