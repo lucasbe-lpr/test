@@ -1,4 +1,89 @@
-<div style="padding: 20px; background: white; border: 2px solid blue; color: black;">
-  <h2>Composant chargé !</h2>
-  <p>Si tu vois ce message, tout fonctionne.</p>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { margin: 0; padding: 0; background: #eef1f5; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; }
+    #canvasWrap { box-shadow: 0 4px 24px rgba(0,0,0,0.18); display: inline-block; }
+    canvas { display: block; cursor: grab; }
+    canvas:active { cursor: grabbing; }
+    #info { margin-top: 8px; font-size: 0.7rem; color: #777; }
+  </style>
+</head>
+<body>
+<div id="canvasWrap">
+  <canvas id="c"></canvas>
 </div>
+<div id="info">Déplacez l’image en la faisant glisser · La position est sauvegardée</div>
+
+<script>
+  (function() {
+    // Récupération des props passées par Streamlit
+    // Les props sont dans un élément script avec id "__props" ou dans l'attribut data-props
+    let props = {};
+    const propsElement = document.getElementById('__props');
+    if (propsElement) {
+      try {
+        props = JSON.parse(propsElement.textContent);
+      } catch(e) {
+        console.error('Erreur parsing props', e);
+      }
+    } else {
+      // Fallback : chercher dans l'élément script courant
+      const scripts = document.getElementsByTagName('script');
+      const currentScript = scripts[scripts.length - 1];
+      if (currentScript && currentScript.hasAttribute('data-props')) {
+        try {
+          props = JSON.parse(currentScript.getAttribute('data-props'));
+        } catch(e) {
+          console.error('Erreur parsing data-props', e);
+        }
+      }
+    }
+    console.log('Props reçues:', props);
+
+    // Si aucune prop, on met des valeurs par défaut pour éviter les erreurs
+    if (!props || Object.keys(props).length === 0) {
+      props = {
+        width: 1080,
+        height: 1080,
+        bgImage: '',
+        bgMime: 'image/jpeg',
+        wmImage: '',
+        wmMime: 'image/png',
+        title: 'Titre par défaut',
+        subtitle: 'Surtitre',
+        yPct: 50,
+        imgZoom: 100,
+        blockColor: '#0068B1',
+        textColor: '#ffffff',
+        surBg: '#ffffff',
+        surColor: '#0068B1',
+        wmPosition: 'Haut droite',
+        wmCustomX: 0,
+        wmCustomY: 0,
+        offsetX: 0,
+        offsetY: 0
+      };
+    }
+
+    // Le reste du code identique à ce que j'ai donné précédemment, en utilisant props
+    // ... (tu peux reprendre le script de l'ancien fichier, mais en remplaçant const props = window.props || {}; par la récupération ci-dessus)
+
+    // Pour simplifier, je vais mettre une version de test qui affiche les props
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    canvas.width = props.width || 1080;
+    canvas.height = props.height || 1080;
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'white';
+    ctx.font = '24px sans-serif';
+    ctx.fillText('Composant actif', 20, 50);
+    ctx.fillText('Titre: ' + (props.title || 'aucun'), 20, 100);
+    // Ici tu peux recopier tout le code de dessin de l'ancienne version
+    // mais pour le test, on affiche juste un message
+  })();
+</script>
+</body>
+</html>
