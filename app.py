@@ -9,12 +9,6 @@ import io
 import zipfile 
 from PIL import Image
 
-# Déclaration du composant Template RS (doit être en dehors de tout contexte conditionnel)
-_template_component = components.declare_component(
-    name="template_rs",
-    path="templates"  # le dossier contenant template_rs.html
-)
-
 LOGO_FILE ="luluflix.png"
 DEFAULT_WM_FILE ="lpr.png"
 FAVICON_FILE ="favicon.png"
@@ -23,6 +17,12 @@ try :
     _fav_img =Image .open (FAVICON_FILE )
 except Exception :
     _fav_img ="▶"
+
+# Déclaration du composant Template RS (doit être en dehors de tout contexte conditionnel)
+_template_component = components.declare_component(
+    name="template_rs",
+    path="templates"  # le dossier contenant template_rs.html
+)
 
 st .set_page_config (
 page_title ="Luluflix",
@@ -1602,17 +1602,10 @@ with tab_canva:
     if "template_offset_y" not in st.session_state:
         st.session_state.template_offset_y = 0
 
-    # --- Définition du composant personnalisé ---
-    # On déclare le composant une fois pour toutes en dehors de tout contexte de rerun
-    # Pour éviter de le redéclarer à chaque fois, on le met dans une fonction lancée une fois
-    # Mais on peut aussi le déclarer directement dans la boucle, Streamlit le gère.
-    # Je le déclare en dehors du with, en haut du fichier, mais pour la clarté je le mets ici.
-    # En pratique, mets cette définition en dehors de tout avec, par exemple après les imports.
-
-    # Fonction utilitaire pour charger une image en base64
+    # Fonction utilitaire pour charger une image en base64 (corrigée)
     def _img_to_b64(img_file, mime="image/png"):
         img_file.seek(0)
-        b64 = base64.b64encode(img_file.read()).decode()
+        b64 = _b64h.b64encode(img_file.read()).decode()
         return b64, mime
 
     col_ctrl_cv, col_prev_cv = st.columns([4, 6], gap="large")
@@ -1673,6 +1666,7 @@ with tab_canva:
             key="canva_title", label_visibility="collapsed", height=80
         )
 
+        # Couleurs (tu peux les rendre modifiables si tu veux, ici je les mets en dur)
         canva_block_color = "#0068B1"
         canva_text_color = "#ffffff"
         canva_sur_bg = "#ffffff"
@@ -1696,11 +1690,10 @@ with tab_canva:
         )
 
     # --- Préparation des données pour le composant ---
-    # Image de fond (si présente)
+    # Image de fond
     bg_b64 = ""
     bg_mime = "image/png"
     if canva_bg_file:
-        canva_bg_file.seek(0)
         bg_b64, bg_mime = _img_to_b64(canva_bg_file)
 
     # Watermark (logo par défaut)
@@ -1708,7 +1701,7 @@ with tab_canva:
     wm_mime = "image/png"
     try:
         with open(DEFAULT_WM_FILE, "rb") as f:
-            wm_b64 = base64.b64encode(f.read()).decode()
+            wm_b64 = _b64h.b64encode(f.read()).decode()
             wm_mime = "image/png"
     except:
         pass
@@ -1717,8 +1710,7 @@ with tab_canva:
     with col_prev_cv:
         st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
 
-        # On appelle le composant. La valeur retournée est un dict contenant offsetX et offsetY
-        # ou None si le composant n'a pas encore renvoyé de valeur.
+        # Le composant est déjà déclaré en haut du fichier sous le nom _template_component
         result = _template_component(
             width=canva_w,
             height=canva_h,
@@ -1739,15 +1731,14 @@ with tab_canva:
             wmCustomY=wm_opts_cv["custom_y"],
             offsetX=st.session_state.template_offset_x,
             offsetY=st.session_state.template_offset_y,
-            key="template_component"  # pour éviter les duplicatas
+            key="template_component"
         )
 
-        # Si le composant renvoie de nouvelles valeurs, on les sauvegarde et on rerun
+        # Si le composant renvoie de nouvelles valeurs, on les sauvegarde
         if result is not None and isinstance(result, dict):
             new_x = result.get("offsetX")
             new_y = result.get("offsetY")
             if new_x is not None and new_y is not None:
-                # Mettre à jour seulement si différent pour éviter les boucles
                 if (new_x != st.session_state.template_offset_x or
                     new_y != st.session_state.template_offset_y):
                     st.session_state.template_offset_x = new_x
