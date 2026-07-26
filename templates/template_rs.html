@@ -16,10 +16,12 @@
 </div>
 <div id="info">Déplacez l’image en la faisant glisser · La position est sauvegardée</div>
 
+<!-- Les props seront injectées ici par Python -->
 <script id="__props">{PROPS_JSON}</script>
+
 <script>
   (function() {
-    // Récupération des props
+    // Récupération des props depuis l'élément #__props
     const propsElement = document.getElementById('__props');
     let props = {};
     if (propsElement) {
@@ -29,19 +31,31 @@
         console.error('Erreur parsing props', e);
       }
     }
-    // ... le reste de votre code
-  })();
-</script>
 
-    // Valeurs par défaut
-    const defaultProps = {
-      width: 1080, height: 1350, bgImage: '', bgMime: 'image/jpeg',
-      wmImage: '', wmMime: 'image/png', title: '', subtitle: '',
-      yPct: 50, imgZoom: 100, blockColor: '#0068B1', textColor: '#ffffff',
-      surBg: '#ffffff', surColor: '#0068B1', wmPosition: 'Haut droite',
-      wmCustomX: 0, wmCustomY: 0, offsetX: 0, offsetY: 0
-    };
-    props = { ...defaultProps, ...props };
+    // Si aucune prop, on utilise des valeurs par défaut pour éviter les erreurs
+    if (!props || Object.keys(props).length === 0) {
+      props = {
+        width: 1080,
+        height: 1350,
+        bgImage: '',
+        bgMime: 'image/jpeg',
+        wmImage: '',
+        wmMime: 'image/png',
+        title: 'Titre par défaut',
+        subtitle: 'Surtitre',
+        yPct: 50,
+        imgZoom: 100,
+        blockColor: '#0068B1',
+        textColor: '#ffffff',
+        surBg: '#ffffff',
+        surColor: '#0068B1',
+        wmPosition: 'Haut droite',
+        wmCustomX: 0,
+        wmCustomY: 0,
+        offsetX: 0,
+        offsetY: 0
+      };
+    }
 
     const CANVAS_W = props.width;
     const CANVAS_H = props.height;
@@ -52,7 +66,7 @@
     const TITLE    = props.title;
     const SURTITRE = props.subtitle;
     const Y_PCT    = props.yPct / 100;
-    const X_PCT    = 0.5;
+    const X_PCT    = 0.5; // centré horizontalement
     const IMG_ZOOM = props.imgZoom / 100;
     const BLOCK_COLOR = props.blockColor;
     const TEXT_COLOR  = props.textColor;
@@ -71,6 +85,7 @@
     const canvas = document.getElementById('c');
     const ctx    = canvas.getContext('2d');
 
+    // Taille d'affichage responsive
     const AVAIL_H   = window.innerHeight - 100;
     const PREVIEW_W = Math.min(Math.floor(AVAIL_H * CANVAS_W / CANVAS_H), window.innerWidth - 20);
     const UI_ZOOM   = PREVIEW_W / CANVAS_W;
@@ -115,6 +130,7 @@
       ctx.clearRect(0,0,CANVAS_W,CANVAS_H);
       ctx.fillStyle='#222'; ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
 
+      // Image de fond
       if (bgImg) {
         const scaleX = CANVAS_W / bgImg.naturalWidth;
         const scaleY = CANVAS_H / bgImg.naturalHeight;
@@ -126,6 +142,7 @@
         ctx.drawImage(bgImg, dx, dy, dw, dh);
       }
 
+      // Texte : titre et surtitre
       const fs     = Math.round(CANVAS_W * 0.056);
       const fsSur  = Math.round(CANVAS_W * 0.043);
       const pad    = Math.round(CANVAS_W * 0.017);
@@ -272,6 +289,7 @@
 
     if (bgImg) canvas.style.cursor = 'grab';
 
+    // Envoyer les offsets à Python
     function sendOffsets(x, y) {
       const roundedX = Math.round(x);
       const roundedY = Math.round(y);
@@ -281,6 +299,7 @@
       }, '*');
     }
 
+    // Chargement des images
     let loaded = 0;
     const toLoad = (BG_B64 ? 1 : 0) + (WM_B64 ? 1 : 0);
     function onLoad() {
@@ -304,6 +323,7 @@
     }
     if (toLoad === 0) onLoad();
 
+    // Redimensionnement responsive
     window.addEventListener('resize', function() {
       const newW = Math.min(Math.floor((window.innerHeight - 100) * CANVAS_W / CANVAS_H), window.innerWidth - 20);
       const newZoom = newW / CANVAS_W;
