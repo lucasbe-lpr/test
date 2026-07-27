@@ -2,42 +2,17 @@ import streamlit as st
 import streamlit.components.v1 as components
 import subprocess
 import tempfile
-import base64 as b64
+import base64 as _b64
 import os
 import math
 import io
 import zipfile
-import json
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 
-# ---- CONSTANTES ----
 LOGO_FILE = "luluflix.png"
 DEFAULT_WM_FILE = "lpr.png"
 FAVICON_FILE = "favicon.png"
-PREVIEW_MAX_W = 680
-PREVIEW_MAX_H = 500
-POSITIONS = [
-    "Haut gauche", "Haut centre", "Haut droite",
-    "Milieu gauche", "Centre", "Milieu droite",
-    "Bas gauche", "Bas centre", "Bas droite",
-    "Coordonnées personnalisées",
-]
-DEFAULT_POSITION = "Haut droite"
-QUALITY_PRESETS = {
-    "Standard (CRF 18 — recommandé)": {"crf": "18", "preset": "fast"},
-    "Haute qualité (CRF 12)": {"crf": "12", "preset": "slow"},
-    "Sans perte (CRF 0)": {"crf": "0", "preset": "ultrafast"},
-}
-CROP_PRESETS = [
-    ("9:16", 9, 16, "Stories"),
-    ("1:1", 1, 1, "Carré"),
-    ("16:9", 16, 9, "Comme à la télé"),
-    ("4:5", 4, 5, "Portrait"),
-    ("4:3", 4, 3, "Presque carré"),
-    ("21:9", 21, 9, "Comme au ciné"),
-]
 
-# ---- PAGE CONFIG ----
 try:
     _fav_img = Image.open(FAVICON_FILE)
 except Exception:
@@ -50,11 +25,12 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ---- CSS GLOBAL ----
-st.markdown("""
+st.markdown(
+    """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&family=Roboto+Condensed:wght@400;500;700&display=swap');
 
+/* VARIABLES DE COULEUR ET DE TAILLE — modifier ici pour changer le thème */
 :root {
   --blue:        #0068B1;
   --blue-dim:    #e8f2fb;
@@ -75,6 +51,7 @@ st.markdown("""
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* BASE — fond blanc, typo Roboto sur tout le body Streamlit */
 html, body,
 [data-testid="stAppViewContainer"],
 [data-testid="stMain"],
@@ -86,16 +63,19 @@ html, body,
   overflow-x: hidden !important;
 }
 
+/* LAYOUT PRINCIPAL — pleine largeur, padding horizontal uniquement */
 .block-container {
   background: var(--white) !important;
   padding: 0 2.5rem 2rem !important;
   max-width: 100% !important;
 }
 
+/* MASQUER les éléments natifs Streamlit non souhaités */
 #MainMenu, footer, header,
 [data-testid="stToolbar"],
 [data-testid="stDecoration"] { display: none !important; }
 
+/* HEADER SITE */
 .site-header {
   height: var(--header-h);
   padding: 0;
@@ -108,6 +88,7 @@ html, body,
 .site-header img { height: 38px; width: auto; display: block; }
 .site-header-right { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.01em; }
 
+/* ONGLETS — style minimaliste, soulignement bleu sur l'actif */
 div[data-testid="stTabs"] [data-baseweb="tab-list"] {
   background: transparent !important;
   border-bottom: 1px solid var(--border) !important;
@@ -135,20 +116,13 @@ div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
 div[data-testid="stTabs"] [data-baseweb="tab-border"] { display: none !important; }
 div[data-testid="stTabs"] [data-baseweb="tab-panel"] { padding: 0 !important; }
 
-.col-controls {
-  padding-top: var(--panel-v-pad);
-  padding-right: 2rem;
-  border-right: 1px solid var(--border);
-  min-height: calc(100vh - var(--header-h) - var(--tabs-h) - 2rem);
-}
-.col-preview {
-  padding-top: var(--panel-v-pad);
-  padding-left: 2rem;
-}
 [data-testid="column"] { padding-top: 0 !important; }
+
+/* COLONNES STREAMLIT — aligner en haut, pas de hauteur forcée */
 [data-testid="stHorizontalBlock"] { align-items: flex-start !important; }
 [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { min-height: 0 !important; }
 
+/* FILE UPLOADER — zone de dépôt stylisée */
 [data-testid="stFileUploader"] { background: transparent !important; margin-bottom: 1.4rem !important; }
 [data-testid="stFileUploader"] section {
   background: var(--bg) !important;
@@ -187,6 +161,7 @@ div[data-testid="stTabs"] [data-baseweb="tab-panel"] { padding: 0 !important; }
 }
 [data-testid="stFileUploaderDeleteBtn"] button:hover { color: var(--red) !important; background: var(--red-bg) !important; }
 
+/* LABELS DE SECTION — petites caps grises au-dessus de chaque bloc */
 .section-label {
   font-size: 0.68rem; font-weight: 500; color: var(--muted);
   letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.5rem; margin-top: 0;
@@ -196,6 +171,7 @@ div[data-testid="stTabs"] [data-baseweb="tab-panel"] { padding: 0 !important; }
   letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.5rem; margin-top: 1.2rem;
 }
 
+/* SPECS ROW — bande d'infos techniques (dimensions, durée, fps) */
 .specs-row {
   display: flex; border: 1px solid var(--border); border-radius: 8px;
   overflow: hidden; margin-bottom: 1.2rem; background: var(--bg);
@@ -208,14 +184,11 @@ div[data-testid="stTabs"] [data-baseweb="tab-panel"] { padding: 0 !important; }
 .spec-k { font-size: 0.58rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
 .spec-v { font-size: 0.88rem; font-weight: 500; color: var(--ink); line-height: 1.2; }
 
-.preview-wrap, .video-preview-wrap {
+/* PREVIEW WRAP — cadre autour de l'aperçu vidéo/image */
+.preview-wrap {
   border: 1px solid var(--border); border-radius: 10px;
   overflow: hidden; background: #f0f0f0;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-  transition: box-shadow 0.2s;
-}
-.preview-wrap:hover, .video-preview-wrap:hover {
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  display: flex; flex-direction: column;
 }
 .preview-bar {
   padding: 0.35rem 0.85rem; border-bottom: 1px solid var(--border);
@@ -234,41 +207,43 @@ div[data-testid="stTabs"] [data-baseweb="tab-panel"] { padding: 0 !important; }
   display: block !important; object-fit: contain !important;
 }
 
+/* BOUTONS — bleu pour les actions, vert pour les téléchargements */
 div.stButton > button {
   width: 100% !important; background: var(--blue) !important; border: none !important;
   color: var(--white) !important; font-family: 'Roboto', sans-serif !important;
   font-size: 0.85rem !important; font-weight: 500 !important;
   padding: 0 1.4rem !important; height: 38px !important; border-radius: 999px !important;
-  transition: background 0.15s, transform 0.1s, box-shadow 0.15s !important;
-  box-shadow: 0 1px 3px rgba(0,104,177,0.15), 0 2px 6px rgba(0,104,177,0.1) !important;
+  transition: background 0.15s, transform 0.1s !important;
+  box-shadow: 0 1px 2px rgba(0,104,177,0.15), 0 2px 6px rgba(0,104,177,0.1) !important;
   cursor: pointer !important;
 }
-div.stButton > button:hover { background: #005fa8 !important; transform: translateY(-1px) !important; box-shadow: 0 4px 12px rgba(0,104,177,0.25) !important; }
+div.stButton > button:hover { background: #005fa8 !important; transform: translateY(-1px) !important; }
 div.stButton > button:active { transform: translateY(0) !important; }
 div.stButton > button:disabled {
   background: var(--border) !important; color: var(--muted) !important;
   box-shadow: none !important; cursor: default !important; transform: none !important;
 }
 
+/* BOUTONS DE TELECHARGEMENT — vert uniforme pour tous */
 div.stDownloadButton > button,
 div[data-testid="stDownloadButton"] > button {
   width: 100% !important; background: #16a34a !important; border: none !important;
   color: #fff !important; font-family: 'Roboto', sans-serif !important;
   font-size: 0.85rem !important; font-weight: 500 !important;
   padding: 0 1.4rem !important; height: 38px !important; border-radius: 999px !important;
-  transition: background 0.15s, transform 0.1s, box-shadow 0.15s !important;
-  box-shadow: 0 1px 3px rgba(22,163,74,0.18), 0 2px 6px rgba(22,163,74,0.1) !important;
+  transition: background 0.15s, transform 0.1s !important;
+  box-shadow: 0 1px 2px rgba(22,163,74,0.18), 0 2px 6px rgba(22,163,74,0.1) !important;
 }
 div.stDownloadButton > button:hover,
 div[data-testid="stDownloadButton"] > button:hover {
   background: #15803d !important; transform: translateY(-1px) !important;
-  box-shadow: 0 4px 12px rgba(22,163,74,0.25) !important;
 }
 div.stDownloadButton > button:active,
 div[data-testid="stDownloadButton"] > button:active { transform: translateY(0) !important; }
 
 div[data-testid="stProgress"] { display: none !important; }
 
+/* SPINNER D'ENCODAGE — anneau rotatif + barre de progression animée */
 .encoding-wrap { display: flex; align-items: center; gap: 0.7rem; padding: 0.5rem 0; margin: 0.5rem 0; }
 .encoding-ring {
   width: 16px; height: 16px; border: 2px solid var(--border);
@@ -287,74 +262,18 @@ div[data-testid="stProgress"] { display: none !important; }
 }
 @keyframes indeterminate { 0% { background-position: 200% center; } 100% { background-position: -200% center; } }
 
-.status { font-size: 0.78rem; padding: 0.5rem 0; margin: 0.5rem 0; line-height: 1.4; }
+/* MESSAGES DE STATUT — ok / erreur / idle */
+.status { font-size: 0.78rem; padding: 0.5rem 0; margin: 0.5rem 0; color: var(--muted); line-height: 1.4; }
 .status-ok   { color: var(--green); }
 .status-err  { color: var(--red); }
 .status-idle { color: var(--muted); }
 
-.cut-info-row {
-  display: flex; gap: 0.5rem; margin-top: 0.4rem;
+div[data-testid="stSpinner"] p {
+  font-size: 0.78rem !important; color: var(--muted) !important;
+  font-family: 'Roboto', sans-serif !important;
 }
-.cut-info-cell {
-  flex: 1; background: var(--bg); border: 1px solid var(--border);
-  border-radius: 6px; padding: 0.4rem 0.7rem;
-  font-size: 0.78rem; color: var(--ink);
-}
-.cut-info-cell span { display: block; font-size: 0.58rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
 
-.merge-item {
-  display: flex; align-items: center; gap: 0.6rem;
-  padding: 0.45rem 0.7rem; border: 1px solid var(--border);
-  border-radius: 6px; margin-bottom: 0.35rem; background: var(--bg);
-  font-size: 0.78rem; color: var(--ink);
-}
-.merge-item-idx {
-  width: 22px; height: 22px; border-radius: 50%;
-  background: var(--blue-dim); color: var(--blue);
-  font-size: 0.68rem; font-weight: 700;
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-}
-.merge-item-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
-.merge-item-dur { font-size: 0.68rem; color: var(--muted); flex-shrink: 0; }
-
-.video-preview-wrap {
-  background: #0a0a0a; margin-top: 0.2rem;
-}
-.video-preview-wrap video {
-  width: 100%; display: block; max-height: 420px; object-fit: contain;
-}
-.video-preview-label {
-  font-size: 0.58rem; font-weight: 500; text-transform: uppercase;
-  letter-spacing: 0.07em; color: var(--muted);
-  padding: 0.35rem 0.85rem; background: var(--white);
-  border-bottom: 1px solid var(--border);
-}
-.video-preview-info {
-  padding: 0.3rem 0.85rem; background: var(--white);
-  border-top: 1px solid var(--border);
-  font-size: 0.68rem; color: var(--muted); display: flex; gap: 1rem;
-}
-.video-preview-info b { color: var(--blue); font-weight: 600; }
-
-.photo-batch-item {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0.4rem 0.7rem; border: 1px solid var(--border);
-  border-radius: 6px; margin-bottom: 0.35rem; background: var(--bg);
-  font-size: 0.78rem; color: var(--ink);
-}
-.photo-batch-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.photo-batch-dim  { font-size: 0.68rem; color: var(--muted); flex-shrink: 0; margin-left: 0.5rem; }
-
-.preview-placeholder {
-  display: flex; align-items: center; justify-content: center;
-  flex-direction: column; gap: 0.6rem; min-height: 260px;
-  border: 1px dashed var(--border); border-radius: 10px;
-  background: var(--bg); color: var(--muted);
-  font-size: 0.8rem; text-align: center;
-  margin-top: 1.8rem;
-}
-.preview-placeholder svg { opacity: 0.25; }
-
+/* NUMBER INPUT — boutons +/- centrés et carrés */
 [data-testid="stNumberInput"] > div,
 [data-testid="stNumberInput"] [data-baseweb="base-input"] { align-items: center !important; }
 [data-testid="stNumberInputStepDown"],
@@ -380,46 +299,226 @@ div[data-testid="stProgress"] { display: none !important; }
 }
 [data-testid="stNumberInput"] input:focus { outline: none !important; box-shadow: none !important; }
 
+/* SELECT BOX */
 [data-testid="stSelectbox"] [data-baseweb="select"] > div {
   border-color: var(--border) !important; border-radius: 6px !important; font-size: 0.85rem !important;
 }
 [data-testid="stSelectbox"] [data-baseweb="select"] > div:hover { border-color: var(--blue) !important; }
 
-div[data-testid="stSpinner"] p {
-  font-size: 0.78rem !important; color: var(--muted) !important;
-  font-family: 'Roboto', sans-serif !important;
+/* LISTE DES FICHIERS IMPORTÉS (onglet photo) */
+.photo-batch-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.4rem 0.7rem; border: 1px solid var(--border);
+  border-radius: 6px; margin-bottom: 0.35rem; background: var(--bg);
+  font-size: 0.78rem; color: var(--ink);
+}
+.photo-batch-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.photo-batch-dim  { font-size: 0.68rem; color: var(--muted); flex-shrink: 0; margin-left: 0.5rem; }
+
+/* PLACEHOLDER APERÇU — affiché quand aucun fichier n'est uploadé */
+.preview-placeholder {
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 0.6rem; min-height: 260px;
+  border: 1px dashed var(--border); border-radius: 10px;
+  background: var(--bg); color: var(--muted);
+  font-size: 0.8rem; text-align: center;
+  margin-top: 1.8rem;
+}
+.preview-placeholder svg { opacity: 0.25; }
+
+/* TIMELINE CUTTER — outil de découpe vidéo */
+.timeline-wrap {
+  position: relative; height: 52px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+  margin: 0.6rem 0; cursor: pointer; user-select: none;
+}
+.timeline-track {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    90deg, transparent 0px, transparent 18px,
+    var(--border) 18px, var(--border) 19px
+  );
+}
+.timeline-selection {
+  position: absolute; top: 0; bottom: 0;
+  background: rgba(0, 104, 177, 0.15);
+  border-left: 2px solid var(--blue); border-right: 2px solid var(--blue);
+}
+.timeline-handle {
+  position: absolute; top: 0; bottom: 0; width: 6px;
+  background: var(--blue); border-radius: 2px; cursor: ew-resize;
+  display: flex; align-items: center; justify-content: center;
+}
+.timeline-handle::after {
+  content: ''; display: block; width: 2px; height: 16px;
+  background: rgba(255,255,255,0.7); border-radius: 1px;
+}
+.timeline-time-label {
+  position: absolute; top: -1.4rem; font-size: 0.62rem;
+  color: var(--blue); font-weight: 600; white-space: nowrap;
+  transform: translateX(-50%);
+}
+.cut-info-row {
+  display: flex; gap: 0.5rem; margin-top: 0.4rem;
+}
+.cut-info-cell {
+  flex: 1; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; padding: 0.4rem 0.7rem;
+  font-size: 0.78rem; color: var(--ink);
+}
+.cut-info-cell span { display: block; font-size: 0.58rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* FUSION — liste des vidéos à fusionner */
+.merge-item {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.45rem 0.7rem; border: 1px solid var(--border);
+  border-radius: 6px; margin-bottom: 0.35rem; background: var(--bg);
+  font-size: 0.78rem; color: var(--ink);
+}
+.merge-item-idx {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--blue-dim); color: var(--blue);
+  font-size: 0.68rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.merge-item-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.merge-item-dur { font-size: 0.68rem; color: var(--muted); flex-shrink: 0; }
+
+/* LECTEUR VIDEO APERÇU — player natif stylisé DA */
+.video-preview-wrap {
+  border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  background: #0a0a0a; margin-top: 0.2rem;
+}
+.video-preview-wrap video {
+  width: 100%; display: block; max-height: 420px; object-fit: contain;
+}
+.video-preview-label {
+  font-size: 0.58rem; font-weight: 500; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--muted);
+  padding: 0.35rem 0.85rem; background: var(--white);
+  border-bottom: 1px solid var(--border);
+}
+.video-preview-info {
+  padding: 0.3rem 0.85rem; background: var(--white);
+  border-top: 1px solid var(--border);
+  font-size: 0.68rem; color: var(--muted); display: flex; gap: 1rem;
+}
+.video-preview-info b { color: var(--blue); font-weight: 600; }
+
+/* OUTIL SON — options audio */
+.audio-option-row {
+  display: flex; gap: 0.5rem; margin-bottom: 0.8rem;
+}
+.audio-chip {
+  flex: 1; text-align: center; padding: 0.45rem 0.5rem;
+  border: 1px solid var(--border); border-radius: 6px;
+  font-size: 0.75rem; color: var(--sub); background: var(--bg);
+  cursor: pointer; transition: all 0.12s;
+}
+.audio-chip.active {
+  border-color: var(--blue); background: var(--blue-dim); color: var(--blue); font-weight: 500;
 }
 
-/* Media Queries */
-@media (max-width: 768px) {
-  .block-container { padding: 0 1rem 1rem !important; }
+/* OUTIL RECADRAGE — grille de presets */
+.crop-presets {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; margin-bottom: 0.8rem;
+}
+.crop-preset-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 0.5rem 0.3rem; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg); cursor: pointer; transition: all 0.12s; gap: 0.2rem;
+}
+.crop-preset-btn:hover { border-color: var(--blue); background: var(--blue-dim); }
+.crop-preset-icon {
+  background: var(--border-mid); border-radius: 2px;
+}
+.crop-preset-label { font-size: 0.65rem; color: var(--sub); font-weight: 500; }
+.crop-preset-ratio { font-size: 0.58rem; color: var(--muted); }
+
+/* PAGE AIDE — guide d'utilisation & annonces */
+.help-hero {
+  display: flex; align-items: center; gap: 0.6rem;
+  margin: var(--panel-v-pad) 0 1.2rem;
+}
+.help-hero svg { flex-shrink: 0; }
+.help-hero h2 { font-size: 1.05rem; font-weight: 500; color: var(--ink); margin: 0; }
+.help-hero p { font-size: 0.78rem; color: var(--muted); margin: 0.15rem 0 0; }
+.help-card {
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 1rem 1.1rem; margin-bottom: 0.8rem; background: var(--bg);
+}
+.help-card h3 {
+  font-size: 0.85rem; font-weight: 500; color: var(--blue);
+  margin: 0 0 0.35rem; display: flex; align-items: center; gap: 0.4rem;
+}
+.help-card p { font-size: 0.82rem; color: var(--sub); line-height: 1.55; margin: 0; }
+.help-changelog-item {
+  border-left: 2px solid var(--blue); padding: 0.1rem 0 0.1rem 0.9rem;
+  margin-bottom: 1rem;
+}
+.help-changelog-item .v { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--blue); }
+.help-changelog-item .d { font-size: 0.68rem; color: var(--muted); margin-left: 0.4rem; }
+.help-changelog-item ul { margin: 0.35rem 0 0; padding-left: 1.1rem; }
+.help-changelog-item li { font-size: 0.82rem; color: var(--sub); line-height: 1.6; }
+.help-contact {
+  margin-top: 1.4rem; padding-top: 1rem; border-top: 1px solid var(--border);
+  font-size: 0.78rem; color: var(--muted); text-align: center;
+}
+.help-contact a { color: var(--blue); }
+
+/* RESPONSIVE — repensé pour un rendu pro sur tablette et mobile */
+@media (max-width: 900px) {
+  .block-container { padding: 0 1.25rem 1.5rem !important; }
+  .site-header { height: auto; padding: 0.7rem 0; flex-wrap: wrap; gap: 0.4rem; }
+  .site-header img { height: 32px; }
+  div[data-testid="stTabs"] [data-baseweb="tab-list"] {
+    overflow-x: auto !important; flex-wrap: nowrap !important;
+    scrollbar-width: thin;
+  }
+  div[data-testid="stTabs"] [data-baseweb="tab"] {
+    padding: 0.55rem 1rem 0.55rem 0 !important;
+    font-size: 0.8rem !important; white-space: nowrap;
+  }
   .specs-row { flex-wrap: wrap; }
-  .spec-cell { flex: 0 0 50%; border-bottom: 1px solid var(--border); }
-  .spec-cell:nth-child(odd) { border-right: 1px solid var(--border); }
-  .spec-cell:nth-child(3) { border-bottom: none; }
-  .spec-cell:nth-child(4) { border-bottom: none; }
-  .col-controls, .col-preview { padding: 1rem 0 !important; border: none !important; }
-  .site-header img { height: 28px; }
-  div[data-testid="stTabs"] [data-baseweb="tab"] { padding: 0.4rem 0.8rem 0.4rem 0 !important; font-size: 0.75rem !important; }
-  .preview-wrap, .video-preview-wrap { border-radius: 6px; }
-  .cut-info-row { flex-wrap: wrap; }
-  .cut-info-cell { flex: 0 0 100%; }
+  .spec-cell { flex: 1 1 45%; border-right: none !important; border-bottom: 1px solid var(--border); }
+  .spec-cell:nth-child(2n) { border-right: none !important; }
 }
-</style>
-""", unsafe_allow_html=True)
+@media (max-width: 640px) {
+  .block-container { padding: 0 1rem 1.25rem !important; }
+  .site-header-right { display: none; }
+  [data-testid="stHorizontalBlock"] { flex-direction: column !important; }
+  [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { width: 100% !important; }
+  .col-preview, .col-controls { padding-left: 0 !important; padding-right: 0 !important; border-right: none !important; }
+  div.stButton > button, div.stDownloadButton > button,
+  div[data-testid="stDownloadButton"] > button { font-size: 0.8rem !important; }
+  .help-hero { flex-direction: column; align-items: flex-start; }
+}
 
-# ---- HEADER ----
-with open(LOGO_FILE, "rb") as f:
-    _logo_b64 = b64.b64encode(f.read()).decode()
-st.markdown(f"""
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+
+with open(LOGO_FILE, "rb") as _f:
+    _logo_b64 = _b64.b64encode(_f.read()).decode()
+st.markdown(
+    f"""
 <div class="site-header">
-  <img src="data:image/png;base64,{_logo_b64}" alt="Luluflix" />
+  <img src="data:image/png;base64,{_logo_b64 }" alt="Luluflix" />
   <span class="site-header-right">version <code>1.2</code></span>
 </div>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
-# ---- FONCTIONS UTILITAIRES ----
+PREVIEW_MAX_W = 680
+PREVIEW_MAX_H = 500
+
+
 def cap_image_for_preview(img: Image.Image) -> Image.Image:
+
     w, h = img.size
     if w > PREVIEW_MAX_W:
         ratio = PREVIEW_MAX_W / w
@@ -433,29 +532,70 @@ def cap_image_for_preview(img: Image.Image) -> Image.Image:
         return img
     return img.resize((w, h), Image.LANCZOS)
 
+
 def get_default_logo() -> str:
     return DEFAULT_WM_FILE
 
-def compute_xy(position: str, W: int, H: int, logo_w: int, logo_h: int,
-               custom_x: int = 0, custom_y: int = 0,
-               margin_pct: float = 0.05) -> tuple:
+
+POSITIONS = [
+    "Haut gauche",
+    "Haut centre",
+    "Haut droite",
+    "Milieu gauche",
+    "Centre",
+    "Milieu droite",
+    "Bas gauche",
+    "Bas centre",
+    "Bas droite",
+    "Coordonnées personnalisées",
+]
+DEFAULT_POSITION = "Haut droite"
+
+
+def compute_xy(
+    position: str,
+    W: int,
+    H: int,
+    logo_w: int,
+    logo_h: int,
+    custom_x: int = 0,
+    custom_y: int = 0,
+    margin_pct: float = 0.05,
+) -> tuple[int, int]:
+
     mx = int(W * margin_pct)
     my = int(H * margin_pct)
-    if position == "Haut gauche": return mx, my
-    if position == "Haut centre": return (W - logo_w) // 2, my
-    if position == "Haut droite": return W - logo_w - mx, my
-    if position == "Milieu gauche": return mx, (H - logo_h) // 2
-    if position == "Centre": return (W - logo_w) // 2, (H - logo_h) // 2
-    if position == "Milieu droite": return W - logo_w - mx, (H - logo_h) // 2
-    if position == "Bas gauche": return mx, H - logo_h - my
-    if position == "Bas centre": return (W - logo_w) // 2, H - logo_h - my
-    if position == "Bas droite": return W - logo_w - mx, H - logo_h - my
+    if position == "Haut gauche":
+        return mx, my
+    if position == "Haut centre":
+        return (W - logo_w) // 2, my
+    if position == "Haut droite":
+        return W - logo_w - mx, my
+    if position == "Milieu gauche":
+        return mx, (H - logo_h) // 2
+    if position == "Centre":
+        return (W - logo_w) // 2, (H - logo_h) // 2
+    if position == "Milieu droite":
+        return W - logo_w - mx, (H - logo_h) // 2
+    if position == "Bas gauche":
+        return mx, H - logo_h - my
+    if position == "Bas centre":
+        return (W - logo_w) // 2, H - logo_h - my
+    if position == "Bas droite":
+        return W - logo_w - mx, H - logo_h - my
     return custom_x, custom_y
 
-def composite_logo(base: Image.Image, logo_path: str,
-                   position: str = DEFAULT_POSITION,
-                   custom_x: int = 0, custom_y: int = 0,
-                   force_w: int = None, force_h: int = None) -> Image.Image:
+
+def composite_logo(
+    base: Image.Image,
+    logo_path: str,
+    position: str = DEFAULT_POSITION,
+    custom_x: int = 0,
+    custom_y: int = 0,
+    force_w: int = None,
+    force_h: int = None,
+) -> Image.Image:
+
     W = force_w if force_w else base.size[0]
     H = force_h if force_h else base.size[1]
     logo_w = int(math.sqrt(W**2 + H**2) * 0.1307)
@@ -470,17 +610,29 @@ def composite_logo(base: Image.Image, logo_path: str,
     out = Image.alpha_composite(out, layer)
     return out
 
+
 def get_video_info(path: str) -> dict:
+
+    import json as _json
+
     cmd = [
-        "ffprobe", "-v", "error",
-        "-select_streams", "v:0",
-        "-show_entries", "stream=width,height,r_frame_rate,tags=rotate",
-        "-show_entries", "stream_side_data=rotation",
-        "-show_entries", "format=duration",
-        "-of", "json", path
+        "ffprobe",
+        "-v",
+        "error",
+        "-select_streams",
+        "v:0",
+        "-show_entries",
+        "stream=width,height,r_frame_rate,tags=rotate",
+        "-show_entries",
+        "stream_side_data=rotation",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "json",
+        path,
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
-    data = json.loads(result.stdout)
+    data = _json.loads(result.stdout)
     stream = data.get("streams", [{}])[0]
     w = int(stream.get("width", 0))
     h = int(stream.get("height", 0))
@@ -502,34 +654,91 @@ def get_video_info(path: str) -> dict:
         w, h = h, w
     return {"width": w, "height": h, "duration": dur, "fps": fps, "rotate": rotate}
 
+
 def fmt_time(secs: float) -> str:
     m, s = divmod(int(secs), 60)
-    return f"{m}:{s:02d}"
+    return f"{m }:{s :02d}"
+
 
 def extract_frame(video_path: str, timecode: float) -> Image.Image:
-    result = subprocess.run([
-        "ffmpeg", "-y", "-ss", str(timecode), "-i", video_path,
-        "-vframes", "1", "-f", "image2pipe", "-vcodec", "png", "pipe:1"
-    ], capture_output=True)
+
+    result = subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-ss",
+            str(timecode),
+            "-i",
+            video_path,
+            "-vframes",
+            "1",
+            "-f",
+            "image2pipe",
+            "-vcodec",
+            "png",
+            "pipe:1",
+        ],
+        capture_output=True,
+    )
     return Image.open(io.BytesIO(result.stdout)).convert("RGB")
 
-def make_thumbnail(video_path: str, logo_path: str, info: dict,
-                   position: str = DEFAULT_POSITION, custom_x: int = 0, custom_y: int = 0) -> Image.Image:
-    result = subprocess.run([
-        "ffmpeg", "-y", "-i", video_path,
-        "-vframes", "1", "-f", "image2pipe", "-vcodec", "png", "pipe:1"
-    ], capture_output=True)
+
+def make_thumbnail(
+    video_path: str,
+    logo_path: str,
+    info: dict,
+    position: str = DEFAULT_POSITION,
+    custom_x: int = 0,
+    custom_y: int = 0,
+) -> Image.Image:
+
+    result = subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            video_path,
+            "-vframes",
+            "1",
+            "-f",
+            "image2pipe",
+            "-vcodec",
+            "png",
+            "pipe:1",
+        ],
+        capture_output=True,
+    )
     frame = Image.open(io.BytesIO(result.stdout)).convert("RGBA")
     return composite_logo(
-        frame, logo_path,
-        position=position, custom_x=custom_x, custom_y=custom_y,
-        force_w=info["width"], force_h=info["height"]
+        frame,
+        logo_path,
+        position=position,
+        custom_x=custom_x,
+        custom_y=custom_y,
+        force_w=info["width"],
+        force_h=info["height"],
     ).convert("RGB")
 
-def render_video(video_path: str, logo_path: str, output_path: str, info: dict,
-                 position: str = DEFAULT_POSITION, custom_x: int = 0, custom_y: int = 0,
-                 quality_key: str = "Standard (CRF 18 — recommandé)",
-                 progress_cb=None):
+
+QUALITY_PRESETS = {
+    "Standard (CRF 18 — recommandé)": {"crf": "18", "preset": "fast"},
+    "Haute qualité (CRF 12)": {"crf": "12", "preset": "slow"},
+    "Sans perte (CRF 0)": {"crf": "0", "preset": "ultrafast"},
+}
+
+
+def render_video(
+    video_path: str,
+    logo_path: str,
+    output_path: str,
+    info: dict,
+    position: str = DEFAULT_POSITION,
+    custom_x: int = 0,
+    custom_y: int = 0,
+    quality_key: str = "Standard (CRF 18 — recommandé)",
+    progress_cb=None,
+):
+
     W, H = info["width"], info["height"]
     logo_w = int(math.sqrt(W**2 + H**2) * 0.1307)
     logo_orig = Image.open(logo_path).convert("RGBA")
@@ -542,15 +751,30 @@ def render_video(video_path: str, logo_path: str, output_path: str, info: dict,
     tmp_logo_path = os.path.join(tmp_logo_dir, "wm_prescaled.png")
     logo_scaled.save(tmp_logo_path, format="PNG")
 
-    filter_complex = f"[0:v][1:v]overlay={x}:{y}"
+    filter_complex = f"[0:v][1:v]overlay={x }:{y }"
     q = QUALITY_PRESETS.get(quality_key, QUALITY_PRESETS["Standard (CRF 18 — recommandé)"])
     cmd = [
-        "ffmpeg", "-y",
-        "-i", video_path, "-i", tmp_logo_path,
-        "-filter_complex", filter_complex,
-        "-c:v", "libx264", "-crf", q["crf"], "-preset", q["preset"],
-        "-c:a", "copy", "-movflags", "+faststart",
-        "-progress", "pipe:1", output_path
+        "ffmpeg",
+        "-y",
+        "-i",
+        video_path,
+        "-i",
+        tmp_logo_path,
+        "-filter_complex",
+        filter_complex,
+        "-c:v",
+        "libx264",
+        "-crf",
+        q["crf"],
+        "-preset",
+        q["preset"],
+        "-c:a",
+        "copy",
+        "-movflags",
+        "+faststart",
+        "-progress",
+        "pipe:1",
+        output_path,
     ]
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     total = info["duration"]
@@ -569,92 +793,164 @@ def render_video(video_path: str, logo_path: str, output_path: str, info: dict,
     if process.returncode != 0:
         raise RuntimeError(process.stderr.read())
 
+
 def trim_video(video_path: str, output_path: str, t_start: float, t_end: float):
+
     cmd = [
-        "ffmpeg", "-y",
-        "-ss", str(t_start), "-to", str(t_end),
-        "-i", video_path,
-        "-c", "copy", "-movflags", "+faststart",
-        output_path
+        "ffmpeg",
+        "-y",
+        "-ss",
+        str(t_start),
+        "-to",
+        str(t_end),
+        "-i",
+        video_path,
+        "-c",
+        "copy",
+        "-movflags",
+        "+faststart",
+        output_path,
     ]
     result = subprocess.run(cmd, capture_output=True)
     if result.returncode != 0:
         raise RuntimeError(result.stderr.decode())
 
+
 def watermark_options_ui(key_prefix: str) -> dict:
+
     st.markdown('<p class="section-label-mt">Watermark</p>', unsafe_allow_html=True)
     position = st.selectbox(
-        "Position", POSITIONS,
+        "Position",
+        POSITIONS,
         index=POSITIONS.index(DEFAULT_POSITION),
-        key=f"{key_prefix}_pos",
+        key=f"{key_prefix }_pos",
     )
     custom_x, custom_y = 0, 0
     if position == "Coordonnées personnalisées":
         col_x, col_y = st.columns(2)
         with col_x:
-            custom_x = st.number_input("X (px depuis gauche)", min_value=0, value=0, step=1, key=f"{key_prefix}_cx")
+            custom_x = st.number_input(
+                "X (px depuis gauche)", min_value=0, value=0, step=1, key=f"{key_prefix }_cx"
+            )
         with col_y:
-            custom_y = st.number_input("Y (px depuis haut)", min_value=0, value=0, step=1, key=f"{key_prefix}_cy")
+            custom_y = st.number_input(
+                "Y (px depuis haut)", min_value=0, value=0, step=1, key=f"{key_prefix }_cy"
+            )
     return {"position": position, "custom_x": int(custom_x), "custom_y": int(custom_y)}
 
+
 def merge_videos(video_paths: list, output_path: str):
+
     tmp_list = tempfile.mktemp(suffix=".txt")
     with open(tmp_list, "w") as f:
         for p in video_paths:
-            f.write(f"file '{p}'\n")
+            f.write(f"file '{p }'\n")
     cmd = [
-        "ffmpeg", "-y",
-        "-f", "concat", "-safe", "0",
-        "-i", tmp_list,
-        "-c:v", "libx264", "-crf", "18", "-preset", "fast",
-        "-c:a", "aac", "-b:a", "192k",
-        "-movflags", "+faststart",
-        output_path
+        "ffmpeg",
+        "-y",
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-i",
+        tmp_list,
+        "-c:v",
+        "libx264",
+        "-crf",
+        "18",
+        "-preset",
+        "fast",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "192k",
+        "-movflags",
+        "+faststart",
+        output_path,
     ]
     result = subprocess.run(cmd, capture_output=True)
     os.unlink(tmp_list)
     if result.returncode != 0:
         raise RuntimeError(result.stderr.decode())
 
+
 def remove_audio(video_path: str, output_path: str):
+
     cmd = [
-        "ffmpeg", "-y", "-i", video_path,
-        "-c:v", "copy", "-an",
-        "-movflags", "+faststart", output_path
+        "ffmpeg",
+        "-y",
+        "-i",
+        video_path,
+        "-c:v",
+        "copy",
+        "-an",
+        "-movflags",
+        "+faststart",
+        output_path,
     ]
     result = subprocess.run(cmd, capture_output=True)
     if result.returncode != 0:
         raise RuntimeError(result.stderr.decode())
+
 
 def replace_audio(video_path: str, audio_path: str, output_path: str, loop_audio: bool = True):
+
     loop_flag = ["-stream_loop", "-1"] if loop_audio else []
     cmd = [
-        "ffmpeg", "-y",
-        "-i", video_path,
-        *loop_flag, "-i", audio_path,
-        "-c:v", "copy",
-        "-c:a", "aac", "-b:a", "192k",
+        "ffmpeg",
+        "-y",
+        "-i",
+        video_path,
+        *loop_flag,
+        "-i",
+        audio_path,
+        "-c:v",
+        "copy",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "192k",
         "-shortest",
-        "-map", "0:v:0", "-map", "1:a:0",
-        "-movflags", "+faststart", output_path
+        "-map",
+        "0:v:0",
+        "-map",
+        "1:a:0",
+        "-movflags",
+        "+faststart",
+        output_path,
     ]
     result = subprocess.run(cmd, capture_output=True)
     if result.returncode != 0:
         raise RuntimeError(result.stderr.decode())
 
-def crop_video(video_path: str, output_path: str,
-               ratio_w: int, ratio_h: int,
-               position: str = "Centre"):
+
+CROP_PRESETS = [
+    ("9:16", 9, 16, "Stories"),
+    ("1:1", 1, 1, "Carré"),
+    ("16:9", 16, 9, "Comme à la télé"),
+    ("4:5", 4, 5, "Portrait"),
+    ("4:3", 4, 3, "Presque carré"),
+    ("21:9", 21, 9, "Comme au ciné"),
+]
+
+
+def crop_video(
+    video_path: str, output_path: str, ratio_w: int, ratio_h: int, position: str = "Centre"
+):
+
     info = get_video_info(video_path)
     W, H = info["width"], info["height"]
     target_ratio = ratio_w / ratio_h
     src_ratio = W / H
     if src_ratio > target_ratio:
+
         new_w = int(H * target_ratio)
         new_h = H
     else:
+
         new_w = W
         new_h = int(W / target_ratio)
+
     new_w = new_w - (new_w % 2)
     new_h = new_h - (new_h % 2)
 
@@ -668,112 +964,106 @@ def crop_video(video_path: str, output_path: str,
         x_off, y_off = W - new_w, (H - new_h) // 2
     else:
         x_off, y_off = (W - new_w) // 2, (H - new_h) // 2
-    vf = f"crop={new_w}:{new_h}:{x_off}:{y_off}"
+    vf = f"crop={new_w }:{new_h }:{x_off }:{y_off }"
     cmd = [
-        "ffmpeg", "-y", "-i", video_path,
-        "-vf", vf,
-        "-c:v", "libx264", "-crf", "18", "-preset", "fast",
-        "-c:a", "copy",
-        "-movflags", "+faststart", output_path
+        "ffmpeg",
+        "-y",
+        "-i",
+        video_path,
+        "-vf",
+        vf,
+        "-c:v",
+        "libx264",
+        "-crf",
+        "18",
+        "-preset",
+        "fast",
+        "-c:a",
+        "copy",
+        "-movflags",
+        "+faststart",
+        output_path,
     ]
     result = subprocess.run(cmd, capture_output=True)
     if result.returncode != 0:
         raise RuntimeError(result.stderr.decode())
 
-# ---- FONCTIONS DE FACTORISATION ----
-def init_session_state():
-    for k in ["thumbnail", "rendered_bytes", "_last_video_name",
-              "cut_bytes", "_last_cut_name", "merge_bytes",
-              "audio_bytes", "_last_audio_name",
-              "crop_bytes", "_last_crop_name"]:
-        if k not in st.session_state:
-            st.session_state[k] = None
 
-init_session_state()
+for k in [
+    "thumbnail",
+    "rendered_bytes",
+    "_last_video_name",
+    "cut_bytes",
+    "_last_cut_name",
+    "merge_bytes",
+    "audio_bytes",
+    "_last_audio_name",
+    "crop_bytes",
+    "_last_crop_name",
+]:
+    if k not in st.session_state:
+        st.session_state[k] = None
 
-def handle_video_upload(upload_key: str, file_types: list, state_name: str) -> tuple:
-    """
-    Gère l'upload d'une vidéo : sauvegarde temporaire, récupère les infos.
-    Retourne (temp_dir, file_path, info_dict) ou (None, None, None) si pas de fichier.
-    """
-    uploaded_file = st.file_uploader(
-        "Déposez votre vidéo ici",
-        type=file_types,
-        key=upload_key,
-        label_visibility="collapsed"
-    )
-    if not uploaded_file:
-        return None, None, None
+tab_v, tab_p, tab_s, tab_cut, tab_merge, tab_audio, tab_crop, tab_canva, tab_help = st.tabs(
+    [
+        "Watermark vidéo",
+        "Watermark photo",
+        "Capture d'écran",
+        "Couper",
+        "Fusionner",
+        "Son",
+        "Recadrer",
+        "Template RS",
+        "🛈 Aide",
+    ]
+)
 
-    # Vérification du changement de fichier
-    last_name_key = f"_last_{state_name}_name"
-    if st.session_state.get(last_name_key) != uploaded_file.name:
-        st.session_state[state_name + "_bytes"] = None
-        st.session_state[last_name_key] = uploaded_file.name
-
-    tmp_dir = tempfile.mkdtemp()
-    ext = os.path.splitext(uploaded_file.name)[1]
-    file_path = os.path.join(tmp_dir, f"src{ext}")
-    with open(file_path, "wb") as f:
-        f.write(uploaded_file.read())
-    info = get_video_info(file_path)
-    return tmp_dir, file_path, info
-
-def display_video_specs(info: dict):
-    st.markdown(f"""
-    <div class="specs-row">
-      <div class="spec-cell"><span class="spec-k">Largeur</span><span class="spec-v">{info['width']} px</span></div>
-      <div class="spec-cell"><span class="spec-k">Hauteur</span><span class="spec-v">{info['height']} px</span></div>
-      <div class="spec-cell"><span class="spec-k">Durée</span><span class="spec-v">{fmt_time(info['duration'])}</span></div>
-      <div class="spec-cell"><span class="spec-k">FPS</span><span class="spec-v">{info['fps']}</span></div>
-    </div>""", unsafe_allow_html=True)
-
-def placeholder_html(icon_svg: str, text: str) -> str:
-    return f"""
-    <div class="preview-placeholder">
-      {icon_svg}
-      <span>{text}</span>
-    </div>
-    """
-
-# ---- ONGLETS ----
-tab_v, tab_p, tab_s, tab_cut, tab_merge, tab_audio, tab_crop, tab_canva, tab_help = st.tabs([
-    "Watermark vidéo", "Watermark photo", "Capture d'écran",
-    "Couper", "Fusionner", "Son", "Recadrer", "Template RS", "Aide"
-])
-
-# ---- ONGLET WATERMARK VIDÉO ----
 with tab_v:
     col_ctrl, col_prev = st.columns([4, 6], gap="large")
+
     with col_ctrl:
         st.markdown('<p class="section-label">Source</p>', unsafe_allow_html=True)
         video_file = st.file_uploader(
             "Déposez votre vidéo ici",
             type=["mp4", "mov", "avi", "mkv", "webm"],
-            key="vu", label_visibility="collapsed"
+            key="vu",
+            label_visibility="collapsed",
         )
 
     if video_file:
+
         if st.session_state._last_video_name != video_file.name:
             st.session_state.thumbnail = None
             st.session_state.rendered_bytes = None
             st.session_state._last_video_name = video_file.name
 
         lp = get_default_logo()
-        tmp_dir = tempfile.mkdtemp()
-        ext = os.path.splitext(video_file.name)[1]
-        vp = os.path.join(tmp_dir, f"src{ext}")
+        tmp = tempfile.mkdtemp()
+        vp = os.path.join(tmp, "src" + os.path.splitext(video_file.name)[1])
         with open(vp, "wb") as f:
             f.write(video_file.read())
         nfo = get_video_info(vp)
 
         with col_ctrl:
-            display_video_specs(nfo)
+            st.markdown(
+                f"""
+            <div class="specs-row">
+              <div class="spec-cell"><span class="spec-k">Largeur</span><span class="spec-v">{nfo ['width']} px</span></div>
+              <div class="spec-cell"><span class="spec-k">Hauteur</span><span class="spec-v">{nfo ['height']} px</span></div>
+              <div class="spec-cell"><span class="spec-k">Durée</span><span class="spec-v">{fmt_time (nfo ['duration'])}</span></div>
+              <div class="spec-cell"><span class="spec-k">FPS</span><span class="spec-v">{nfo ['fps']}</span></div>
+            </div>""",
+                unsafe_allow_html=True,
+            )
+
             wm_opts = watermark_options_ui("v")
+
             st.markdown('<p class="section-label-mt">Qualité d\'export</p>', unsafe_allow_html=True)
             quality_key = st.selectbox(
-                "Qualité", list(QUALITY_PRESETS.keys()),
-                key="v_quality", label_visibility="collapsed",
+                "Qualité",
+                list(QUALITY_PRESETS.keys()),
+                key="v_quality",
+                label_visibility="collapsed",
             )
 
             opts_sig = (wm_opts["position"], wm_opts["custom_x"], wm_opts["custom_y"])
@@ -789,11 +1079,11 @@ with tab_v:
             st.markdown("<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True)
             if not st.session_state.rendered_bytes:
                 if st.button("Générer le rendu", key="vbtn"):
-                    out = os.path.join(tmp_dir, "video_ready_to_post.mp4")
+                    out = os.path.join(tmp, "video_ready_to_post.mp4")
                     ph = st.empty()
                     ph.markdown(
                         '<div class="encoding-wrap"><div class="encoding-ring"></div><span class="encoding-text">Encodage en cours…</span></div><div class="fake-progress-wrap"><div class="fake-progress-track"><div class="fake-progress-bar"></div></div></div>',
-                        unsafe_allow_html=True
+                        unsafe_allow_html=True,
                     )
                     try:
                         render_video(vp, lp, out, nfo, quality_key=quality_key, **wm_opts)
@@ -802,26 +1092,46 @@ with tab_v:
                             st.session_state.rendered_bytes = f.read()
                         st.rerun()
                     except Exception as e:
-                        ph.markdown(f'<div class="status status-err">❌ Erreur : {e}</div>', unsafe_allow_html=True)
+                        ph.markdown(
+                            f'<div class="status status-err">Erreur : {e }</div>',
+                            unsafe_allow_html=True,
+                        )
             else:
-                st.download_button("↓  Télécharger la vidéo", data=st.session_state.rendered_bytes,
-                                   file_name="video_ready_to_post.mp4", mime="video/mp4", key="vdl")
+                st.download_button(
+                    "↓  Télécharger la vidéo",
+                    data=st.session_state.rendered_bytes,
+                    file_name="video_ready_to_post.mp4",
+                    mime="video/mp4",
+                    key="vdl",
+                )
 
         with col_prev:
             st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
             st.image(cap_image_for_preview(st.session_state.thumbnail))
+            st.markdown("</div>", unsafe_allow_html=True)
+
     else:
         with col_ctrl:
-            st.markdown('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>', unsafe_allow_html=True)
+            st.markdown(
+                '<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>',
+                unsafe_allow_html=True,
+            )
         with col_prev:
-            st.markdown(placeholder_html(
-                '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>',
-                "L'aperçu apparaîtra ici"
-            ), unsafe_allow_html=True)
+            st.markdown(
+                """
+            <div class="preview-placeholder">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
+                <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+              </svg>
+              <span>L'aperçu apparaîtra ici</span>
+            </div>""",
+                unsafe_allow_html=True,
+            )
 
-# ---- ONGLET WATERMARK PHOTO ----
+
 with tab_p:
     col_ctrl_p, col_prev_p = st.columns([4, 6], gap="large")
+
     with col_ctrl_p:
         st.markdown('<p class="section-label">Source</p>', unsafe_allow_html=True)
         photo_files = st.file_uploader(
@@ -834,7 +1144,9 @@ with tab_p:
 
     if photo_files:
         lp2 = get_default_logo()
+
         with col_ctrl_p:
+
             st.markdown('<p class="section-label-mt">Fichiers importés</p>', unsafe_allow_html=True)
             for pf in photo_files:
                 img_tmp = Image.open(pf)
@@ -842,14 +1154,16 @@ with tab_p:
                 pf.seek(0)
                 st.markdown(
                     f'<div class="photo-batch-item">'
-                    f'<span class="photo-batch-name">📷 {pf.name}</span>'
-                    f'<span class="photo-batch-dim">{W_tmp} × {H_tmp} px</span>'
-                    f'</div>',
+                    f'<span class="photo-batch-name">📷 {pf .name }</span>'
+                    f'<span class="photo-batch-dim">{W_tmp } × {H_tmp } px</span>'
+                    f"</div>",
                     unsafe_allow_html=True,
                 )
+
             wm_opts_p = watermark_options_ui("p")
 
         def build_photo_output(pf, opts):
+
             pf.seek(0)
             base = Image.open(pf)
             result = composite_logo(base, lp2, **opts)
@@ -870,27 +1184,42 @@ with tab_p:
                 base_prev = Image.open(pf)
                 result_prev = composite_logo(base_prev, lp2, **wm_opts_p)
                 with grid_cols[idx % 2]:
-                    st.image(cap_image_for_preview(result_prev.convert("RGB")),
-                             caption=pf.name, use_container_width=True)
+                    st.image(
+                        cap_image_for_preview(result_prev.convert("RGB")),
+                        caption=pf.name,
+                        use_container_width=True,
+                    )
+            st.markdown("</div>", unsafe_allow_html=True)
 
         with col_ctrl_p:
             if len(photo_files) == 1:
                 data, fname, mime = build_photo_output(photo_files[0], wm_opts_p)
-                st.download_button("↓  Télécharger la photo", data=data,
-                                   file_name=fname, mime=mime, key="pdl_single")
+                st.download_button(
+                    "↓  Télécharger la photo",
+                    data=data,
+                    file_name=fname,
+                    mime=mime,
+                    key="pdl_single",
+                )
             else:
-                st.markdown('<p class="section-label-mt">Téléchargement</p>', unsafe_allow_html=True)
+                st.markdown(
+                    '<p class="section-label-mt">Téléchargement</p>', unsafe_allow_html=True
+                )
+
                 for i in range(0, len(photo_files), 2):
-                    row_files = photo_files[i:i+2]
+                    row_files = photo_files[i : i + 2]
                     btn_cols = st.columns(len(row_files), gap="small")
                     for j, pf in enumerate(row_files):
                         data, fname, mime = build_photo_output(pf, wm_opts_p)
                         with btn_cols[j]:
                             st.download_button(
-                                f"↓  {pf.name}",
-                                data=data, file_name=fname, mime=mime,
-                                key=f"pdl_{i+j}",
+                                f"↓  {pf .name }",
+                                data=data,
+                                file_name=fname,
+                                mime=mime,
+                                key=f"pdl_{i +j }",
                             )
+
                 zip_buf = io.BytesIO()
                 with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_STORED) as zf:
                     for pf in photo_files:
@@ -903,22 +1232,38 @@ with tab_p:
                     mime="application/zip",
                     key="pdl_zip",
                 )
+
     else:
         with col_ctrl_p:
-            st.markdown('<div class="status status-idle">Déposez une ou plusieurs images via <i>Upload</i>.</div>', unsafe_allow_html=True)
+            st.markdown(
+                '<div class="status status-idle">Déposez une ou plusieurs images via <i>Upload</i>.</div>',
+                unsafe_allow_html=True,
+            )
         with col_prev_p:
-            st.markdown(placeholder_html(
-                '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
-                "L'aperçu apparaîtra ici"
-            ), unsafe_allow_html=True)
+            st.markdown(
+                """
+            <div class="preview-placeholder">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                <path d="M21 15l-5-5L5 21"/>
+              </svg>
+              <span>L'aperçu apparaîtra ici</span>
+            </div>""",
+                unsafe_allow_html=True,
+            )
 
-# ---- ONGLET CAPTURE D'ÉCRAN ----
+
 with tab_s:
     col_ctrl_s, col_prev_s = st.columns([4, 6], gap="large")
+
     with col_ctrl_s:
         st.markdown('<p class="section-label">Source</p>', unsafe_allow_html=True)
-        scr_file = st.file_uploader("Déposez votre vidéo ici", type=["mp4", "mov", "avi", "mkv", "webm"],
-                                    key="su", label_visibility="collapsed")
+        scr_file = st.file_uploader(
+            "Déposez votre vidéo ici",
+            type=["mp4", "mov", "avi", "mkv", "webm"],
+            key="su",
+            label_visibility="collapsed",
+        )
 
     if scr_file:
         tmp_s = tempfile.mkdtemp()
@@ -929,13 +1274,26 @@ with tab_s:
         dur_s = nfo_s["duration"]
 
         with col_ctrl_s:
-            display_video_specs(nfo_s)
+            st.markdown(
+                f"""
+            <div class="specs-row">
+              <div class="spec-cell"><span class="spec-k">Largeur</span><span class="spec-v">{nfo_s ['width']} px</span></div>
+              <div class="spec-cell"><span class="spec-k">Hauteur</span><span class="spec-v">{nfo_s ['height']} px</span></div>
+              <div class="spec-cell"><span class="spec-k">Durée</span><span class="spec-v">{fmt_time (dur_s )}</span></div>
+              <div class="spec-cell"><span class="spec-k">FPS</span><span class="spec-v">{nfo_s ['fps']}</span></div>
+            </div>""",
+                unsafe_allow_html=True,
+            )
             st.markdown('<p class="section-label">Timecode (secondes)</p>', unsafe_allow_html=True)
             timecode = st.number_input(
-                "tc", min_value=0.0, max_value=float(dur_s),
+                "tc",
+                min_value=0.0,
+                max_value=float(dur_s),
                 value=float(st.session_state.get("cap_tc_ni", 0.0)),
-                step=0.1, format="%.2f",
-                key="cap_tc_ni", label_visibility="collapsed"
+                step=0.1,
+                format="%.2f",
+                key="cap_tc_ni",
+                label_visibility="collapsed",
             )
 
         with st.spinner(""):
@@ -945,31 +1303,48 @@ with tab_s:
             buf_s = io.BytesIO()
             frame.save(buf_s, format="PNG")
             st.markdown("<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True)
-            st.download_button("↓  Télécharger la capture", data=buf_s.getvalue(),
-                               file_name=f"capture_{fmt_time(timecode).replace(':','-')}.png",
-                               mime="image/png", key="sdl")
+            st.download_button(
+                "↓  Télécharger la capture",
+                data=buf_s.getvalue(),
+                file_name=f"capture_{fmt_time (timecode ).replace (':','-')}.png",
+                mime="image/png",
+                key="sdl",
+            )
 
         with col_prev_s:
             st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
             st.image(cap_image_for_preview(frame))
+            st.markdown("</div>", unsafe_allow_html=True)
+
     else:
         with col_ctrl_s:
-            st.markdown('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>', unsafe_allow_html=True)
+            st.markdown(
+                '<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>',
+                unsafe_allow_html=True,
+            )
         with col_prev_s:
-            st.markdown(placeholder_html(
-                '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>',
-                "L'aperçu apparaîtra ici"
-            ), unsafe_allow_html=True)
+            st.markdown(
+                """
+            <div class="preview-placeholder">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
+                <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+              </svg>
+              <span>L'aperçu apparaîtra ici</span>
+            </div>""",
+                unsafe_allow_html=True,
+            )
 
-# ---- ONGLET COUPER ----
+
 with tab_cut:
     col_ctrl_c, col_prev_c = st.columns([4, 6], gap="large")
+
     with col_ctrl_c:
         st.markdown('<p class="section-label">Source</p>', unsafe_allow_html=True)
         cut_file = st.file_uploader(
             "Déposez votre vidéo ici",
             type=["mp4", "mov", "avi", "mkv", "webm"],
-            key="cut_u", label_visibility="collapsed"
+            key="cut_u",
+            label_visibility="collapsed",
         )
 
     if cut_file:
@@ -985,33 +1360,60 @@ with tab_cut:
         dur_c = nfo_c["duration"]
 
         with col_ctrl_c:
-            display_video_specs(nfo_c)
+            st.markdown(
+                f"""
+            <div class="specs-row">
+              <div class="spec-cell"><span class="spec-k">Largeur</span><span class="spec-v">{nfo_c ['width']} px</span></div>
+              <div class="spec-cell"><span class="spec-k">Hauteur</span><span class="spec-v">{nfo_c ['height']} px</span></div>
+              <div class="spec-cell"><span class="spec-k">Durée</span><span class="spec-v">{fmt_time (dur_c )}</span></div>
+              <div class="spec-cell"><span class="spec-k">FPS</span><span class="spec-v">{nfo_c ['fps']}</span></div>
+            </div>""",
+                unsafe_allow_html=True,
+            )
+
             st.markdown('<p class="section-label-mt">Début du segment</p>', unsafe_allow_html=True)
             t_start = st.slider(
-                "Début", min_value=0.0, max_value=float(dur_c),
-                value=0.0, step=0.1, format="%.1f s",
-                key="cut_start", label_visibility="collapsed"
+                "Début",
+                min_value=0.0,
+                max_value=float(dur_c),
+                value=0.0,
+                step=0.1,
+                format="%.1f s",
+                key="cut_start",
+                label_visibility="collapsed",
             )
             st.markdown('<p class="section-label-mt">Fin du segment</p>', unsafe_allow_html=True)
             t_end = st.slider(
-                "Fin", min_value=0.0, max_value=float(dur_c),
-                value=float(dur_c), step=0.1, format="%.1f s",
-                key="cut_end", label_visibility="collapsed"
+                "Fin",
+                min_value=0.0,
+                max_value=float(dur_c),
+                value=float(dur_c),
+                step=0.1,
+                format="%.1f s",
+                key="cut_end",
+                label_visibility="collapsed",
             )
 
             if t_end <= t_start:
-                st.markdown('<div class="status status-err">⚠ La fin doit être après le début.</div>', unsafe_allow_html=True)
+                st.markdown(
+                    '<div class="status status-err">⚠ La fin doit être après le début.</div>',
+                    unsafe_allow_html=True,
+                )
                 t_end = min(t_start + 0.1, dur_c)
 
             seg_dur = t_end - t_start
-            st.markdown(f"""
+            st.markdown(
+                f"""
             <div class="cut-info-row">
-              <div class="cut-info-cell"><span>Début</span>{fmt_time(t_start)} ({t_start:.1f} s)</div>
-              <div class="cut-info-cell"><span>Fin</span>{fmt_time(t_end)} ({t_end:.1f} s)</div>
-              <div class="cut-info-cell"><span>Durée</span>{fmt_time(seg_dur)} ({seg_dur:.1f} s)</div>
-            </div>""", unsafe_allow_html=True)
+              <div class="cut-info-cell"><span>Début</span>{fmt_time (t_start )} ({t_start :.1f} s)</div>
+              <div class="cut-info-cell"><span>Fin</span>{fmt_time (t_end )} ({t_end :.1f} s)</div>
+              <div class="cut-info-cell"><span>Durée</span>{fmt_time (seg_dur )} ({seg_dur :.1f} s)</div>
+            </div>""",
+                unsafe_allow_html=True,
+            )
 
             st.markdown("<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True)
+
             cut_sig = (t_start, t_end, cut_file.name)
             if st.session_state.get("_cut_sig") != cut_sig:
                 st.session_state.cut_bytes = None
@@ -1023,7 +1425,7 @@ with tab_cut:
                     ph_c = st.empty()
                     ph_c.markdown(
                         '<div class="encoding-wrap"><div class="encoding-ring"></div><span class="encoding-text">Découpage en cours…</span></div><div class="fake-progress-wrap"><div class="fake-progress-track"><div class="fake-progress-bar"></div></div></div>',
-                        unsafe_allow_html=True
+                        unsafe_allow_html=True,
                     )
                     try:
                         trim_video(cp, out_c, t_start, t_end)
@@ -1032,68 +1434,97 @@ with tab_cut:
                             st.session_state.cut_bytes = f.read()
                         st.rerun()
                     except Exception as e:
-                        ph_c.markdown(f'<div class="status status-err">❌ Erreur : {e}</div>', unsafe_allow_html=True)
+                        ph_c.markdown(
+                            f'<div class="status status-err">Erreur : {e }</div>',
+                            unsafe_allow_html=True,
+                        )
             else:
                 st.download_button(
                     "↓  Télécharger le segment",
                     data=st.session_state.cut_bytes,
                     file_name="segment_coupe.mp4",
-                    mime="video/mp4", key="cut_dl"
+                    mime="video/mp4",
+                    key="cut_dl",
                 )
-                st.markdown('<div class="status status-ok">✅ Découpage terminé.</div>', unsafe_allow_html=True)
+                st.markdown(
+                    '<div class="status status-ok">Découpage terminé.</div>', unsafe_allow_html=True
+                )
 
         with col_prev_c:
-            st.markdown('<p class="section-label">Aperçu du segment sélectionné</p>', unsafe_allow_html=True)
+            st.markdown(
+                '<p class="section-label">Aperçu du segment sélectionné</p>', unsafe_allow_html=True
+            )
+
             with open(cp, "rb") as _vf:
-                _vb64 = b64.b64encode(_vf.read()).decode()
+                _vb64 = _b64.b64encode(_vf.read()).decode()
             _ext = os.path.splitext(cut_file.name)[1].lower().lstrip(".")
-            _mime = "video/mp4" if _ext in ("mp4", "m4v") else f"video/{_ext}"
-            components.html(f"""
-            <div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
-              <video id="cutplayer" controls style="width:100%;display:block;max-height:380px;object-fit:contain;"
-                     src="data:{_mime};base64,{_vb64}">
-              </video>
-            </div>
-            <script>
-              const p = document.getElementById('cutplayer');
-              const tStart = {t_start};
-              const tEnd = {t_end};
-              p.addEventListener('loadedmetadata', () => {{ p.currentTime = tStart; }});
-              p.addEventListener('timeupdate', () => {{
-                if (p.currentTime >= tEnd) {{ p.pause(); p.currentTime = tStart; }}
-              }});
-              p.addEventListener('play', () => {{
-                if (p.currentTime < tStart || p.currentTime >= tEnd) p.currentTime = tStart;
-              }});
-            </script>""", height=460)
+            _mime = "video/mp4" if _ext in ("mp4", "m4v") else f"video/{_ext }"
+            components.html(
+                f"""
+<div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
+
+  <video id="cutplayer" controls style="width:100%;display:block;max-height:380px;object-fit:contain;"
+         src="data:{_mime };base64,{_vb64 }">
+  </video>
+</div>
+<script>
+  const p = document.getElementById('cutplayer');
+  const tStart = {t_start };
+  const tEnd = {t_end };
+  p.addEventListener('loadedmetadata', () => {{ p.currentTime = tStart; }});
+  p.addEventListener('timeupdate', () => {{
+    if (p.currentTime >= tEnd) {{ p.pause(); p.currentTime = tStart; }}
+  }});
+  p.addEventListener('play', () => {{
+    if (p.currentTime < tStart || p.currentTime >= tEnd) p.currentTime = tStart;
+  }});
+</script>""",
+                height=460,
+            )
+
     else:
         with col_ctrl_c:
-            st.markdown('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>', unsafe_allow_html=True)
+            st.markdown(
+                '<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>',
+                unsafe_allow_html=True,
+            )
         with col_prev_c:
-            st.markdown(placeholder_html(
-                '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2"><line x1="8" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="16" y2="21"/><rect x="1" y="5" width="22" height="14" rx="2"/></svg>',
-                "L'aperçu apparaîtra ici"
-            ), unsafe_allow_html=True)
+            st.markdown(
+                """
+            <div class="preview-placeholder">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
+                <line x1="8" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="16" y2="21"/>
+                <rect x="1" y="5" width="22" height="14" rx="2"/>
+              </svg>
+              <span>L'aperçu apparaîtra ici</span>
+            </div>""",
+                unsafe_allow_html=True,
+            )
 
-# ---- ONGLET FUSIONNER ----
+
 with tab_merge:
     col_ctrl_m, col_prev_m = st.columns([4, 6], gap="large")
+
     with col_ctrl_m:
-        st.markdown('<p class="section-label">Sources (dans l\'ordre de fusion)</p>', unsafe_allow_html=True)
+        st.markdown(
+            '<p class="section-label">Sources (dans l\'ordre de fusion)</p>', unsafe_allow_html=True
+        )
         merge_files = st.file_uploader(
             "Déposez vos vidéos ici",
             type=["mp4", "mov", "avi", "mkv", "webm"],
-            key="merge_u", label_visibility="collapsed",
-            accept_multiple_files=True
+            key="merge_u",
+            label_visibility="collapsed",
+            accept_multiple_files=True,
         )
 
     if merge_files and len(merge_files) >= 2:
+
         tmp_m = tempfile.mkdtemp()
         merge_paths = []
         total_dur = 0.0
         nfo_list = []
         for i, mf in enumerate(merge_files):
-            mp = os.path.join(tmp_m, f"src_{i}" + os.path.splitext(mf.name)[1])
+            mp = os.path.join(tmp_m, f"src_{i }" + os.path.splitext(mf.name)[1])
             with open(mp, "wb") as f:
                 f.write(mf.read())
             merge_paths.append(mp)
@@ -1102,25 +1533,31 @@ with tab_merge:
             total_dur += nfo_m["duration"]
 
         with col_ctrl_m:
-            st.markdown('<p class="section-label-mt">Fichiers à fusionner</p>', unsafe_allow_html=True)
+            st.markdown(
+                '<p class="section-label-mt">Fichiers à fusionner</p>', unsafe_allow_html=True
+            )
             for i, (mf, nfo_m) in enumerate(zip(merge_files, nfo_list)):
                 st.markdown(
                     f'<div class="merge-item">'
-                    f'<div class="merge-item-idx">{i+1}</div>'
-                    f'<span class="merge-item-name">🎬 {mf.name}</span>'
-                    f'<span class="merge-item-dur">{fmt_time(nfo_m["duration"])} — {nfo_m["width"]}×{nfo_m["height"]}</span>'
-                    f'</div>',
-                    unsafe_allow_html=True
+                    f'<div class="merge-item-idx">{i +1 }</div>'
+                    f'<span class="merge-item-name">🎬 {mf .name }</span>'
+                    f'<span class="merge-item-dur">{fmt_time (nfo_m ["duration"])} — {nfo_m ["width"]}×{nfo_m ["height"]}</span>'
+                    f"</div>",
+                    unsafe_allow_html=True,
                 )
 
-            st.markdown(f"""
+            st.markdown(
+                f"""
             <div class="specs-row" style="margin-top:0.8rem;">
-              <div class="spec-cell"><span class="spec-k">Fichiers</span><span class="spec-v">{len(merge_files)}</span></div>
-              <div class="spec-cell"><span class="spec-k">Durée totale</span><span class="spec-v">{fmt_time(total_dur)}</span></div>
-              <div class="spec-cell"><span class="spec-k">Résolution</span><span class="spec-v">{nfo_list[0]['width']}×{nfo_list[0]['height']}</span></div>
-            </div>""", unsafe_allow_html=True)
+              <div class="spec-cell"><span class="spec-k">Fichiers</span><span class="spec-v">{len (merge_files )}</span></div>
+              <div class="spec-cell"><span class="spec-k">Durée totale</span><span class="spec-v">{fmt_time (total_dur )}</span></div>
+              <div class="spec-cell"><span class="spec-k">Résolution</span><span class="spec-v">{nfo_list [0 ]['width']}×{nfo_list [0 ]['height']}</span></div>
+            </div>""",
+                unsafe_allow_html=True,
+            )
 
             st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
+
             merge_sig = tuple(mf.name for mf in merge_files)
             if st.session_state.get("_merge_sig") != merge_sig:
                 st.session_state.merge_bytes = None
@@ -1132,7 +1569,7 @@ with tab_merge:
                     ph_m = st.empty()
                     ph_m.markdown(
                         '<div class="encoding-wrap"><div class="encoding-ring"></div><span class="encoding-text">Fusion en cours…</span></div><div class="fake-progress-wrap"><div class="fake-progress-track"><div class="fake-progress-bar"></div></div></div>',
-                        unsafe_allow_html=True
+                        unsafe_allow_html=True,
                     )
                     try:
                         merge_videos(merge_paths, out_m)
@@ -1141,44 +1578,67 @@ with tab_merge:
                             st.session_state.merge_bytes = f.read()
                         st.rerun()
                     except Exception as e:
-                        ph_m.markdown(f'<div class="status status-err">❌ Erreur : {e}</div>', unsafe_allow_html=True)
+                        ph_m.markdown(
+                            f'<div class="status status-err">Erreur : {e }</div>',
+                            unsafe_allow_html=True,
+                        )
             else:
                 st.download_button(
                     "↓  Télécharger la vidéo fusionnée",
                     data=st.session_state.merge_bytes,
                     file_name="fusion.mp4",
-                    mime="video/mp4", key="merge_dl"
+                    mime="video/mp4",
+                    key="merge_dl",
                 )
-                st.markdown('<div class="status status-ok">✅ Fusion terminée.</div>', unsafe_allow_html=True)
+                st.markdown(
+                    '<div class="status status-ok">Fusion terminée.</div>', unsafe_allow_html=True
+                )
 
         with col_prev_m:
             st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
             for i, (mp, mf) in enumerate(zip(merge_paths, merge_files)):
                 frame_m = extract_frame(mp, 0.0)
-                st.image(cap_image_for_preview(frame_m),
-                         caption=f"{i+1}. {mf.name}", use_container_width=True)
+                st.image(
+                    cap_image_for_preview(frame_m),
+                    caption=f"{i +1 }. {mf .name }",
+                    use_container_width=True,
+                )
 
     elif merge_files and len(merge_files) == 1:
         with col_ctrl_m:
-            st.markdown('<div class="status status-idle">Ajoutez au moins une deuxième vidéo pour fusionner.</div>', unsafe_allow_html=True)
+            st.markdown(
+                '<div class="status status-idle">Ajoutez au moins une deuxième vidéo pour fusionner.</div>',
+                unsafe_allow_html=True,
+            )
     else:
         with col_ctrl_m:
-            st.markdown('<div class="status status-idle">Déposez au moins <b>deux</b> vidéos via <i>Upload</i>.</div>', unsafe_allow_html=True)
+            st.markdown(
+                '<div class="status status-idle">Déposez au moins <b>deux</b> vidéos via <i>Upload</i>.</div>',
+                unsafe_allow_html=True,
+            )
         with col_prev_m:
-            st.markdown(placeholder_html(
-                '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2"><path d="M22 12H2M17 7l5 5-5 5M7 7l-5 5 5 5"/></svg>',
-                "L'aperçu apparaîtra ici"
-            ), unsafe_allow_html=True)
+            st.markdown(
+                """
+            <div class="preview-placeholder">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
+                <path d="M22 12H2M17 7l5 5-5 5M7 7l-5 5 5 5"/>
+              </svg>
+              <span>L'aperçu apparaîtra ici</span>
+            </div>""",
+                unsafe_allow_html=True,
+            )
 
-# ---- ONGLET SON ----
+
 with tab_audio:
     col_ctrl_a, col_prev_a = st.columns([4, 6], gap="large")
+
     with col_ctrl_a:
         st.markdown('<p class="section-label">Source</p>', unsafe_allow_html=True)
         audio_vid_file = st.file_uploader(
             "Déposez votre vidéo ici",
             type=["mp4", "mov", "avi", "mkv", "webm"],
-            key="audio_vid_u", label_visibility="collapsed"
+            key="audio_vid_u",
+            label_visibility="collapsed",
         )
 
     if audio_vid_file:
@@ -1193,35 +1653,58 @@ with tab_audio:
         nfo_a = get_video_info(avp)
 
         with col_ctrl_a:
-            display_video_specs(nfo_a)
+            st.markdown(
+                f"""
+            <div class="specs-row">
+              <div class="spec-cell"><span class="spec-k">Largeur</span><span class="spec-v">{nfo_a ['width']} px</span></div>
+              <div class="spec-cell"><span class="spec-k">Hauteur</span><span class="spec-v">{nfo_a ['height']} px</span></div>
+              <div class="spec-cell"><span class="spec-k">Durée</span><span class="spec-v">{fmt_time (nfo_a ['duration'])}</span></div>
+              <div class="spec-cell"><span class="spec-k">FPS</span><span class="spec-v">{nfo_a ['fps']}</span></div>
+            </div>""",
+                unsafe_allow_html=True,
+            )
+
             st.markdown('<p class="section-label-mt">Action</p>', unsafe_allow_html=True)
             audio_action = st.radio(
                 "Action audio",
                 ["Supprimer le son", "Remplacer par..."],
-                key="audio_action", label_visibility="collapsed"
+                key="audio_action",
+                label_visibility="collapsed",
             )
 
             audio_replace_file = None
             loop_audio = True
             if "Remplacer" in audio_action:
-                st.markdown('<p class="section-label-mt">Fichier audio de remplacement</p>', unsafe_allow_html=True)
+                st.markdown(
+                    '<p class="section-label-mt">Fichier audio de remplacement</p>',
+                    unsafe_allow_html=True,
+                )
                 audio_replace_file = st.file_uploader(
                     "Déposez votre fichier audio",
                     type=["mp3", "wav", "aac", "m4a", "ogg"],
-                    key="audio_replace_u", label_visibility="collapsed"
+                    key="audio_replace_u",
+                    label_visibility="collapsed",
                 )
                 if audio_replace_file:
                     st.markdown('<p class="section-label-mt">Options</p>', unsafe_allow_html=True)
-                    loop_audio = st.checkbox("Boucler l'audio si plus court que la vidéo", value=True, key="audio_loop")
+                    loop_audio = st.checkbox(
+                        "Boucler l'audio si plus court que la vidéo", value=True, key="audio_loop"
+                    )
 
             st.markdown("<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True)
-            audio_sig = (audio_vid_file.name, audio_action,
-                         audio_replace_file.name if audio_replace_file else None)
+
+            audio_sig = (
+                audio_vid_file.name,
+                audio_action,
+                audio_replace_file.name if audio_replace_file else None,
+            )
             if st.session_state.get("_audio_sig") != audio_sig:
                 st.session_state.audio_bytes = None
                 st.session_state["_audio_sig"] = audio_sig
 
-            can_go = ("Supprimer" in audio_action) or ("Remplacer" in audio_action and audio_replace_file)
+            can_go = ("Supprimer" in audio_action) or (
+                "Remplacer" in audio_action and audio_replace_file
+            )
 
             if not st.session_state.audio_bytes:
                 btn_lbl = "Supprimer le son" if "Supprimer" in audio_action else "Remplacer l'audio"
@@ -1231,13 +1714,16 @@ with tab_audio:
                         ph_a = st.empty()
                         ph_a.markdown(
                             '<div class="encoding-wrap"><div class="encoding-ring"></div><span class="encoding-text">Traitement audio en cours…</span></div><div class="fake-progress-wrap"><div class="fake-progress-track"><div class="fake-progress-bar"></div></div></div>',
-                            unsafe_allow_html=True
+                            unsafe_allow_html=True,
                         )
                         try:
                             if "Supprimer" in audio_action:
                                 remove_audio(avp, out_a)
                             else:
-                                arp = os.path.join(tmp_a, "audio_replace" + os.path.splitext(audio_replace_file.name)[1])
+                                arp = os.path.join(
+                                    tmp_a,
+                                    "audio_replace" + os.path.splitext(audio_replace_file.name)[1],
+                                )
                                 with open(arp, "wb") as f:
                                     f.write(audio_replace_file.read())
                                 replace_audio(avp, arp, out_a, loop_audio=loop_audio)
@@ -1246,82 +1732,124 @@ with tab_audio:
                                 st.session_state.audio_bytes = f.read()
                             st.rerun()
                         except Exception as e:
-                            ph_a.markdown(f'<div class="status status-err">❌ Erreur : {e}</div>', unsafe_allow_html=True)
+                            ph_a.markdown(
+                                f'<div class="status status-err">Erreur : {e }</div>',
+                                unsafe_allow_html=True,
+                            )
                 else:
-                    st.markdown('<div class="status status-idle">Déposez un fichier audio pour continuer.</div>', unsafe_allow_html=True)
+                    st.markdown(
+                        '<div class="status status-idle">Déposez un fichier audio pour continuer.</div>',
+                        unsafe_allow_html=True,
+                    )
             else:
                 st.download_button(
                     "↓  Télécharger la vidéo",
                     data=st.session_state.audio_bytes,
                     file_name="video_audio_modifie.mp4",
-                    mime="video/mp4", key="audio_dl"
+                    mime="video/mp4",
+                    key="audio_dl",
                 )
-                st.markdown('<div class="status status-ok">✅ Audio traité avec succès.</div>', unsafe_allow_html=True)
+                st.markdown(
+                    '<div class="status status-ok">Audio traité avec succès.</div>',
+                    unsafe_allow_html=True,
+                )
 
         with col_prev_a:
             st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
             with open(avp, "rb") as _vf:
-                _ab64 = b64.b64encode(_vf.read()).decode()
+                _ab64 = _b64.b64encode(_vf.read()).decode()
             _aext = os.path.splitext(audio_vid_file.name)[1].lower().lstrip(".")
-            _amime = "video/mp4" if _aext in ("mp4", "m4v") else f"video/{_aext}"
+            _amime = "video/mp4" if _aext in ("mp4", "m4v") else f"video/{_aext }"
 
             if "Supprimer" in audio_action:
-                components.html(f"""
-                <div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
-                  <video controls muted style="width:100%;display:block;max-height:380px;object-fit:contain;"
-                         src="data:{_amime};base64,{_ab64}"></video>
-                </div>
-                <p style="font-family:sans-serif;font-size:0.72rem;color:#999;text-align:center;margin:6px 0 0;">
-                  Mode muet — le son sera supprimé
-                </p>""", height=440)
+
+                components.html(
+                    f"""
+<div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
+  <video controls muted style="width:100%;display:block;max-height:380px;object-fit:contain;"
+         src="data:{_amime };base64,{_ab64 }"></video>
+</div>
+<p style="font-family:sans-serif;font-size:0.72rem;color:#999;text-align:center;margin:6px 0 0;">
+  Mode muet — le son sera supprimé
+</p>""",
+                    height=440,
+                )
+
             elif "Remplacer" in audio_action and audio_replace_file:
+
                 _aud_bytes = audio_replace_file.read()
-                _aud_b64 = b64.b64encode(_aud_bytes).decode()
+                _aud_b64 = _b64.b64encode(_aud_bytes).decode()
                 _aud_ext = os.path.splitext(audio_replace_file.name)[1].lower().lstrip(".")
-                _aud_mime_map = {"mp3": "audio/mpeg", "wav": "audio/wav",
-                                 "aac": "audio/aac", "m4a": "audio/mp4", "ogg": "audio/ogg"}
+                _aud_mime_map = {
+                    "mp3": "audio/mpeg",
+                    "wav": "audio/wav",
+                    "aac": "audio/aac",
+                    "m4a": "audio/mp4",
+                    "ogg": "audio/ogg",
+                }
                 _aud_mime = _aud_mime_map.get(_aud_ext, "audio/mpeg")
-                components.html(f"""
-                <div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
-                  <video id="prev_vid" controls muted style="width:100%;display:block;max-height:360px;object-fit:contain;"
-                         src="data:{_amime};base64,{_ab64}"></video>
-                </div>
-                <audio id="prev_aud" src="data:{_aud_mime};base64,{_aud_b64}" {"loop" if loop_audio else ""}></audio>
-                <p style="font-family:sans-serif;font-size:0.72rem;color:#999;text-align:center;margin:6px 0 0;">
-                  Avec le nouvel audio — <b>{audio_replace_file.name}</b>
-                </p>
-                <script>
-                  const vid = document.getElementById('prev_vid');
-                  const aud = document.getElementById('prev_aud');
-                  vid.addEventListener('play',  () => aud.play());
-                  vid.addEventListener('pause', () => aud.pause());
-                  vid.addEventListener('seeked', () => {{ aud.currentTime = vid.currentTime; }});
-                  vid.addEventListener('ended', () => {{ aud.pause(); aud.currentTime = 0; }});
-                </script>""", height=450)
+                components.html(
+                    f"""
+<div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
+  <video id="prev_vid" controls muted style="width:100%;display:block;max-height:360px;object-fit:contain;"
+         src="data:{_amime };base64,{_ab64 }"></video>
+</div>
+<audio id="prev_aud" src="data:{_aud_mime };base64,{_aud_b64 }" {"loop"if loop_audio else ""}></audio>
+<p style="font-family:sans-serif;font-size:0.72rem;color:#999;text-align:center;margin:6px 0 0;">
+  Avec le nouvel audio — <b>{audio_replace_file .name }</b>
+</p>
+<script>
+  const vid = document.getElementById('prev_vid');
+  const aud = document.getElementById('prev_aud');
+  vid.addEventListener('play',  () => aud.play());
+  vid.addEventListener('pause', () => aud.pause());
+  vid.addEventListener('seeked', () => {{ aud.currentTime = vid.currentTime; }});
+  vid.addEventListener('ended', () => {{ aud.pause(); aud.currentTime = 0; }});
+</script>""",
+                    height=450,
+                )
+
             else:
-                components.html(f"""
-                <div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
-                  <video controls style="width:100%;display:block;max-height:380px;object-fit:contain;"
-                         src="data:{_amime};base64,{_ab64}"></video>
-                </div>""", height=420)
+
+                components.html(
+                    f"""
+<div style="border:1px solid #e4e4e4;border-radius:10px;overflow:hidden;background:#0a0a0a;">
+  <video controls style="width:100%;display:block;max-height:380px;object-fit:contain;"
+         src="data:{_amime };base64,{_ab64 }"></video>
+</div>""",
+                    height=420,
+                )
+
     else:
         with col_ctrl_a:
-            st.markdown('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>', unsafe_allow_html=True)
+            st.markdown(
+                '<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>',
+                unsafe_allow_html=True,
+            )
         with col_prev_a:
-            st.markdown(placeholder_html(
-                '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><line x1="2" y1="2" x2="22" y2="22" stroke="#0068B1" stroke-width="1.4"/></svg>',
-                "L'aperçu apparaîtra ici"
-            ), unsafe_allow_html=True)
+            st.markdown(
+                """
+            <div class="preview-placeholder">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
+                <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+                <line x1="2" y1="2" x2="22" y2="22" stroke="#0068B1" stroke-width="1.4"/>
+              </svg>
+              <span>L'aperçu apparaîtra ici</span>
+            </div>""",
+                unsafe_allow_html=True,
+            )
 
-# ---- ONGLET RECADRAGE ----
+
 with tab_crop:
     col_ctrl_r, col_prev_r = st.columns([4, 6], gap="large")
+
     with col_ctrl_r:
         st.markdown('<p class="section-label">Source</p>', unsafe_allow_html=True)
         crop_file = st.file_uploader(
             "Déposez votre vidéo ici",
             type=["mp4", "mov", "avi", "mkv", "webm"],
-            key="crop_u", label_visibility="collapsed"
+            key="crop_u",
+            label_visibility="collapsed",
         )
 
     if crop_file:
@@ -1337,13 +1865,24 @@ with tab_crop:
         W_r, H_r = nfo_r["width"], nfo_r["height"]
 
         with col_ctrl_r:
-            display_video_specs(nfo_r)
+            st.markdown(
+                f"""
+            <div class="specs-row">
+              <div class="spec-cell"><span class="spec-k">Largeur</span><span class="spec-v">{W_r } px</span></div>
+              <div class="spec-cell"><span class="spec-k">Hauteur</span><span class="spec-v">{H_r } px</span></div>
+              <div class="spec-cell"><span class="spec-k">Durée</span><span class="spec-v">{fmt_time (nfo_r ['duration'])}</span></div>
+              <div class="spec-cell"><span class="spec-k">Ratio actuel</span><span class="spec-v">{W_r }:{H_r }</span></div>
+            </div>""",
+                unsafe_allow_html=True,
+            )
+
             st.markdown('<p class="section-label-mt">Ratio cible</p>', unsafe_allow_html=True)
             preset_choice_idx = st.radio(
                 "Ratio",
                 options=list(range(len(CROP_PRESETS))),
-                format_func=lambda i: f"{CROP_PRESETS[i][0]}  —  {CROP_PRESETS[i][3]}",
-                key="crop_preset", label_visibility="collapsed"
+                format_func=lambda i: f"{CROP_PRESETS [i ][0 ]}  —  {CROP_PRESETS [i ][3 ]}",
+                key="crop_preset",
+                label_visibility="collapsed",
             )
             chosen = CROP_PRESETS[preset_choice_idx]
             rw, rh = chosen[1], chosen[2]
@@ -1361,18 +1900,24 @@ with tab_crop:
 
             st.markdown('<p class="section-label-mt">Position du cadre</p>', unsafe_allow_html=True)
             crop_pos = st.selectbox(
-                "Position", ["Centre", "Haut", "Bas", "Gauche", "Droite"],
-                key="crop_pos", label_visibility="collapsed"
+                "Position",
+                ["Centre", "Haut", "Bas", "Gauche", "Droite"],
+                key="crop_pos",
+                label_visibility="collapsed",
             )
 
-            st.markdown(f"""
+            st.markdown(
+                f"""
             <div class="cut-info-row">
-              <div class="cut-info-cell"><span>Ratio</span>{chosen[0]}</div>
-              <div class="cut-info-cell"><span>Résolution finale</span>{out_w} × {out_h} px</div>
-              <div class="cut-info-cell"><span>Usage</span>{chosen[3]}</div>
-            </div>""", unsafe_allow_html=True)
+              <div class="cut-info-cell"><span>Ratio</span>{chosen [0 ]}</div>
+              <div class="cut-info-cell"><span>Résolution finale</span>{out_w } × {out_h } px</div>
+              <div class="cut-info-cell"><span>Usage</span>{chosen [3 ]}</div>
+            </div>""",
+                unsafe_allow_html=True,
+            )
 
             st.markdown("<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True)
+
             crop_sig = (crop_file.name, preset_choice_idx, crop_pos)
             if st.session_state.get("_crop_sig") != crop_sig:
                 st.session_state.crop_bytes = None
@@ -1384,7 +1929,7 @@ with tab_crop:
                     ph_r = st.empty()
                     ph_r.markdown(
                         '<div class="encoding-wrap"><div class="encoding-ring"></div><span class="encoding-text">Recadrage en cours…</span></div><div class="fake-progress-wrap"><div class="fake-progress-track"><div class="fake-progress-bar"></div></div></div>',
-                        unsafe_allow_html=True
+                        unsafe_allow_html=True,
                     )
                     try:
                         crop_video(crp, out_r, rw, rh, position=crop_pos)
@@ -1393,20 +1938,28 @@ with tab_crop:
                             st.session_state.crop_bytes = f.read()
                         st.rerun()
                     except Exception as e:
-                        ph_r.markdown(f'<div class="status status-err">❌ Erreur : {e}</div>', unsafe_allow_html=True)
+                        ph_r.markdown(
+                            f'<div class="status status-err">Erreur : {e }</div>',
+                            unsafe_allow_html=True,
+                        )
             else:
                 st.download_button(
                     "↓  Télécharger la vidéo recadrée",
                     data=st.session_state.crop_bytes,
-                    file_name=f"recadre_{chosen[0].replace(':','x')}.mp4",
-                    mime="video/mp4", key="crop_dl"
+                    file_name=f"recadre_{chosen [0 ].replace (':','x')}.mp4",
+                    mime="video/mp4",
+                    key="crop_dl",
                 )
-                st.markdown('<div class="status status-ok">✅ Recadrage terminé.</div>', unsafe_allow_html=True)
+                st.markdown(
+                    '<div class="status status-ok">Recadrage terminé.</div>', unsafe_allow_html=True
+                )
 
         with col_prev_r:
             st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
             with st.spinner(""):
                 frame_r = extract_frame(crp, 0.0)
+            from PIL import ImageDraw
+
             prev_r = frame_r.copy()
             pw, ph_img = prev_r.size
             tratio = rw / rh
@@ -1436,25 +1989,36 @@ with tab_crop:
             prev_r = prev_r.convert("RGBA")
             prev_r = Image.alpha_composite(prev_r, overlay).convert("RGB")
             draw2 = ImageDraw.Draw(prev_r)
-            draw2.rectangle([cx, cy, cx + cw - 1, cy + ch - 1],
-                            outline=(0, 104, 177), width=3)
-            st.image(cap_image_for_preview(prev_r),
-                     caption=f"{chosen[0]} — {out_w}×{out_h} px — {crop_pos}")
+            draw2.rectangle([cx, cy, cx + cw - 1, cy + ch - 1], outline=(0, 104, 177), width=3)
+            st.image(
+                cap_image_for_preview(prev_r),
+                caption=f"{chosen [0 ]} — {out_w }×{out_h } px — {crop_pos }",
+            )
+
     else:
         with col_ctrl_r:
-            st.markdown('<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>', unsafe_allow_html=True)
+            st.markdown(
+                '<div class="status status-idle">Déposez une vidéo via <i>Upload</i>.</div>',
+                unsafe_allow_html=True,
+            )
         with col_prev_r:
-            st.markdown(placeholder_html(
-                '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2"><path d="M6 2H2v4M18 2h4v4M6 22H2v-4M18 22h4v-4"/><rect x="6" y="6" width="12" height="12" rx="1"/></svg>',
-                "L'aperçu apparaîtra ici"
-            ), unsafe_allow_html=True)
+            st.markdown(
+                """
+            <div class="preview-placeholder">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
+                <path d="M6 2H2v4M18 2h4v4M6 22H2v-4M18 22h4v-4"/>
+                <rect x="6" y="6" width="12" height="12" rx="1"/>
+              </svg>
+              <span>L'aperçu apparaîtra ici</span>
+            </div>""",
+                unsafe_allow_html=True,
+            )
 
-# ---- ONGLET TEMPLATE RS ----
+
 with tab_canva:
-    # Import du logo par défaut pour le watermark
     try:
         with open(DEFAULT_WM_FILE, "rb") as _wm_f:
-            _wm_b64_canva = b64.b64encode(_wm_f.read()).decode()
+            _wm_b64_canva = _b64.b64encode(_wm_f.read()).decode()
         _wm_mime_canva = "image/png"
     except Exception:
         _wm_b64_canva = ""
@@ -1462,13 +2026,16 @@ with tab_canva:
 
     col_ctrl_cv, col_prev_cv = st.columns([4, 6], gap="large")
 
-    # CSS de réduction d'espace
-    st.markdown("""
+    st.markdown(
+        """
     <style>
+    /* Réduit l'espace autour des sliders dans l'onglet Canva */
     [data-testid="stSlider"] { margin-bottom: 0 !important; padding-bottom: 0 !important; }
     [data-testid="stSlider"] > div { padding-bottom: 0 !important; }
+    /* Réduit la hauteur des color pickers */
     [data-testid="stColorPicker"] { margin-bottom: 0 !important; }
     [data-testid="stColorPicker"] label { font-size: 0.72rem !important; margin-bottom: 2px !important; }
+    /* Bouton reset : petit, discret, pill */
     .cv-reset > button {
       height: 26px !important; min-height: 26px !important;
       font-size: 0.7rem !important; padding: 0 0.7rem !important;
@@ -1480,9 +2047,10 @@ with tab_canva:
     }
     .cv-reset > button:hover { border-color: var(--blue, #0068B1) !important; color: var(--blue, #0068B1) !important; background: var(--blue-dim, #e8f2fb) !important; }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
-    # Initialisation des valeurs
     _CV_DEFAULTS = {"canva_y": 72, "canva_imgzoom": 100}
     for _k, _v in _CV_DEFAULTS.items():
         if _k not in st.session_state:
@@ -1496,31 +2064,37 @@ with tab_canva:
         st.session_state["_cv_reset_zoom"] = False
 
     with col_ctrl_cv:
+
         _cr1, _cr2, _cr3 = st.columns(3)
         with _cr1:
             st.markdown('<p class="section-label">Arrière-plan</p>', unsafe_allow_html=True)
             canva_bg_file = st.file_uploader(
                 "Déposez votre image ici",
                 type=["png", "jpg", "jpeg", "webp"],
-                key="canva_bg", label_visibility="collapsed"
+                key="canva_bg",
+                label_visibility="collapsed",
             )
         with _cr2:
             st.markdown('<p class="section-label">Format</p>', unsafe_allow_html=True)
             canva_format = st.selectbox(
-                "Format", [
+                "Format",
+                [
                     "1080×1350 — Portrait",
                     "1080×1080 — Carré",
                     "1080×1920 — Stories",
                 ],
-                key="canva_format", label_visibility="collapsed"
+                key="canva_format",
+                label_visibility="collapsed",
             )
         with _cr3:
             st.markdown('<p class="section-label">Watermark</p>', unsafe_allow_html=True)
             wm_opts_cv = {
                 "position": st.selectbox(
-                    "Position watermark", POSITIONS,
+                    "Position watermark",
+                    POSITIONS,
                     index=POSITIONS.index(DEFAULT_POSITION),
-                    key="cv_pos", label_visibility="collapsed"
+                    key="cv_pos",
+                    label_visibility="collapsed",
                 ),
                 "custom_x": 0,
                 "custom_y": 0,
@@ -1528,9 +2102,13 @@ with tab_canva:
             if wm_opts_cv["position"] == "Coordonnées personnalisées":
                 _wx, _wy = st.columns(2)
                 with _wx:
-                    wm_opts_cv["custom_x"] = int(st.number_input("X", min_value=0, value=0, step=1, key="cv_cx"))
+                    wm_opts_cv["custom_x"] = int(
+                        st.number_input("X", min_value=0, value=0, step=1, key="cv_cx")
+                    )
                 with _wy:
-                    wm_opts_cv["custom_y"] = int(st.number_input("Y", min_value=0, value=0, step=1, key="cv_cy"))
+                    wm_opts_cv["custom_y"] = int(
+                        st.number_input("Y", min_value=0, value=0, step=1, key="cv_cy")
+                    )
 
         _fmt_map = {
             "1080×1350 — Portrait": (1080, 1350),
@@ -1539,7 +2117,6 @@ with tab_canva:
         }
         canva_w, canva_h = _fmt_map[canva_format]
 
-        # Gestion du décalage
         _canva_offset_sig = (canva_bg_file.name if canva_bg_file else None, canva_format)
         if st.session_state.get("_canva_offset_sig") != _canva_offset_sig:
             st.session_state["canva_offset"] = "0,0"
@@ -1547,16 +2124,15 @@ with tab_canva:
         if "canva_offset" not in st.session_state:
             st.session_state["canva_offset"] = "0,0"
 
-        # Champ caché pour le décalage
         st.markdown(
             """<style>
-            div[data-testid="stTextInput"]:has(input[aria-label="canva_offset_bridge"]) {
-              position:fixed !important; top:-9999px !important; left:-9999px !important;
-              width:1px !important; height:1px !important; min-height:0 !important;
-              overflow:hidden !important; opacity:0 !important; margin:0 !important; padding:0 !important;
-            }
-            </style>""",
-            unsafe_allow_html=True
+        div[data-testid="stTextInput"]:has(input[aria-label="canva_offset_bridge"]) {
+          position:fixed !important; top:-9999px !important; left:-9999px !important;
+          width:1px !important; height:1px !important; min-height:0 !important;
+          overflow:hidden !important; opacity:0 !important; margin:0 !important; padding:0 !important;
+        }
+        </style>""",
+            unsafe_allow_html=True,
         )
         canva_offset_raw = st.text_input(
             "canva_offset_bridge", key="canva_offset", label_visibility="collapsed"
@@ -1569,12 +2145,17 @@ with tab_canva:
             canva_off_x, canva_off_y = 0.0, 0.0
 
         st.markdown('<p class="section-label">Surtitre</p>', unsafe_allow_html=True)
-        canva_sur = st.text_input("Surtitre", value="Modifier le surtitre", key="canva_sur", label_visibility="collapsed")
+        canva_sur = st.text_input(
+            "Surtitre", value="Modifier le surtitre", key="canva_sur", label_visibility="collapsed"
+        )
 
         st.markdown('<p class="section-label">Titre principal</p>', unsafe_allow_html=True)
         canva_title = st.text_area(
-            "Titre", value="Modifier le titre (➡️ il maintenant possible de faire des retours à la ligne grâce à la touche Entrée)",
-            key="canva_title", label_visibility="collapsed", height=80
+            "Titre",
+            value="Modifier le titre (➡️ il maintenant possible de faire des retours à la ligne grâce à la touche Entrée)",
+            key="canva_title",
+            label_visibility="collapsed",
+            height=80,
         )
 
         canva_block_color = "#0068B1"
@@ -1582,23 +2163,41 @@ with tab_canva:
         canva_sur_bg = "#ffffff"
         canva_sur_color = "#0068B1"
 
-        st.markdown('<p class="section-label" style="margin-top:10px;">Position du texte</p>', unsafe_allow_html=True)
-        canva_y = st.slider("Position Y", min_value=5, max_value=95, key="canva_y", label_visibility="collapsed")
+        st.markdown(
+            '<p class="section-label" style="margin-top:10px;">Position du texte</p>',
+            unsafe_allow_html=True,
+        )
+        canva_y = st.slider(
+            "Position Y", min_value=5, max_value=95, key="canva_y", label_visibility="collapsed"
+        )
 
         if canva_bg_file:
-            st.markdown('<p class="section-label" style="margin-top:6px;">Zoom photo</p>', unsafe_allow_html=True)
-            canva_img_zoom = st.slider("Zoom photo", min_value=100, max_value=300, key="canva_imgzoom", label_visibility="collapsed")
+            st.markdown(
+                '<p class="section-label" style="margin-top:6px;">Zoom photo</p>',
+                unsafe_allow_html=True,
+            )
+            canva_img_zoom = st.slider(
+                "Zoom photo",
+                min_value=100,
+                max_value=300,
+                key="canva_imgzoom",
+                label_visibility="collapsed",
+            )
         else:
             canva_img_zoom = 100
+
+        canva_wm_size = 13
+        canva_wm_opac = 100
 
         st.markdown("<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True)
 
         def _hex_to_rgb(h):
-            h = h.lstrip('#')
-            return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+            h = h.lstrip("#")
+            return tuple(int(h[i : i + 2], 16) for i in (0, 2, 4))
 
         def generate_canva_image():
             from PIL import ImageDraw, ImageFont
+
             W, H = canva_w, canva_h
             img = Image.new("RGBA", (W, H), (34, 34, 34, 255))
 
@@ -1639,28 +2238,32 @@ with tab_canva:
             overlap = int(W * 0.003)
 
             try:
-                font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fs)
-                font_sur = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fs_sur)
+                font_title = ImageFont.truetype(
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fs
+                )
+                font_sur = ImageFont.truetype(
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fs_sur
+                )
             except Exception:
                 font_title = ImageFont.load_default()
                 font_sur = ImageFont.load_default()
 
             def _wrap_segment(text, max_chars=28):
-                words = text.split(' ')
-                segs, cur = [], ''
+                words = text.split(" ")
+                segs, cur = [], ""
                 for w in words:
                     if len(cur + w) < max_chars:
-                        cur += (' ' if cur else '') + w
+                        cur += (" " if cur else "") + w
                     else:
                         if cur:
                             segs.append(cur)
                         cur = w
                 if cur:
                     segs.append(cur)
-                return segs if segs else ['']
+                return segs if segs else [""]
 
             lines = []
-            for segment in canva_title.split('\n'):
+            for segment in canva_title.split("\n"):
                 lines.extend(_wrap_segment(segment))
 
             cx = int((50 / 100) * W)
@@ -1691,7 +2294,9 @@ with tab_canva:
             sur_x = cx - sur_w // 2
             sur_y = block_top - sur_h - int(W * -0.000)
             draw_rounded_rect(draw, sur_x, sur_y, sur_w, sur_h, radius, sbg)
-            draw.text((sur_x + pad, sur_y + sur_h // 2 - fs_sur // 2), canva_sur, font=font_sur, fill=sc)
+            draw.text(
+                (sur_x + pad, sur_y + sur_h // 2 - fs_sur // 2), canva_sur, font=font_sur, fill=sc
+            )
 
             for i, line in enumerate(lines):
                 lw = line_widths[i]
@@ -1706,38 +2311,57 @@ with tab_canva:
                 draw.text((lx + pad, ly + lh // 2 - fs // 2), line, font=font_title, fill=tc)
 
             result = composite_logo(
-                img.convert("RGB"), DEFAULT_WM_FILE,
+                img.convert("RGB"),
+                DEFAULT_WM_FILE,
                 position=wm_opts_cv["position"],
                 custom_x=wm_opts_cv["custom_x"],
                 custom_y=wm_opts_cv["custom_y"],
-                force_w=W, force_h=H
+                force_w=W,
+                force_h=H,
             )
+
             return result
 
-        st.markdown("""
-        <div style="margin-top:1.2rem; padding:0.75rem 1rem; background:#e8f2fb; border:1px solid #b3d4f0; border-radius:8px; font-size:0.82rem; color:#0068B1; line-height:1.6;">
-          Pour télécharger le visuel, <b>faites un clic droit sur l'aperçu</b> puis sélectionnez <code>Enregistrer l'image sous…</code>
-        </div>""", unsafe_allow_html=True)
+        st.markdown(
+            """
+<div style="margin-top:1.2rem; padding:0.75rem 1rem; background:#e8f2fb; border:1px solid #b3d4f0; border-radius:8px; font-size:0.82rem; color:#0068B1; line-height:1.6;">
+  Pour télécharger le visuel, <b>faites un clic droit sur l'aperçu</b> puis sélectionnez <code>Enregistrer l'image sous…</code>
+</div>""",
+            unsafe_allow_html=True,
+        )
 
     with col_prev_cv:
         st.markdown('<p class="section-label">Aperçu</p>', unsafe_allow_html=True)
 
         if not canva_bg_file:
-            st.markdown(placeholder_html(
-                '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
-                "Glissez une image pour voir l'aperçu"
-            ), unsafe_allow_html=True)
+            st.markdown(
+                """
+            <div class="preview-placeholder">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.2">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <path d="M21 15l-5-5L5 21"/>
+              </svg>
+              <span>Glissez une image pour voir l'aperçu</span>
+            </div>""",
+                unsafe_allow_html=True,
+            )
         else:
             canva_bg_file.seek(0)
-            _canva_bg_b64 = b64.b64encode(canva_bg_file.read()).decode()
+            _canva_bg_b64 = _b64.b64encode(canva_bg_file.read()).decode()
             _ext = canva_bg_file.name.rsplit(".", 1)[-1].lower()
-            _canva_bg_mime = "image/png" if _ext == "png" else ("image/webp" if _ext == "webp" else "image/jpeg")
+            _canva_bg_mime = (
+                "image/png" if _ext == "png" else ("image/webp" if _ext == "webp" else "image/jpeg")
+            )
 
-            _js_title = json.dumps(canva_title)
-            _js_sur = json.dumps(canva_sur)
+            import json as _json
+
+            _js_title = _json.dumps(canva_title)
+            _js_sur = _json.dumps(canva_sur)
 
             _preview_h = min(700, int(560 * canva_h / canva_w))
-            components.html(f"""<!DOCTYPE html>
+            components.html(
+                f"""<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8">
 <style>
@@ -1749,34 +2373,34 @@ with tab_canva:
 <body>
 <div id="canvasWrap"><canvas id="c"></canvas></div>
 <script>
-const CANVAS_W = {canva_w};
-const CANVAS_H = {canva_h};
-const BG_B64   = "{_canva_bg_b64}";
-const BG_MIME  = "{_canva_bg_mime}";
-const WM_B64   = "{_wm_b64_canva}";
-const WM_MIME  = "{_wm_mime_canva}";
-const TITLE    = {_js_title};
-const SURTITRE = {_js_sur};
-const Y_PCT    = {canva_y} / 100;
+const CANVAS_W = {canva_w };
+const CANVAS_H = {canva_h };
+const BG_B64   = "{_canva_bg_b64 }";
+const BG_MIME  = "{_canva_bg_mime }";
+const WM_B64   = "{_wm_b64_canva }";
+const WM_MIME  = "{_wm_mime_canva }";
+const TITLE    = {_js_title };
+const SURTITRE = {_js_sur };
+const Y_PCT    = {canva_y } / 100;
 const X_PCT    = 50 / 100;
-const IMG_ZOOM = {canva_img_zoom} / 100;
-const BLOCK_COLOR = "{canva_block_color}";
-const TEXT_COLOR  = "{canva_text_color}";
-const SUR_BG      = "{canva_sur_bg}";
-const SUR_COLOR   = "{canva_sur_color}";
+const IMG_ZOOM = {canva_img_zoom } / 100;
+const BLOCK_COLOR = "{canva_block_color }";
+const TEXT_COLOR  = "{canva_text_color }";
+const SUR_BG      = "{canva_sur_bg }";
+const SUR_COLOR   = "{canva_sur_color }";
 const WM_SIZE_PCT = 13 / 100;
 const WM_OPAC     = 1.0;
-const WM_POS      = "{wm_opts_cv["position"]}";
-const WM_CX       = {wm_opts_cv["custom_x"]};
-const WM_CY       = {wm_opts_cv["custom_y"]};
+const WM_POS      = "{wm_opts_cv ["position"]}";
+const WM_CX       = {wm_opts_cv ["custom_x"]};
+const WM_CY       = {wm_opts_cv ["custom_y"]};
 const MARGIN_R    = 0.04;
-const INIT_OFF_X  = {canva_off_x};
-const INIT_OFF_Y  = {canva_off_y};
+const INIT_OFF_X  = {canva_off_x };
+const INIT_OFF_Y  = {canva_off_y };
 
 const canvas = document.getElementById('c');
 const ctx    = canvas.getContext('2d');
 
-const AVAIL_H   = {_preview_h} - 52;
+const AVAIL_H   = {_preview_h } - 52;
 const PREVIEW_W = Math.min(Math.floor(AVAIL_H * CANVAS_W / CANVAS_H), window.innerWidth - 20);
 const UI_ZOOM   = PREVIEW_W / CANVAS_W;
 canvas.width  = CANVAS_W;
@@ -1989,62 +2613,123 @@ function syncOffsetToStreamlit() {{
 
 </script>
 </body>
-</html>""", height=_preview_h + 52, scrolling=False)
+</html>""",
+                height=_preview_h + 52,
+                scrolling=False,
+            )
 
-# ---- ONGLET AIDE ----
+
 with tab_help:
-    st.markdown("## 📖 Tutoriel")
-    with st.expander("🎥 Watermark vidéo"):
-        st.write("""
-        - Téléchargez une vidéo.
-        - Choisissez la position du filigrane et la qualité d'export.
-        - Cliquez sur « Générer le rendu » puis téléchargez le résultat.
-        """)
-    with st.expander("🖼️ Watermark photo"):
-        st.write("""
-        - Téléchargez une ou plusieurs images.
-        - Sélectionnez la position du filigrane.
-        - Téléchargez individuellement ou en lot (zip).
-        """)
-    with st.expander("📸 Capture d'écran"):
-        st.write("""
-        - Téléchargez une vidéo.
-        - Définissez le timecode (en secondes).
-        - Téléchargez la capture PNG.
-        """)
-    with st.expander("✂️ Couper"):
-        st.write("""
-        - Téléchargez une vidéo.
-        - Ajustez les curseurs de début et fin.
-        - Générez le segment et téléchargez-le.
-        """)
-    with st.expander("🔗 Fusionner"):
-        st.write("""
-        - Téléchargez au moins deux vidéos (dans l'ordre souhaité).
-        - Cliquez sur « Fusionner » pour obtenir une seule vidéo.
-        """)
-    with st.expander("🔊 Son"):
-        st.write("""
-        - Supprimez le son d'une vidéo ou remplacez-le par un fichier audio.
-        - Option de boucle si l'audio est plus court.
-        """)
-    with st.expander("📐 Recadrer"):
-        st.write("""
-        - Choisissez un ratio prédéfini (9:16, 1:1, etc.) ou personnalisez.
-        - Sélectionnez la position du cadre.
-        - Téléchargez la vidéo recadrée.
-        """)
-    with st.expander("📱 Template RS"):
-        st.write("""
-        - Créez un visuel pour les réseaux sociaux.
-        - Ajoutez une image de fond, un surtitre et un titre principal.
-        - Ajustez la position du texte et le zoom.
-        - Faites un clic droit sur l'aperçu pour enregistrer.
-        """)
+    col_help_l, col_help_r = st.columns([1, 1], gap="large")
 
-    st.markdown("## 🚀 Dernières mises à jour")
-    st.markdown("""
-    - **Version 1.2** (2026-07-27) : Ajout de l'onglet Aide, responsive amélioré, code compacté.
-    - **Version 1.1** : Interface revue, ajout du recadrage et du template RS.
-    - **Version 1.0** : Lancement initial avec watermark, capture, coupe, fusion, audio.
-    """)
+    HELP_TOPICS = [
+        (
+            "Watermark vidéo",
+            "Dépose une vidéo, positionne le logo, choisis la qualité "
+            "d'export puis génère le rendu final prêt à publier.",
+        ),
+        (
+            "Watermark photo",
+            "Fonctionne comme la vidéo mais accepte plusieurs images à "
+            "la fois. Un ZIP est proposé dès que plus d'un fichier est importé.",
+        ),
+        (
+            "Capture d'écran",
+            "Extrait une image nette de la vidéo à un timecode précis "
+            "(en secondes) et la télécharge en PNG.",
+        ),
+        (
+            "Couper",
+            "Sélectionne un début et une fin (en secondes) pour extraire un "
+            "segment de la vidéo sans ré-encodage.",
+        ),
+        ("Fusionner", "Assemble plusieurs vidéos dans l'ordre choisi en un seul " "fichier final."),
+        (
+            "Son",
+            "Supprime la piste audio d'une vidéo ou la remplace par un fichier "
+            "audio importé, avec option de bouclage.",
+        ),
+        (
+            "Recadrer",
+            "Applique un ratio prédéfini (Stories, carré, cinéma…) et choisit "
+            "la zone de la vidéo à conserver.",
+        ),
+        (
+            "Template RS",
+            "Compose un visuel avec titre, sur-titre et logo pour les "
+            "réseaux sociaux, à enregistrer via clic droit sur l'aperçu.",
+        ),
+    ]
+
+    with col_help_l:
+        st.markdown(
+            """
+            <div class="help-hero">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.4">
+                <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+              </svg>
+              <div>
+                <h2>Guide d'utilisation</h2>
+                <p>Un rappel rapide du rôle de chaque outil.</p>
+              </div>
+            </div>""",
+            unsafe_allow_html=True,
+        )
+        for title, desc in HELP_TOPICS[:4]:
+            st.markdown(
+                f'<div class="help-card"><h3>{title}</h3><p>{desc}</p></div>',
+                unsafe_allow_html=True,
+            )
+
+    with col_help_r:
+        st.markdown(
+            """
+            <div class="help-hero">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0068B1" stroke-width="1.4">
+                <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+              </svg>
+              <div>
+                <h2>Suite des outils</h2>
+                <p>&nbsp;</p>
+              </div>
+            </div>""",
+            unsafe_allow_html=True,
+        )
+        for title, desc in HELP_TOPICS[4:]:
+            st.markdown(
+                f'<div class="help-card"><h3>{title}</h3><p>{desc}</p></div>',
+                unsafe_allow_html=True,
+            )
+
+    st.markdown('<p class="section-label-mt">Nouveautés</p>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="help-changelog-item">
+          <span class="v">Version 1.2</span><span class="d">Dernière mise à jour</span>
+          <ul>
+            <li>Nouvelle page « Aide » avec guide d'utilisation et journal des versions.</li>
+            <li>Refonte du CSS : mise en page plus aérée et cohérente.</li>
+            <li>Responsive repensé pour un rendu propre sur mobile et tablette.</li>
+            <li>Pied de page supprimé, contact désormais regroupé ici.</li>
+          </ul>
+        </div>
+        <div class="help-changelog-item">
+          <span class="v">Version 1.1</span>
+          <ul>
+            <li>Ajout de l'outil « Template RS » pour composer des visuels réseaux sociaux.</li>
+          </ul>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+        <div class="help-contact">
+          Un bug à signaler ? Écrivez à
+          <a href="mailto:lucas.bessonnat@leprogres.fr">lucas.bessonnat@leprogres.fr</a>.
+          Après plusieurs utilisations, la touche <code>F5</code> rafraîchit le cache de l'app.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
