@@ -2127,7 +2127,7 @@ with tab_canva:
         )
         canva_title = st.text_area(
             "Titre",
-            value="Modifier le titre (➡️ il maintenant possible de faire des retours à la ligne grâce à la touche Entrée)",
+            value="Modifier le titre (il est possible de faire des retours à la ligne grâce à la touche Entrée)",
             key="canva_title",
             label_visibility="collapsed",
             height=80,
