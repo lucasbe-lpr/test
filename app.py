@@ -88,51 +88,59 @@ html, body,
 .site-header img { height: 38px; width: auto; display: block; flex-shrink: 0; }
 .site-header-right { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.01em; white-space: nowrap; }
 
-/* ONGLETS — style minimaliste, soulignement bleu sur l'actif, défilement horizontal sur petit écran */
+/* ONGLETS — segmented control moderne : pilules dans un rail arrondi, onglet actif en carte blanche */
 div[data-testid="stTabs"] [data-baseweb="tab-list"] {
-  background: transparent !important;
-  border-bottom: 1px solid var(--border) !important;
-  gap: 0 !important; margin-bottom: 0 !important; padding: 0 !important;
+  background: var(--bg) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  gap: 2px !important; margin-bottom: 0 !important; padding: 3px !important;
   overflow-x: auto !important;
   flex-wrap: nowrap !important;
   scrollbar-width: none !important;
+  width: fit-content !important;
+  max-width: 100% !important;
 }
 div[data-testid="stTabs"] [data-baseweb="tab-list"]::-webkit-scrollbar { display: none !important; }
 div[data-testid="stTabs"] [data-baseweb="tab"] {
   background: transparent !important;
   border: none !important;
-  border-bottom: 1.5px solid transparent !important;
-  margin-bottom: -1px !important;
-  color: var(--muted) !important;
+  border-radius: 9px !important;
+  margin-bottom: 0 !important;
+  color: var(--sub) !important;
   font-family: 'Roboto', sans-serif !important;
-  font-size: 0.85rem !important;
+  font-size: 0.82rem !important;
   font-weight: 400 !important;
-  padding: 0.6rem 1.6rem 0.6rem 0 !important;
+  padding: 0.5rem 1.05rem !important;
   white-space: nowrap !important;
   flex-shrink: 0 !important;
-  transition: color 0.12s !important;
+  transition: color 0.15s, background 0.15s !important;
 }
 div[data-testid="stTabs"] [aria-selected="true"] {
-  color: var(--ink) !important;
+  background: var(--white) !important;
+  color: var(--blue) !important;
   font-weight: 500 !important;
-  border-bottom: 1.5px solid var(--blue) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04) !important;
 }
-div[data-testid="stTabs"] [data-baseweb="tab"]:hover { color: var(--sub) !important; }
+div[data-testid="stTabs"] [data-baseweb="tab"]:not([aria-selected="true"]):hover { color: var(--ink) !important; background: rgba(0,0,0,0.03) !important; }
 div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
 div[data-testid="stTabs"] [data-baseweb="tab-border"] { display: none !important; }
 div[data-testid="stTabs"] [data-baseweb="tab-panel"] { padding-top: 1.4rem !important; }
+
 
 /* COLONNES STREAMLIT — aligner en haut, pas de hauteur forcée, espace vertical propre quand elles empilent en mobile */
 [data-testid="stHorizontalBlock"] { align-items: flex-start !important; row-gap: 1.6rem !important; }
 [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { min-height: 0 !important; padding-top: 0 !important; }
 
+/* ESPACEMENT COMPACT — resserre l'espace vertical natif entre les widgets (uploader, select, radio, slider…) */
+[data-testid="stVerticalBlock"] { gap: 0.6rem !important; }
+
 /* FILE UPLOADER — zone de dépôt stylisée */
-[data-testid="stFileUploader"] { background: transparent !important; margin-bottom: 1.4rem !important; }
+[data-testid="stFileUploader"] { background: transparent !important; margin-bottom: 0.9rem !important; }
 [data-testid="stFileUploader"] section {
   background: var(--bg) !important;
   border: 1px solid var(--border) !important;
   border-radius: 8px !important;
-  padding: 1.2rem 1rem !important;
+  padding: 0.9rem 1rem !important;
   transition: border-color 0.15s, background 0.15s !important;
 }
 [data-testid="stFileUploader"] section:hover,
@@ -168,21 +176,21 @@ div[data-testid="stTabs"] [data-baseweb="tab-panel"] { padding-top: 1.4rem !impo
 /* LABELS DE SECTION — petites caps grises au-dessus de chaque bloc */
 .section-label {
   font-size: 0.68rem; font-weight: 500; color: var(--muted);
-  letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.5rem; margin-top: 0;
+  letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.35rem; margin-top: 0;
 }
 .section-label-mt {
   font-size: 0.68rem; font-weight: 500; color: var(--muted);
-  letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.5rem; margin-top: 1.2rem;
+  letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.35rem; margin-top: 0.8rem;
 }
 
 /* SPECS ROW — bande d'infos techniques (dimensions, durée, fps) */
 .specs-row {
   display: flex; border: 1px solid var(--border); border-radius: 8px;
-  overflow: hidden; margin-bottom: 1.2rem; background: var(--bg);
+  overflow: hidden; margin-bottom: 0.85rem; background: var(--bg);
 }
 .spec-cell {
-  flex: 1; padding: 0.6rem 0.9rem; border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; gap: 0.15rem;
+  flex: 1; padding: 0.45rem 0.6rem; border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 0.1rem;
 }
 .spec-cell:last-child { border-right: none; }
 .spec-k { font-size: 0.58rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
@@ -193,7 +201,7 @@ div.stButton > button {
   width: 100% !important; background: var(--blue) !important; border: none !important;
   color: var(--white) !important; font-family: 'Roboto', sans-serif !important;
   font-size: 0.85rem !important; font-weight: 500 !important;
-  padding: 0 1.4rem !important; height: 38px !important; border-radius: 999px !important;
+  padding: 0 1.4rem !important; height: 36px !important; border-radius: 999px !important;
   transition: background 0.15s, transform 0.1s !important;
   box-shadow: 0 1px 2px rgba(0,104,177,0.15), 0 2px 6px rgba(0,104,177,0.1) !important;
   cursor: pointer !important;
@@ -211,7 +219,7 @@ div[data-testid="stDownloadButton"] > button {
   width: 100% !important; background: #16a34a !important; border: none !important;
   color: #fff !important; font-family: 'Roboto', sans-serif !important;
   font-size: 0.85rem !important; font-weight: 500 !important;
-  padding: 0 1.4rem !important; height: 38px !important; border-radius: 999px !important;
+  padding: 0 1.4rem !important; height: 36px !important; border-radius: 999px !important;
   transition: background 0.15s, transform 0.1s !important;
   box-shadow: 0 1px 2px rgba(22,163,74,0.18), 0 2px 6px rgba(22,163,74,0.1) !important;
 }
@@ -351,7 +359,7 @@ div[data-testid="stSpinner"] p {
 
   div[data-testid="stTabs"] [data-baseweb="tab"] {
     font-size: 0.78rem !important;
-    padding: 0.55rem 1.1rem 0.55rem 0 !important;
+    padding: 0.45rem 0.85rem !important;
   }
   div[data-testid="stTabs"] [data-baseweb="tab-panel"] { padding-top: 1.1rem !important; }
 
@@ -918,7 +926,7 @@ tab_v, tab_p, tab_s, tab_cut, tab_merge, tab_audio, tab_crop, tab_canva = st.tab
 )
 
 with tab_v:
-    col_ctrl, col_prev = st.columns([4, 6], gap="large")
+    col_ctrl, col_prev = st.columns([3, 7], gap="medium")
 
     with col_ctrl:
         st.markdown('<p class="section-label">Source</p>', unsafe_allow_html=True)
@@ -979,7 +987,7 @@ with tab_v:
                     st.session_state.thumbnail = make_thumbnail(vp, lp, nfo, **wm_opts)
 
             st.markdown(
-                "<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True
+                "<div style='margin-top:0.8rem;'></div>", unsafe_allow_html=True
             )
             if not st.session_state.rendered_bytes:
                 if st.button("Générer le rendu", key="vbtn"):
@@ -1036,7 +1044,7 @@ with tab_v:
 
 
 with tab_p:
-    col_ctrl_p, col_prev_p = st.columns([4, 6], gap="large")
+    col_ctrl_p, col_prev_p = st.columns([3, 7], gap="medium")
 
     with col_ctrl_p:
         st.markdown('<p class="section-label">Source</p>', unsafe_allow_html=True)
@@ -1174,7 +1182,7 @@ with tab_p:
 
 
 with tab_s:
-    col_ctrl_s, col_prev_s = st.columns([4, 6], gap="large")
+    col_ctrl_s, col_prev_s = st.columns([3, 7], gap="medium")
 
     with col_ctrl_s:
         st.markdown('<p class="section-label">Source</p>', unsafe_allow_html=True)
@@ -1226,7 +1234,7 @@ with tab_s:
             buf_s = io.BytesIO()
             frame.save(buf_s, format="PNG")
             st.markdown(
-                "<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True
+                "<div style='margin-top:0.8rem;'></div>", unsafe_allow_html=True
             )
             st.download_button(
                 "↓  Télécharger la capture",
@@ -1261,7 +1269,7 @@ with tab_s:
 
 
 with tab_cut:
-    col_ctrl_c, col_prev_c = st.columns([4, 6], gap="large")
+    col_ctrl_c, col_prev_c = st.columns([3, 7], gap="medium")
 
     with col_ctrl_c:
         st.markdown('<p class="section-label">Source</p>', unsafe_allow_html=True)
@@ -1343,7 +1351,7 @@ with tab_cut:
             )
 
             st.markdown(
-                "<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True
+                "<div style='margin-top:0.8rem;'></div>", unsafe_allow_html=True
             )
 
             cut_sig = (t_start, t_end, cut_file.name)
@@ -1437,7 +1445,7 @@ with tab_cut:
 
 
 with tab_merge:
-    col_ctrl_m, col_prev_m = st.columns([4, 6], gap="large")
+    col_ctrl_m, col_prev_m = st.columns([3, 7], gap="medium")
 
     with col_ctrl_m:
         st.markdown(
@@ -1567,7 +1575,7 @@ with tab_merge:
 
 
 with tab_audio:
-    col_ctrl_a, col_prev_a = st.columns([4, 6], gap="large")
+    col_ctrl_a, col_prev_a = st.columns([3, 7], gap="medium")
 
     with col_ctrl_a:
         st.markdown('<p class="section-label">Source</p>', unsafe_allow_html=True)
@@ -1636,7 +1644,7 @@ with tab_audio:
                     )
 
             st.markdown(
-                "<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True
+                "<div style='margin-top:0.8rem;'></div>", unsafe_allow_html=True
             )
 
             audio_sig = (
@@ -1794,7 +1802,7 @@ with tab_audio:
 
 
 with tab_crop:
-    col_ctrl_r, col_prev_r = st.columns([4, 6], gap="large")
+    col_ctrl_r, col_prev_r = st.columns([3, 7], gap="medium")
 
     with col_ctrl_r:
         st.markdown('<p class="section-label">Source</p>', unsafe_allow_html=True)
@@ -1875,7 +1883,7 @@ with tab_crop:
             )
 
             st.markdown(
-                "<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True
+                "<div style='margin-top:0.8rem;'></div>", unsafe_allow_html=True
             )
 
             crop_sig = (crop_file.name, preset_choice_idx, crop_pos)
@@ -1987,7 +1995,7 @@ with tab_canva:
         _wm_b64_canva = ""
         _wm_mime_canva = "image/png"
 
-    col_ctrl_cv, col_prev_cv = st.columns([4, 6], gap="large")
+    col_ctrl_cv, col_prev_cv = st.columns([3, 7], gap="medium")
 
     st.markdown(
         """
@@ -2127,7 +2135,7 @@ with tab_canva:
         )
         canva_title = st.text_area(
             "Titre",
-            value="Modifier le titre (il est possible de faire des retours à la ligne grâce à la touche Entrée)",
+            value="Modifier le titre (➡️ il maintenant possible de faire des retours à la ligne grâce à la touche Entrée)",
             key="canva_title",
             label_visibility="collapsed",
             height=80,
@@ -2168,7 +2176,7 @@ with tab_canva:
         canva_wm_size = 13
         canva_wm_opac = 100
 
-        st.markdown("<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top:0.8rem;'></div>", unsafe_allow_html=True)
 
         def _hex_to_rgb(h):
             h = h.lstrip("#")
