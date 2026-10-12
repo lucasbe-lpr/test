@@ -567,7 +567,7 @@ st.markdown(
     f"""
 <div class="site-header">
   <img src="data:image/png;base64,{_logo_b64}" alt="Luluflix" />
-  <span class="site-header-right">version <code>1.2</code></span>
+  <span class="site-header-right">version <code>2.0</code></span>
 </div>
 """,
     unsafe_allow_html=True,
