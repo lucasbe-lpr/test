@@ -842,7 +842,7 @@ for k in ["thumbnail", "rendered_bytes", "_last_video_name"]:
 # ============================================================
 # ONGLETS — VID / IMG / RS
 # ============================================================
-tab_v, tab_p, tab_canva = st.tabs(["VID", "IMG", "RS"])
+tab_v, tab_p, tab_canva = st.tabs(["WATERMARK VID", "WATERMARK IMG", "TEMPLATE"])
 
 # ============================================================
 # ONGLET VID
